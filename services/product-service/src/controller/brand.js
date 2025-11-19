@@ -106,13 +106,19 @@ exports.createBrand = async (req, res) => {
 exports.getAllBrands = async (req, res) => {
   try {
     const cacheKey = "brands:all";
+    const {featured} = req.query
     // const cached = await redisClient.get(cacheKey);
     // if (cached) {
     //   logger.info("🔁 Served brands from cache");
     //   return sendSuccess(res, JSON.parse(cached));
     // }
-
-    const brands = await Brand.find().populate("type").sort({ created_at: -1 });
+    let featuredFilter={};
+    if (featured === "true") {
+      featuredFilter = { featured_brand: true };
+    } else if (featured === "false") {
+      featuredFilter = { featured_brand: false };
+    }
+    const brands = await Brand.find(featuredFilter).populate("type").sort({ created_at: -1 });
     // await redisClient.set(cacheKey, JSON.stringify(brands), "EX", 3600);
     logger.info("✅ Fetched all brands");
     sendSuccess(res, brands);

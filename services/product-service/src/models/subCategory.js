@@ -14,6 +14,13 @@ const SubcategorySchema = new mongoose.Schema({
     type: String,
     enum: ["Active", "Inactive", "Pending", "Created", "Rejected"],
     default: "Created",
+    validate: {
+      validator: function (value) {
+        return ["Active", "Inactive", "Pending", "Created", "Rejected"].includes(
+          value
+        );
+      },
+    }
   },
   created_at: {
     type: Date,

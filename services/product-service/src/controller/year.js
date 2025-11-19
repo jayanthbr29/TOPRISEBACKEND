@@ -61,6 +61,9 @@ exports.updateYear = async (req, res) => {
     const { yearId } = req.params;
     const { year_name, updated_by } = req.body;
 
+    const existingYear = await Year.findOne({ year_name });
+    if (existingYear) return sendError(res, "Year already exists", 400);
+
     const updatedYear = await Year.findByIdAndUpdate(
       yearId,
       {
@@ -90,7 +93,7 @@ exports.deleteYear = async (req, res) => {
     if (!deleted) return sendError(res, "Year not found", 404);
 
     logger.info(`🗑️ Deleted year: ${yearId}`);
-    return sendSuccess(res, null, "Year deleted successfully");
+    return sendSuccess(res, deleted, "Year deleted successfully");
   } catch (err) {
     logger.error(`❌ Delete year error: ${err.message}`);
     return sendError(res, err);

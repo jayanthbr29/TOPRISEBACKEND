@@ -18,6 +18,14 @@ const catalogSchema = new mongoose.Schema({
         required: true,
         enum: ["active", "inactive", "pending", "created", "rejected"],
         default: "created",
+        validate: {
+            validator: function (value) {
+                return ["active", "inactive", "pending", "created", "rejected"].includes(
+                    value
+                );
+            },
+            message: "Invalid catalog status value",
+        },
     },
     catalog_created_at: {
         type: Date,

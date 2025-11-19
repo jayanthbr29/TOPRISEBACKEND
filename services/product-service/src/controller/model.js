@@ -111,7 +111,14 @@ exports.createModel = async (req, res) => {
 // ✅ Get All Models
 exports.getAllModel = async (req, res) => {
   try {
-    const models = await Model.find()
+    let { status } = req.query;
+       let statusFilter = {};
+
+    if (status) {
+      statusFilter.status = status; 
+    }
+    console.log(status);
+    const models = await Model.find(statusFilter)
       .populate("brand_ref")
       .sort({ created_at: -1 });
     logger.info("✅ Fetched all models");
@@ -149,11 +156,12 @@ exports.updateModel = async (req, res) => {
 
     const updatedModel = await Model.findByIdAndUpdate(modelId, updateData, {
       new: true,
+       runValidators: true,
     });
 
     if (!updatedModel) return sendErrorResponse(res, "Model not found", 404);
 
-    const userData = await axios.get(`http://user-service:5001/api/users/`, {
+    const userData = await axios.get(`http://user-service:5001/api/users/allUsers/internal`, {
       headers: {
         Authorization: req.headers.authorization,
       },

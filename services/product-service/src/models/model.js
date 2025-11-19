@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { validate } = require("./category");
 
 const modelSchema = new mongoose.Schema({
   model_name: {
@@ -38,6 +39,15 @@ const modelSchema = new mongoose.Schema({
     type: String,
     enum: ["Active", "Inactive", "Pending", "Created", "Rejected"],
     default: "Created",
+    validate: {
+      validator: function (value) {
+        console.log(value);
+        return ["Active", "Inactive", "Pending", "Created", "Rejected"].includes(
+          value
+        );
+      },
+      message: "Invalid status value",
+    },
   },
 });
 

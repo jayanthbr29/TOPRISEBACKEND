@@ -109,8 +109,13 @@ exports.getAllSubCategories = async (req, res) => {
     //   logger.info("🔁 Served subcategories from cache");
     //   return sendSuccess(res, JSON.parse(cached));
     // }
-
-    const subcategories = await Subcategory.find().populate("category_ref");
+    const {subcategory_status} = req.query;
+    let subcategory_statusFilter={};
+    if(subcategory_status){
+      subcategory_statusFilter = { subcategory_status: subcategory_status };
+    }
+    console.log(subcategory_statusFilter);
+    const subcategories = await Subcategory.find(subcategory_statusFilter).populate("category_ref");
     // await redisClient.setEx(cacheKey, 300, JSON.stringify(subcategories));
     logger.info("✅ Fetched all subcategories from DB");
     sendSuccess(res, subcategories);
