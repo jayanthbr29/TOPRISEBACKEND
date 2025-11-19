@@ -2710,7 +2710,7 @@ exports.bulkrejectProduct = async (req, res) => {
     let result = [];
     for (const id of productIds) {
       try {
-        const product = await Product.findById(id);
+        const product = await Product.findById(new mongoose.Types.ObjectId(id));       
         if (!product) {
           result.push({
             productId: id,
@@ -2876,6 +2876,7 @@ exports.getProductsByFiltersWithPagination = async (req, res) => {
       page = 1,
       limit = 10,
       status,
+      sort_by,
     } = req.query;
 
     const pageNumber = parseInt(page, 10) || 1;
@@ -2897,15 +2898,15 @@ exports.getProductsByFiltersWithPagination = async (req, res) => {
       if (status.includes(",")) {
         const statusArray = csvToIn(status);
         statusConditions.push({ live_status: { $in: statusArray } });
-        statusConditions.push({ Qc_status: { $in: statusArray } });
+        // statusConditions.push({ Qc_status: { $in: statusArray } });
       } else {
         statusConditions.push({ live_status: status });
-        statusConditions.push({ Qc_status: status });
+        // statusConditions.push({ Qc_status: status });
       }
     } else if (!status) {
       // Default: show Approved / Live
-      statusConditions.push({ live_status: "Approved" });
-      statusConditions.push({ live_status: "Live" });
+      // statusConditions.push({ live_status: "Approved" });
+      // statusConditions.push({ live_status: "Live" });
     }
 
     /**
@@ -2964,10 +2965,19 @@ exports.getProductsByFiltersWithPagination = async (req, res) => {
      * --------------------------
      */
     const total = await Product.countDocuments(filter);
+    let sorting;
+    if(sort_by=="A-Z"){
+      sorting = { product_name: 1 };
+    }else if(sort_by=="Z-A"){
+      sorting = { product_name: -1 };
+    }else{
+      sorting = { created_at: -1 };
+    }
 
     let productsQuery = Product.find(filter)
       .populate("brand category sub_category model variant year_range")
-      .sort({ created_at: -1 })
+      .sort(sorting)
+      // .sort({ created_at: -1 })
       .skip(skip)
       .limit(limitNumber);
 

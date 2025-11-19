@@ -166,7 +166,13 @@ exports.getAllCategories = async (req, res) => {
     //   return sendSuccess(res, JSON.parse(cached));
     // }
 
-    const categories = await Category.find();
+    let { category_Status } = req.query;
+    let category_StatusFilter={};
+    if (category_Status ) {
+      category_StatusFilter = { category_Status: category_Status };
+    }
+
+    const categories = await Category.find(category_StatusFilter);
     // await redisClient.setEx(cacheKey, 300, JSON.stringify(categories));
     logger.info("✅ Fetched all categories from DB");
     sendSuccess(res, categories);

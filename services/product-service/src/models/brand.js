@@ -50,6 +50,13 @@ const brandSchema = new mongoose.Schema({
     type: String,
     enum: ["active", "inactive", "pending", "created", "rejected"],
     default: "active",
+    validate: {
+      validator: function (value) {
+        return ["active", "inactive", "pending", "created", "rejected"].includes(
+          value
+        );
+      },
+    },
   },
 });
 

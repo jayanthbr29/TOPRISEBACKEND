@@ -1367,6 +1367,7 @@ exports.createEmployee = async (req, res) => {
       htmlTemplate
     );
     return res.status(201).json({
+      success: true,
       message: "Employee created successfully.",
       token,
       user: {
@@ -1381,6 +1382,7 @@ exports.createEmployee = async (req, res) => {
     session.endSession();
     console.error(err);
     return res.status(500).json({
+      success: false,
       message: "Something went wrong while creating the employee.",
       error: err.message,
     });
