@@ -5443,3 +5443,1004 @@ exports.getOrdersForFulfillmentStaff = async (req, res) => {
     return sendError(res, err.message || "Internal server error");
   }
 };
+
+
+exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
+  try {
+    const { orderId, dealerId, total_weight_kg, sku, forcePacking = false } = req.body;
+    if (!forcePacking) {
+
+      const picklist = await PickList.findOne({ linkedOrderId: orderId });
+      if (!picklist) {
+        return res.status(404).json({ error: "Picklist not found" });
+      }
+      const status = picklist.skuList.find((item) => item.sku === sku);
+
+      if (status.scanStatus !== "Completed") {
+        return res.status(400).json({ error: "Item Inspection not completed" });
+      }
+
+    }
+
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    let dealerFound = false;
+
+    order.dealerMapping = order.dealerMapping.map((mapping) => {
+      if (mapping.dealerId.toString() === dealerId && mapping.sku === sku) {
+        dealerFound = true;
+        return { ...mapping.toObject(), status: "Packed" };
+      }
+      return mapping;
+    });
+
+
+
+    const allPacked = order.dealerMapping.every(
+      (mapping) => mapping.status === "Packed"
+    );
+    console.log(" allPacked: ", allPacked);
+
+    // Visibility logs for Borzo creation criteria
+    console.log(
+      `[BORZO] Dealer packed update: orderId=${order.orderId}, dealerId=${dealerId}, allPacked=${allPacked}, delivery_type=${order.delivery_type || "N/A"}`
+    );
+    if (!allPacked) {
+      console.log(
+        `[BORZO] Skipping Borzo creation for order ${order.orderId}: not all dealers are packed`
+      );
+    }
+    if (!order.delivery_type) {
+      console.log(
+        `[BORZO] Skipping Borzo creation for order ${order.orderId}: delivery_type missing`
+      );
+    }
+
+    if (allPacked) {
+      const packedAt = new Date();
+      order.status = "Packed";
+      order.timestamps.packedAt = packedAt;
+
+      //   // Check for SLA violation when order is marked as packed
+      //   const slaCheck = await checkSLAViolationOnPacking(order, packedAt);
+      //   if (slaCheck.hasViolation && slaCheck.violation) {
+      //     try {
+      //       const violationRecord = await recordSLAViolation(slaCheck.violation);
+      //       await updateOrderWithSLAViolation(orderId, slaCheck.violation);
+      //       logger.info(
+      //         `SLA violation recorded for order ${orderId}: ${slaCheck.violation.violation_minutes} minutes`
+      //       );
+
+      //       // Add SLA violation info to response
+      //       order.slaViolation = {
+      //         violationMinutes: slaCheck.violation.violation_minutes,
+      //         message: `SLA violation detected: ${slaCheck.violation.violation_minutes} minutes late`,
+      //       };
+      //     } catch (violationError) {
+      //       logger.error("Failed to record SLA violation:", violationError);
+      //     }
+      //   }
+    }
+
+    await order.save();
+
+
+
+    let borzoOrderResponse = null;
+    let borzoPointsUsed = null;
+    if (order.delivery_type) {
+      try {
+        console.log(
+          `[BORZO] Attempting Borzo order creation for ${order.orderId} with delivery_type=${order.delivery_type}`
+        );
+        const authHeader = req.headers.authorization;
+        let pickupDealerId = dealerId || null;
+        const dealerInfo = pickupDealerId ? await fetchDealerInfo(pickupDealerId, authHeader) : null;
+        console.log("[BORZO] Dealer info:", dealerInfo);
+        const dealerAddressString =
+          dealerInfo?.address?.full ||
+          buildAddressString({
+            building_no: dealerInfo?.address?.building_no,
+            street: dealerInfo?.address?.street,
+            area: dealerInfo?.address?.area,
+            city: dealerInfo?.address?.city,
+            state: dealerInfo?.address?.state,
+            pincode: dealerInfo?.address?.pincode,
+            country: dealerInfo?.address?.country || "India",
+          }) ||
+          dealerInfo?.business_address ||
+          dealerInfo?.registered_address ||
+          "Pickup Address";
+        const dealerGeo = await geocodeAddress(dealerAddressString);
+
+        const customerAddressString =
+          order.customerDetails?.address ||
+          buildAddressString({
+            building_no: order.customerDetails?.building_no,
+            street: order.customerDetails?.street,
+            area: order.customerDetails?.area,
+            city: order.customerDetails?.city,
+            state: order.customerDetails?.state,
+            pincode: order.customerDetails?.pincode,
+            country: order.customerDetails?.country || "India",
+          }) ||
+          "Delivery Address";
+        const customerGeo = await geocodeAddress(customerAddressString);
+
+        const pickupPoint = {
+          address: dealerAddressString,
+          contact_person: {
+            name: dealerInfo?.contact_person.name || dealerInfo?.legal_name || "Dealer",
+            phone:
+              dealerInfo?.contact_person.phone_number ||
+              dealerInfo?.contact_number ||
+              dealerInfo?.phone ||
+              "0000000000",
+          },
+          // latitude: dealerGeo?.latitude || 28.57908,
+          // longitude: dealerGeo?.longitude || 77.31912,
+          latitude: 28.583905,
+          longitude: 77.322733,
+          client_order_id: `ORD,${order.orderId},${sku}`,
+        };
+
+        const dropPoint = {
+          address: customerAddressString,
+          contact_person: {
+            name: order.customerDetails?.name || "Customer",
+            phone: order.customerDetails?.phone || "0000000000",
+          },
+          // latitude: customerGeo?.latitude || 28.583905,
+          // longitude: customerGeo?.longitude || 77.322733,
+          latitude: 28.583905,
+          longitude: 77.322733,
+          client_order_id: `ORD,${order.orderId},${sku}`,
+        };
+        borzoPointsUsed = [pickupPoint, dropPoint];
+        const orderData = {
+          matter: "Food",
+          total_weight_kg: total_weight_kg || "3", // Dynamic weight from request body
+          insurance_amount: "500.00", // Default insurance
+          is_client_notification_enabled: true,
+          is_contact_person_notification_enabled: true,
+          points: borzoPointsUsed,
+        };
+
+        // Call appropriate Borzo function based on delivery_type
+        if (order.delivery_type.toLowerCase() === "standard") {
+          console.log(
+            `[BORZO] Creating instant Borzo order for ${order.orderId}`
+          );
+          // Create instant order
+          const instantReq = { body: { ...orderData, type: "standard" } };
+          const instantRes = {
+            status: (code) => ({
+              json: async (Data) => {
+                console.log("borzo instant response", Data, code);
+                if (code === 200) {
+                  const data = Data.borzo_order.order;
+                  borzoOrderResponse = { type: "instant", data };
+                  if (data.order_id) {
+                    console.log(
+                      `Storing Borzo order ID: ${data.order_id} for order: ${order.orderId}`
+                    );
+                    const splitedOrderId = data.points[0].client_order_id.split(",");
+                    const skuValue = splitedOrderId[2];
+                    // console.log("skuValue", skuValue);
+                    order.order_track_info = {
+                      ...order.order_track_info,
+                      borzo_order_id: data.order_id.toString(),
+                      borzo_tracking_url: data.tracking_url || order.order_track_info?.borzo_tracking_url,
+                      borzo_tracking_number: data.tracking_number || order.order_track_info?.borzo_tracking_number,
+                    };
+
+                    if (order.skus && order.skus.length > 0) {
+                      order.skus.forEach((sku, index) => {
+                        if (sku.sku === skuValue) {
+
+
+                          if (!sku.tracking_info) {
+                            sku.tracking_info = {};
+                          }
+                          sku.tracking_info.borzo_order_id = data.order_id.toString();
+                          if (data.tracking_url) sku.tracking_info.borzo_tracking_url = data.tracking_url;
+                          if (data.tracking_number) sku.tracking_info.borzo_tracking_number = data.tracking_number;
+                          sku.tracking_info.status = "Confirmed";
+                          if (!sku.tracking_info.timestamps) {
+                            sku.tracking_info.timestamps = {};
+                          }
+                          sku.tracking_info.timestamps.confirmedAt = new Date();
+                          sku.tracking_info.borzo_payment_amount = data.payment_amount;
+                          sku.tracking_info.borzo_delivery_fee_amount = data.delivery_fee_amount;
+                          sku.tracking_info.borzo_weight_fee_amount = data.weight_fee_amount;
+                        }
+                      });
+                    }
+
+                    await order.save();
+                    try {
+                      await logOrderAction({
+                        orderId: order._id,
+                        action: "BORZO_ORDER_CREATED_SUCCESS",
+                        performedBy: req.user?.userId || "system",
+                        performedByRole: req.user?.role || "system",
+                        details: { type: "instant", borzo_order_id: data.order_id, response: data },
+                        timestamp: new Date(),
+                      });
+                    } catch (_) { }
+                    console.log(
+                      `Successfully saved Borzo order ID: ${data.order_id} for order: ${order.orderId} and ${order.skus.length} SKUs`
+                    );
+                  }
+                } else {
+                  console.error("Borzo Instant Order Error:", data);
+                  // Audit log failure
+                  // try {
+                  //   await logOrderAction({
+                  //     orderId: order._id,
+                  //     action: "BORZO_ORDER_CREATED_FAILED",
+                  //     performedBy: req.user?.userId || "system",
+                  //     performedByRole: req.user?.role || "system",
+                  //     details: { type: "instant", error: data },
+                  //     timestamp: new Date(),
+                  //   });
+                  // } catch (_) { }
+                }
+              },
+            }),
+          };
+
+          await exports.createOrderBorzoInstantUpdated(instantReq, instantRes);
+        } else if (order.delivery_type.toLowerCase() === "endofday") {
+          console.log(
+            `[BORZO] Creating end-of-day Borzo order for ${order.orderId}`
+          );
+          // Create end of day order
+          const endofdayReq = {
+            body: {
+              ...orderData,
+              type: "endofday",
+              vehicle_type_id: "8", // Default vehicle type
+            },
+          };
+          const endofdayRes = {
+            status: (code) => ({
+              json: async (data) => {
+                if (code === 200) {
+                  borzoOrderResponse = { type: "endofday", data };
+                  // Store Borzo order ID in the order and SKUs
+                  if (data.order_id) {
+                    console.log(
+                      `Storing Borzo order ID: ${data.order_id} for order: ${order.orderId}`
+                    );
+
+                    // Update order-level tracking
+                    order.order_track_info = {
+                      ...order.order_track_info,
+                      borzo_order_id: data.order_id.toString(),
+                      borzo_tracking_url: data.tracking_url || order.order_track_info?.borzo_tracking_url,
+                      borzo_tracking_number: data.tracking_number || order.order_track_info?.borzo_tracking_number,
+                    };
+
+                    // Update SKU-level tracking
+                    if (order.skus && order.skus.length > 0) {
+                      order.skus.forEach((sku, index) => {
+                        if (!sku.tracking_info) {
+                          sku.tracking_info = {};
+                        }
+                        sku.tracking_info.borzo_order_id = data.order_id.toString();
+                        if (data.tracking_url) sku.tracking_info.borzo_tracking_url = data.tracking_url;
+                        if (data.tracking_number) sku.tracking_info.borzo_tracking_number = data.tracking_number;
+                        sku.tracking_info.status = "Confirmed";
+                        if (!sku.tracking_info.timestamps) {
+                          sku.tracking_info.timestamps = {};
+                        }
+                        sku.tracking_info.timestamps.confirmedAt = new Date();
+                      });
+                    }
+
+                    await order.save();
+                    // Audit log success
+                    try {
+                      await logOrderAction({
+                        orderId: order._id,
+                        action: "BORZO_ORDER_CREATED_SUCCESS",
+                        performedBy: req.user?.userId || "system",
+                        performedByRole: req.user?.role || "system",
+                        details: { type: "endofday", borzo_order_id: data.order_id, response: data },
+                        timestamp: new Date(),
+                      });
+                    } catch (_) { }
+                    console.log(
+                      `Successfully saved Borzo order ID: ${data.order_id} for order: ${order.orderId} and ${order.skus.length} SKUs`
+                    );
+                  }
+                } else {
+                  console.error("Borzo End of Day Order Error:", data);
+                  // Audit log failure
+                  try {
+                    await logOrderAction({
+                      orderId: order._id,
+                      action: "BORZO_ORDER_CREATED_FAILED",
+                      performedBy: req.user?.userId || "system",
+                      performedByRole: req.user?.role || "system",
+                      details: { type: "endofday", error: data },
+                      timestamp: new Date(),
+                    });
+                  } catch (_) { }
+                }
+              },
+            }),
+          };
+
+          await exports.createOrderBorzoEndofDay(endofdayReq, endofdayRes);
+        }
+      } catch (borzoError) {
+        console.error("Error creating Borzo order:", borzoError);
+        // Audit log failure
+        try {
+          await logOrderAction({
+            orderId: order._id,
+            action: "BORZO_ORDER_CREATED_FAILED",
+            performedBy: req.user?.userId || "system",
+            performedByRole: req.user?.role || "system",
+            details: { error: borzoError?.message || String(borzoError) },
+            timestamp: new Date(),
+          });
+        } catch (_) { }
+        // Don't fail the main request if Borzo order creation fails
+      }
+    }
+
+    const refreshedOrder = await Order.findById(order._id).lean();
+    return res.json({
+      message: "Dealer status updated successfully",
+      orderStatus: refreshedOrder?.status || order.status,
+      order: refreshedOrder || order.toObject(),
+      borzoOrder: borzoOrderResponse,
+      borzoPoints: borzoPointsUsed,
+    });
+  } catch (error) {
+    console.error("Error updating dealer status:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+exports.createOrderBorzoInstantUpdated = async (req, res) => {
+  try {
+    const {
+      type = "standard",
+      matter = "Food",
+      total_weight_kg = "3",
+      insurance_amount = "500.00",
+      is_client_notification_enabled = true,
+      is_contact_person_notification_enabled = true,
+      points = [],
+    } = req.body;
+
+    // Validate required fields
+    if (!points || points.length < 2) {
+      return res.status(400).json({
+        error: "At least 2 points (pickup and delivery) are required",
+      });
+    }
+
+    // Validate total_weight_kg
+    if (
+      total_weight_kg &&
+      (isNaN(parseFloat(total_weight_kg)) || parseFloat(total_weight_kg) <= 0)
+    ) {
+      return res.status(400).json({
+        error: "total_weight_kg must be a positive number",
+      });
+    }
+
+    // Validate each point has required fields
+    for (let i = 0; i < points.length; i++) {
+      const point = points[i];
+      if (
+        !point.address ||
+        !point.contact_person ||
+        !point.contact_person.name ||
+        !point.contact_person.phone ||
+        !point.latitude ||
+        !point.longitude
+      ) {
+        return res.status(400).json({
+          error: `Point ${i + 1
+            } is missing required fields (address, contact_person, latitude, longitude)`,
+        });
+      }
+    }
+
+    // Create Borzo order payload with dynamic total_weight_kg
+    const borzoOrderPayload = {
+      type,
+      matter,
+      total_weight_kg: total_weight_kg.toString(),
+      insurance_amount: insurance_amount.toString(),
+      is_client_notification_enabled,
+      is_contact_person_notification_enabled,
+      points: points.map((point) => ({
+        address: point.address,
+        contact_person: {
+          name: point.contact_person.name,
+          phone: point.contact_person.phone,
+        },
+        latitude: point.latitude,
+        longitude: point.longitude,
+        client_order_id:
+          point.client_order_id ||
+          `BORZO_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      })),
+    };
+    console.log("borzoOrderPayload", borzoOrderPayload);
+    // Make the actual API call to Borzo
+    console.log(
+      "Borzo Order Payload:",
+      JSON.stringify(borzoOrderPayload, null, 2)
+    );
+
+    try {
+      const response = await axios.post(
+        "https://robotapitest-in.borzodelivery.com/api/business/1.6/create-order",
+        borzoOrderPayload,
+        {
+          headers: {
+            "X-DV-Auth-Token": "29C64BE0ED20FC6C654F947F7E3D8E33496F51F6",
+            "Content-Type": "application/json",
+          },
+          timeout: 30000, // 30 seconds timeout
+        }
+      );
+
+      console.log(
+        "Borzo API Response:",
+        JSON.stringify(response.data, null, 2)
+      );
+
+      return res.status(200).json({
+        message: "Borzo order created successfully",
+        borzo_order: response.data,
+        request_payload: borzoOrderPayload,
+      });
+    } catch (apiError) {
+      console.error("Borzo API Error:", {
+        status: apiError.response?.status,
+        statusText: apiError.response?.statusText,
+        data: apiError.response?.data,
+        message: apiError.message,
+      });
+
+      // Return appropriate error response
+      if (apiError.response) {
+        return res.status(apiError.response.status).json({
+          error: "Borzo API Error",
+          status: apiError.response.status,
+          message:
+            apiError.response.data?.message || apiError.response.statusText,
+          borzo_error: apiError.response.data,
+          request_payload: borzoOrderPayload,
+        });
+      } else if (apiError.request) {
+        return res.status(503).json({
+          error: "Borzo API Unavailable",
+          message: "Unable to reach Borzo API. Please try again later.",
+          request_payload: borzoOrderPayload,
+        });
+      } else {
+        return res.status(500).json({
+          error: "Internal Error",
+          message: apiError.message,
+          request_payload: borzoOrderPayload,
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Error creating Borzo order:", error);
+    return res.status(500).json({
+      error: "Failed to create Borzo order",
+      details: error.message,
+    });
+  }
+};
+exports.borzoWebhookUpdated = async (req, res) => {
+  try {
+    const signature = req.headers["x-dv-signature"];
+    const webhookData = req.body;
+
+    console.log("Borzo Webhook Received:", {
+      signature: signature,
+      data: webhookData,
+    });
+console.log("webhookData", webhookData);
+    // Verify webhook signature
+    if (!signature) {
+      console.error("Missing X-DV-Signature header");
+      return res.status(400).json({ error: "Missing signature" });
+    }
+
+    // Get the callback secret key from environment variables
+    const callbackSecretKey = "D5DD560F8E8DB1A98342992342C5B6DCFCCE269D";
+    if (!callbackSecretKey) {
+      console.error("BORZO_CALLBACK_SECRET_KEY not configured");
+      return res.status(500).json({ error: "Webhook not configured" });
+    }
+
+    // Verify signature using HMAC SHA256
+    const crypto = require("crypto");
+    const expectedSignature = crypto
+      .createHmac("sha256", callbackSecretKey)
+      .update(JSON.stringify(webhookData))
+      .digest("hex");
+
+    if (signature !== expectedSignature) {
+      console.error("Invalid webhook signature");
+      return res.status(401).json({ error: "Invalid signature" });
+    }
+    // return res.status(200).json({ success: true, message: "Webhook processed successfully" });
+    
+    //  switch (webhookData.event_type="delivery_changed") {
+
+    //  }
+    if (webhookData.event_type == "delivery_changed") {
+      // console.log("delivery_changed", webhookData.delivery);
+      const borzoOrderId = webhookData.delivery.order_id;
+      const borzoOrderStatus = webhookData.delivery.status;
+      const client_Id = webhookData.delivery.client_order_id;
+
+      const borzoFormatData = client_Id.split(",");
+      // console.log("borzoFormatData", borzoFormatData);
+      const orderType = borzoFormatData[0];
+      const orderId = borzoFormatData[1];
+      const orderSku = borzoFormatData[2];
+
+      if (orderType === "ORD") {
+        const order = await Order.findOne({ orderId: orderId });
+        // console.log("order", order.skus);
+
+        const updateSkus = order.skus.map((sku) => {
+          if (sku.sku === orderSku) {
+            let statusUpdate;
+            switch (borzoOrderStatus.toLowerCase()) {
+              case "created":
+              case "planned":
+                statusUpdate = "Confirmed";
+                sku.tracking_info.timestamps.confirmedAt = new Date();
+                break;
+              case "assigned":
+              case "courier_assigned":
+                statusUpdate = "Assigned";
+                sku.tracking_info.timestamps.assignedAt = new Date();
+                break;
+              case "courier_departed":
+                statusUpdate = "Picked Up";
+                sku.tracking_info.timestamps.pickedUpAt = new Date();
+                break;
+              case "courier_at_pickup":
+              case "parcel_picked_up":
+                statusUpdate = "Shipped";
+                sku.tracking_info.timestamps.shippedAt = new Date();
+                break;
+
+              case "courier_arrived":
+                statusUpdate = "OUT_FOR_DELIVERY";
+                sku.tracking_info.timestamps.outForDeliveryAt = new Date();
+                break;
+              // case "delivered":
+              //   statusUpdate = "Delivered";
+              //   sku.timestamps.deliveredAt = new Date();
+              //   break;
+              // case "cancelled":
+              //   orderStatusUpdate.status = "Cancelled";
+              //   break;
+              // case "returned":
+              //   orderStatusUpdate.status = "Returned";
+              //   break;
+              default:
+                // Keep current status if unknown
+                break;
+            }
+
+            return {
+              ...sku,
+              tracking_info: {
+                ...sku.tracking_info,
+                status: statusUpdate,
+
+              }
+            }
+          } else {
+            return sku;
+          }
+        });
+
+        await Order.updateOne({ orderId: orderId }, { $set: { skus: updateSkus } });
+
+
+
+      }
+
+      return res.status(200).json({ success: true, message: "Webhook received successfully" });
+    } else if (webhookData.event_type == "order_changed") {
+      const borzoOrderId = webhookData.order.order_id;
+      const borzoOrderStatus = webhookData.order.status;
+      const client_Id = webhookData.order.points[0].client_order_id;
+
+      const borzoFormatData = client_Id.split(",");
+      // console.log("borzoFormatData", borzoFormatData);
+      const orderType = borzoFormatData[0];
+      const orderId = borzoFormatData[1];
+      const orderSku = borzoFormatData[2];
+
+      if (orderType === "ORD") {
+        const order = await Order.findOne({ orderId: orderId });
+        // console.log("order", order);
+
+        const updateSkus = order.skus.map((sku) => {
+          console.log("sku", sku);
+          if (sku.sku === orderSku) {
+            let statusUpdate;
+            switch (borzoOrderStatus.toLowerCase()) {
+              case "new":
+              case "available":
+              case "active":
+                statusUpdate = "Confirmed";
+                sku.tracking_info.timestamps.confirmedAt = new Date();
+                break;
+              case "completed":
+              case "courier_assigned":
+                statusUpdate = "Delivered";
+                sku.tracking_info.tracking_info.timestamps.deliveredAt = new Date();
+                break;
+              case "canceled":
+                statusUpdate = "Cancelled";
+                sku.tracking_info.timestamps.cancelledAt = new Date();
+                break;
+
+              // case "delivered":
+              //   statusUpdate = "Delivered";
+              //   sku.timestamps.deliveredAt = new Date();
+              //   break;
+              // case "cancelled":
+              //   orderStatusUpdate.status = "Cancelled";
+              //   break;
+              // case "returned":
+              //   orderStatusUpdate.status = "Returned";
+              //   break;
+              default:
+                // Keep current status if unknown
+                break;
+            }
+
+            return {
+              ...sku,
+              tracking_info: {
+                ...sku.tracking_info,
+                status: statusUpdate,
+
+              }
+            }
+          } else {
+            return sku;
+          }
+        });
+
+        await Order.updateOne({ orderId: orderId }, { $set: { skus: updateSkus } });
+      }
+
+      return res.status(200).json({uccess: true,  message: "Webhook received successfully" });
+    } else {
+      return res.status(200).json({ uccess: true, message: "Webhook received successfully" });
+    }
+
+
+
+
+
+    /////
+
+
+
+
+    // // Extract webhook data
+    // const {
+    //   event_datetime,
+    //   event_type,
+    //   order: borzoOrder,
+    //   delivery: borzoDelivery,
+    // } = webhookData;
+    // console.log("Borzo Webhook Data:", webhookData);
+
+    // // Handle both order and delivery webhook structures
+    // // let borzoOrderId;
+    // let borzoData;
+    // let clientOrderId;
+
+    // if (borzoOrder && borzoOrder.order_id) {
+    //   // Standard order webhook
+    //   borzoOrderId = borzoOrder.order_id.toString();
+    //   borzoData = borzoOrder;
+    //   clientOrderId = borzoOrder.client_order_id;
+    // } else if (borzoDelivery && borzoDelivery.order_id) {
+    //   // Delivery webhook
+    //   borzoOrderId = borzoDelivery.order_id.toString();
+    //   borzoData = borzoDelivery;
+    //   clientOrderId = borzoDelivery.client_order_id;
+    // } else {
+    //   console.error("Invalid webhook data - missing order information");
+    //   console.error(
+    //     "Webhook data structure:",
+    //     JSON.stringify(webhookData, nulff244325e01fl, 2)
+    //   );
+    //   return res.status(400).json({ error: "Invalid webhook data" });
+    // }
+
+    // // Find the order in our database by client_order_id (which should match our orderId)
+    // console.log(
+    //   `Looking for order with client_order_id: ${clientOrderId} and Borzo order ID: ${borzoOrderId}`
+    // );
+
+    // let order = await Order.findOne({
+    //   orderId: clientOrderId,
+    // });
+
+    // // If not found by client_order_id, try by Borzo order ID as fallback
+    // if (!order) {
+    //   console.log(
+    //     `Order not found by client_order_id: ${clientOrderId}, trying Borzo order ID: ${borzoOrderId}`
+    //   );
+    //   order = await Order.findOne({
+    //     "order_track_info.borzo_order_id": borzoOrderId,
+    //   });
+    // }
+
+    // if (!order) {
+    //   console.error(
+    //     `Order not found for client_order_id: ${clientOrderId} or Borzo order ID: ${borzoOrderId}`
+    //   );
+    //   // Let's also search by other fields to help debug
+    //   const allOrders = await Order.find({}).limit(5);
+    //   console.log(
+    //     "Recent orders in database:",
+    //     allOrders.map((o) => ({
+    //       orderId: o.orderId,
+    //       borzo_order_id: o.order_track_info?.borzo_order_id,
+    //       status: o.status,
+    //     }))
+    //   );
+    //   return res.status(404).json({ error: "Order not found" });
+    // } else {
+    //   console.log(`Found order: ${order.orderId} with status: ${order.status}`);
+    // }
+
+    // // Update order-level tracking information
+    // const updateData = {
+    //   "order_track_info.borzo_event_datetime": new Date(event_datetime),
+    //   "order_track_info.borzo_event_type": event_type,
+    //   "order_track_info.borzo_last_updated": new Date(),
+    // };
+
+    // // Update specific fields based on what's available in the webhook
+    // if (borzoData.status) {
+    //   updateData["order_track_info.borzo_order_status"] = borzoData.status;
+    // }
+
+    // if (borzoData.tracking_url) {
+    //   updateData["order_track_info.borzo_tracking_url"] =
+    //     borzoData.tracking_url;
+    // }
+
+    // if (borzoData.tracking_number) {
+    //   updateData["order_track_info.borzo_tracking_number"] =
+    //     borzoData.tracking_number;
+    // }
+
+    // // Update order status based on Borzo status
+    // let orderStatusUpdate = {};
+    // if (borzoData.status) {
+    //   switch (borzoData.status.toLowerCase()) {
+    //     case "created":
+    //     case "planned":
+    //       orderStatusUpdate.status = "Confirmed";
+    //       break;
+    //     case "assigned":
+    //     case "courier_assigned":
+    //       orderStatusUpdate.status = "Assigned";
+    //       break;
+    //     case "picked_up":
+    //       orderStatusUpdate.status = "Shipped";
+    //       orderStatusUpdate["timestamps.shippedAt"] = new Date();
+    //       break;
+    //     case "finished":
+    //       // Special handling for "finished" status - check if all SKUs are finished
+    //       console.log(`Borzo status is "finished" for order ${order.orderId}`);
+    //       break;
+    //     case "delivered":
+    //       orderStatusUpdate.status = "Delivered";
+    //       break;
+    //     case "cancelled":
+    //       orderStatusUpdate.status = "Cancelled";
+    //       break;
+    //     case "returned":
+    //       orderStatusUpdate.status = "Returned";
+    //       break;
+    //     default:
+    //       // Keep current status if unknown
+    //       break;
+    //   }
+    // }
+
+    // // Update SKU-level tracking information
+    // const skuUpdates = [];
+    // if (order.skus && order.skus.length > 0) {
+    //   order.skus.forEach((sku, index) => {
+    //     // Update each SKU's tracking info
+    //     const skuTrackingUpdate = {
+    //       [`skus.${index}.tracking_info.borzo_event_datetime`]: new Date(
+    //         event_datetime
+    //       ),
+    //       [`skus.${index}.tracking_info.borzo_event_type`]: event_type,
+    //       [`skus.${index}.tracking_info.borzo_last_updated`]: new Date(),
+    //     };
+
+    //     if (borzoData.status) {
+    //       skuTrackingUpdate[`skus.${index}.tracking_info.borzo_order_status`] =
+    //         borzoData.status;
+    //     }
+
+    //     if (borzoData.tracking_url) {
+    //       skuTrackingUpdate[`skus.${index}.tracking_info.borzo_tracking_url`] =
+    //         borzoData.tracking_url;
+    //     }
+
+    //     if (borzoData.tracking_number) {
+    //       skuTrackingUpdate[
+    //         `skus.${index}.tracking_info.borzo_tracking_number`
+    //       ] = borzoData.tracking_number;
+    //     }
+
+    //     // Update SKU status based on Borzo status
+    //     let skuStatus = "Pending";
+    //     let skuTimestamp = null;
+
+    //     switch (borzoData.status.toLowerCase()) {
+    //       case "created":
+    //       case "planned":
+    //         skuStatus = "Confirmed";
+    //         skuTimestamp = "confirmedAt";
+    //         break;
+    //       case "assigned":
+    //       case "courier_assigned":
+    //         skuStatus = "Assigned";
+    //         skuTimestamp = "assignedAt";
+    //         break;
+    //       case "picked_up":
+    //         skuStatus = "Shipped";
+    //         skuTimestamp = "shippedAt";
+    //         break;
+    //       case "finished":
+    //         skuStatus = "Delivered";
+    //         skuTimestamp = "deliveredAt";
+    //         break;
+    //       case "delivered":
+    //         skuStatus = "Delivered";
+    //         skuTimestamp = "deliveredAt";
+    //         break;
+    //       case "cancelled":
+    //         skuStatus = "Cancelled";
+    //         break;
+    //       case "returned":
+    //         skuStatus = "Returned";
+    //         break;
+    //       default:
+    //         skuStatus = "Pending";
+    //         break;
+    //     }
+
+    //     skuTrackingUpdate[`skus.${index}.tracking_info.status`] = skuStatus;
+
+    //     if (skuTimestamp) {
+    //       skuTrackingUpdate[
+    //         `skus.${index}.tracking_info.timestamps.${skuTimestamp}`
+    //       ] = new Date();
+    //     }
+
+    //     skuUpdates.push(skuTrackingUpdate);
+    //   });
+    // }
+
+    // // Update the order with all changes
+    // const finalUpdateData = { ...updateData, ...orderStatusUpdate };
+
+    // // Apply order-level updates
+    // let updatedOrder = await Order.findByIdAndUpdate(
+    //   order._id,
+    //   { $set: finalUpdateData },
+    //   { new: true }
+    // );
+
+    // // Apply SKU-level updates
+    // if (skuUpdates.length > 0) {
+    //   for (const skuUpdate of skuUpdates) {
+    //     updatedOrder = await Order.findByIdAndUpdate(
+    //       order._id,
+    //       { $set: skuUpdate },
+    //       { new: true }
+    //     );
+    //   }
+    // }
+
+    // // Special handling for "finished" status - check if all SKUs are finished
+    // if (borzoData.status && borzoData.status.toLowerCase() === "finished") {
+    //   console.log(
+    //     `Checking if all SKUs are finished for order ${order.orderId}`
+    //   );
+
+    //   // Use the utility function to check and mark order as delivered if all SKUs are finished
+    //   const {
+    //     markOrderAsDeliveredIfAllFinished,
+    //   } = require("../utils/orderStatusCalculator");
+
+    //   const result = await markOrderAsDeliveredIfAllFinished(order._id);
+
+    //   if (result.updated) {
+    //     updatedOrder = result.order;
+    //     orderStatusUpdate.status = "Delivered";
+    //     console.log(
+    //       `✅ Order ${order.orderId} marked as Delivered: ${result.reason}`
+    //     );
+    //   } else {
+    //     console.log(
+    //       `⏳ Order ${order.orderId} not yet delivered: ${result.reason}`
+    //     );
+    //   }
+    // }
+
+    // console.log(`Order ${order.orderId} updated with Borzo webhook data:`, {
+    //   client_order_id: clientOrderId,
+    //   borzo_order_id: borzoOrderId,
+    //   event_type: event_type,
+    //   borzo_status: borzoData.status,
+    //   order_status: orderStatusUpdate.status,
+    //   tracking_url: borzoData.tracking_url,
+    // });
+
+    // // Add audit log entry
+    // await Order.findByIdAndUpdate(order._id, {
+    //   $push: {
+    //     auditLogs: {
+    //       action: `Borzo Webhook: ${event_type}`,
+    //       actorId: null, // System action
+    //       role: "System",
+    //       timestamp: new Date(),
+    //       reason: `Borzo order status updated to: ${borzoData?.status || "Unknown"
+    //         }`,
+    //     },
+    //   },
+    // });
+
+    // // Return success response
+    // return res.status(200).json({
+    //   success: true,
+    //   message: "Webhook processed successfully",
+    //   order_id: order.orderId,
+    //   client_order_id: clientOrderId,
+    //   borzo_order_id: borzoOrderId,
+    //   event_type: event_type,
+    //   borzo_status: borzoData.status,
+    //   updated_status: orderStatusUpdate.status || order.status,
+    // });
+  } catch (error) {
+    console.error("Error processing Borzo webhook:", error);
+    return res.status(500).json({
+      error: "Internal server error",
+      message: error.message,
+    });
+  }
+};
