@@ -2287,7 +2287,7 @@ exports.getAssignedDealers = async (req, res) => {
     }
 
     // 2) Sort dealers by priority_override, then by quantity
-    const sorted = (product.available_dealers || []).slice().sort((a, b) => {
+    const sorted = (product.available_dealers || []).filter((d) => d.inStock).slice().sort((a, b) => {
       if (
         (b.dealer_priority_override || 0) !== (a.dealer_priority_override || 0)
       ) {
@@ -2346,15 +2346,32 @@ exports.decrementDealerStock = async (req, res) => {
     }
 
     /* ───── 2. Atomically decrement dealer stock ───── */
-    const product = await Product.findOneAndUpdate(
-      {
-        _id: id,
-        "available_dealers.dealers_Ref": dealerId,
-        "available_dealers.quantity_per_dealer": { $gte: qty },
-      },
-      { $inc: { "available_dealers.$.quantity_per_dealer": -qty } },
-      { new: true } // return the full updated product
-    ).lean();
+    // const product = await Product.findOneAndUpdate(
+    //   {
+    //     _id: id,
+    //     "available_dealers.dealers_Ref": dealerId,
+    //     // "available_dealers.quantity_per_dealer": { $gte: qty },
+    //   },
+    //   { $inc: { "available_dealers.$.quantity_per_dealer": -qty } ,
+    //   "available_dealers.$.inStock":
+    // },
+    //   { new: true } // return the full updated product
+    // ).lean();
+
+    const product = await  Product.findById(id);
+
+    product.available_dealers = product.available_dealers.map((dealer) => {
+      if (dealer.dealers_Ref.toString() === dealerId) {
+        return {
+          ...dealer,
+          quantity_per_dealer: Math.max(dealer.quantity_per_dealer - qty, 0),
+          inStock: (dealer.quantity_per_dealer-qty) > 0,
+        };
+      }
+      return dealer;
+    });
+    product.out_of_stock=product.available_dealers.every((d) => !d.inStock)
+    const updatedProduct = await product.save();
 
     if (!product) {
       return res.status(404).json({
@@ -2385,6 +2402,7 @@ exports.decrementDealerStock = async (req, res) => {
         quantityAvailable: updatedDealer.quantity_per_dealer,
         dealerMargin: updatedDealer.dealer_margin,
         priorityOverride: updatedDealer.dealer_priority_override,
+        inStock: updatedDealer.inStock,
       },
     });
   } catch (err) {

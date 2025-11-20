@@ -1,3 +1,4 @@
+const { createUnicastOrMulticastNotificationUtilityFunction } = require("../../../../packages/utils/notificationService");
 const Order = require("../models/order");
 const PickList = require("../models/pickList");
 const logger = require("/packages/utils/logger");
@@ -205,13 +206,17 @@ exports.getPendingTasks = async (req, res) => {
 exports.getPicklistsByEmployee = async (req, res) => {
   try {
     const { employeeId } = req.params;
-    const { status, page = 1, limit = 10, dateRange } = req.query;
+    const { status, page = 1, limit = 10, dateRange ,linkedOrderId} = req.query;
     const pageNumber = parseInt(page);
     const limitNumber = parseInt(limit);
     const skip = (pageNumber - 1) * limitNumber;
 
     // Build filter
     const filter = { fulfilmentStaff: employeeId };
+
+    if (linkedOrderId) {
+      filter.linkedOrderId = linkedOrderId;
+    }
 
     if (status && status !== 'all') {
       filter.scanStatus = status;
@@ -285,13 +290,16 @@ exports.getPicklistsByEmployee = async (req, res) => {
 exports.getPicklistsByDealer = async (req, res) => {
   try {
     const { dealerId } = req.params;
-    const { status, page = 1, limit = 10, dateRange } = req.query;
+    const { status, page = 1, limit = 10, dateRange  ,linkedOrderId} = req.query;
     const pageNumber = parseInt(page);
     const limitNumber = parseInt(limit);
     const skip = (pageNumber - 1) * limitNumber;
 
     // Build filter
     const filter = { dealerId };
+    if(linkedOrderId){
+      filter.linkedOrderId = linkedOrderId;
+    }
 
     if (status && status !== 'all') {
       filter.scanStatus = status;
@@ -886,3 +894,153 @@ async function calculateAverageProcessingTime(filter) {
     return 0;
   }
 }
+
+
+exports.startPicklistInspection = async (req, res) => {
+  try {
+    const { picklistId ,empId} = req.params;
+    const {sku}=req.body;
+
+    if (!picklistId) {
+      return sendError(res, "Picklist ID is required", 400);
+    }
+
+    if (!empId) {
+      return sendError(res, "Employee ID is required", 400);
+    }
+
+    const picklist = await PickList.findById(picklistId);
+    if (!picklist) {
+      return sendError(res, "Picklist not found", 404);
+    }
+    picklist.skuList= picklist.skuList.map((item) => {
+      if (item.sku === sku) {
+        item.scanStatus = "In Progress";
+      }
+      return item;
+    });
+    picklist.updatedAt = new Date();
+    picklist.scanStatus=picklist.skuList.every((item) => item.scanStatus === "Completed") ? "Completed" : "In Progress";
+    await picklist.save();
+   
+    return sendSuccess(res, picklist, "Picklist inspection started");
+  } catch (error) {
+    logger.error("Error starting picklist inspection:", error.message);
+    return sendError(res, error);
+  }
+};
+
+exports.endPicklistInspection = async (req, res) => {
+  try {
+    const { picklistId ,empId} = req.params;
+    const {sku}=req.body;
+
+    if (!picklistId) {
+      return sendError(res, "Picklist ID is required", 400);
+    }
+
+    if (!empId) {
+      return sendError(res, "Employee ID is required", 400);
+    }
+
+    const picklist = await PickList.findById(picklistId);
+    if (!picklist) {
+      return sendError(res, "Picklist not found", 404);
+    }
+    picklist.skuList= picklist.skuList.map((item) => {
+      if (item.sku === sku) {
+        item.scanStatus = "Completed";
+      }
+      return item;
+    });
+    picklist.updatedAt = new Date();
+    picklist.scanStatus=picklist.skuList.every((item) => item.scanStatus === "Completed") ? "Completed" : "In Progress";
+    await picklist.save();
+   
+    return sendSuccess(res, picklist, "Picklist inspection ended", {
+      averageProcessingTime: await calculateAverageProcessingTime({ linkedOrderId: picklist.linkedOrderId })
+    })
+  } catch (error) {
+    logger.error("Error ending picklist inspection:", error.message);
+    return sendError(res, error);
+  }
+};
+
+exports.getPicklistByOrderId = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const picklists = await PickList.find({ linkedOrderId: orderId });
+    
+    return sendSuccess(res, picklists, "Picklists found");
+   
+  } catch (error) {
+    logger.error("Error getting picklist by order ID:", error.message);
+    return sendError(res, error);
+  }
+};
+
+exports.getPicklistById= async (req, res) => {
+  try {
+    const { picklistId } = req.params;
+    const picklist = await PickList.findById(picklistId);
+    
+    return sendSuccess(res, picklist, "Picklist found");
+   
+  } catch (error) {
+    logger.error("Error getting picklist by order ID:", error.message);
+    return sendError(res, error);
+  }
+};
+
+exports.checkInspectionStatusByOrderIdSku= async (req, res) => {
+  try {
+    const { orderId,sku} = req.params;
+    const picklist = await PickList.findOne({ linkedOrderId: orderId, "skuList.sku": sku });
+    
+    if(!picklist){
+      return sendError(res, "Picklist not found", 404);
+    }
+    const inspectionStatus = picklist.skuList.find(item => item.sku === sku);
+    return sendSuccess(res, {inspectionData:inspectionStatus ,inspectionStatus:inspectionStatus.scanStatus==="Completed"?true:false}, "Inspection status found");
+   
+  } catch (error) {
+    logger.error("Error getting picklist by order ID:", error.message);
+    return sendError(res, error);
+  }
+};
+
+
+exports.assignPicklistToStaff = async (req, res) => {
+  try {
+    const { picklistId, staffId } = req.body;
+
+    const picklist = await PickList.findById(picklistId);
+    if (!picklist) return sendError(res, "Picklist not found", 404);
+
+    picklist.fulfilmentStaff = staffId;
+    picklist.updatedAt = new Date();
+    await picklist.save();
+    const successData =
+      await createUnicastOrMulticastNotificationUtilityFunction(
+        [staffId],
+        ["INAPP", "PUSH"],
+        "New Pickup list assigned",
+        `New Pickup list assigned with picklist id ${picklistId}`,
+        "",
+        "",
+        "Order",
+        {},
+        req.headers.authorization
+      );
+    if (!successData.success) {
+      logger.error("❌ Create notification error:", successData.message);
+    } else {
+      logger.info("✅ Notification created successfully");
+    }
+
+    return sendSuccess(res, picklist, "Staff assigned to picklist");
+  } catch (error) {
+    logger.error("Assign staff failed:", error);
+    return sendError(res, "Failed to assign staff");
+  }
+};

@@ -203,13 +203,13 @@ router.get(
 // User CRUD Routes
 router.get(
   "/dealer/:id",
-  authenticate,
-  requireRole([
-    "Super-admin",
-    "Fulfillment-Admin",
-    "Inventory-Admin",
-    "Dealer",
-  ]),
+  // authenticate,
+  // requireRole([
+  //   "Super-admin",
+  //   "Fulfillment-Admin",
+  //   "Inventory-Admin",
+  //   "Dealer",
+  // ]),
   auditMiddleware("DEALER_DETAILS_ACCESSED", "Dealer", "DEALER_MANAGEMENT"),
   userController.getDealerById
 );

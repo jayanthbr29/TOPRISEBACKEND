@@ -674,8 +674,7 @@ exports.getDealerById = async (req, res) => {
   try {
     const { id } = req.params;
     const { includeSLAInfo = false } = req.query;
-    const authorizationHeader = req.headers.authorization;
-
+    const authorizationHeader = req.headers.authorization; 
     // const cacheKey = `dealers:${id}`;
     // const cached = await redisClient.get(cacheKey);
     // if (cached) {

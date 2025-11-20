@@ -57,10 +57,13 @@ const OrderSchema = new mongoose.Schema(
           borzo_event_datetime: Date,
           borzo_event_type: String,
           borzo_last_updated: Date,
+          borzo_payment_amount: Number,
+          borzo_delivery_fee_amount: Number,
+          borzo_weight_fee_amount: Number,
           // Individual SKU status
           status: {
             type: String,
-            enum: ["Pending", "Confirmed", "Assigned", "Packed", "Shipped", "Delivered", "Cancelled", "Returned"],
+            enum: ["Pending", "Confirmed", "Assigned", "Packed", "Shipped", "Delivered","OUT_FOR_DELIVERY", "Cancelled", "Returned"],
             default: "Pending"
           },
           // Individual SKU timestamps
@@ -69,7 +72,10 @@ const OrderSchema = new mongoose.Schema(
             assignedAt: Date,
             packedAt: Date,
             shippedAt: Date,
-            deliveredAt: Date
+            outForDeliveryAt: Date,
+            deliveredAt: Date,
+            cancelledAt: Date,
+
           }
         },
         return_info: {

@@ -30,7 +30,7 @@ router.get(
 router.get(
   "/picklists/employee/:employeeId",
   requireAuth,
-  authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Fulfillment-Staff", "Inventory-Staff"),
+  // authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Fulfillment-Staff", "Inventory-Staff"),
   fulfillmentController.getPicklistsByEmployee
 );
 
@@ -38,7 +38,7 @@ router.get(
 router.get(
   "/picklists/dealer/:dealerId",
   requireAuth,
-  authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Fulfillment-Staff", "Inventory-Staff"),
+  // authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Fulfillment-Staff", "Inventory-Staff"),
   fulfillmentController.getPicklistsByDealer
 );
 
@@ -46,7 +46,7 @@ router.get(
 router.patch(
   "/picklists/:picklistId/status",
   requireAuth,
-  authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Fulfillment-Staff", "Inventory-Staff"),
+  // authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Fulfillment-Staff", "Inventory-Staff"),
   fulfillmentController.updatePicklistStatus
 );
 
@@ -94,4 +94,42 @@ router.get(
   fulfillmentController.getOrdersByEmployee
 );
 
+router.patch(
+  "/picklist/start-inspection/:picklistId/:empId",
+  requireAuth,
+  // authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Fulfillment-Staff", "Inventory-Staff"),
+  fulfillmentController.startPicklistInspection
+);
+router.patch(
+  "/picklist/end-inspection/:picklistId/:empId",
+  requireAuth,
+  // authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Fulfillment-Staff", "Inventory-Staff"),
+  fulfillmentController.endPicklistInspection
+);
+router.get(
+  "/picklist/by-orderId/:orderId",
+  requireAuth,
+  // authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Fulfillment-Staff", "Inventory-Staff"),
+  fulfillmentController.getPicklistByOrderId
+);
+router.get(
+  "/picklist/by-picklistId/:picklistId",
+  requireAuth,
+  // authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Fulfillment-Staff", "Inventory-Staff"),
+  fulfillmentController.getPicklistById
+);
+
+router.get(
+  "/picklist/InspectionStatus/:orderId/:sku",
+  requireAuth,
+  // authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Fulfillment-Staff", "Inventory-Staff"),
+  fulfillmentController.checkInspectionStatusByOrderIdSku
+)
+
+router.put(
+  "/picklist/re-assign/employee",
+  requireAuth,
+  // authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Fulfillment-Staff", "Inventory-Staff"),
+  fulfillmentController.assignPicklistToStaff
+)
 module.exports = router;

@@ -7,7 +7,8 @@ const PickListSchema = new mongoose.Schema({
     skuList: [{
         sku: String,
         quantity: Number,
-        barcode: String
+        barcode: String,
+        scanStatus: { type: String, enum: ['Not Started', 'In Progress', 'Completed'], default: 'Not Started' }
     }],
     scanStatus: { type: String, enum: ['Not Started', 'In Progress', 'Completed'], default: 'Not Started' },
     invoiceGenerated: { type: Boolean, default: false },

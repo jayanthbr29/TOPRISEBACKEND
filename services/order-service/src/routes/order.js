@@ -824,4 +824,13 @@ router.get(
   paymentStatsController.getPaymentStatsSummary
 );
 
+router.put(
+  "/update/order-status-by-dealer/by-sku",
+  requireAuth,
+  auditMiddleware("DEALER_ORDER_STATUS_UPDATED", "Order", "ORDER_MANAGEMENT"),
+  orderController.markDealerPackedAndUpdateOrderStatusBySKU
+);
+
+router.post("/borzo/webhook/modified", orderController.borzoWebhookUpdated);
+
 module.exports = router;
