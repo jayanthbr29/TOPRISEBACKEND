@@ -5678,7 +5678,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
                     );
                   }
                 } else {
-                  console.error("Borzo Instant Order Error:", data);
+                  // console.error("Borzo Instant Order Error:", data);
                   // Audit log failure
                   // try {
                   //   await logOrderAction({
@@ -5958,7 +5958,7 @@ exports.borzoWebhookUpdated = async (req, res) => {
       signature: signature,
       data: webhookData,
     });
-console.log("webhookData", webhookData);
+    // console.log("webhookData", webhookData);
     // Verify webhook signature
     if (!signature) {
       console.error("Missing X-DV-Signature header");
@@ -5984,7 +5984,7 @@ console.log("webhookData", webhookData);
       return res.status(401).json({ error: "Invalid signature" });
     }
     // return res.status(200).json({ success: true, message: "Webhook processed successfully" });
-    
+
     //  switch (webhookData.event_type="delivery_changed") {
 
     //  }
@@ -6001,70 +6001,80 @@ console.log("webhookData", webhookData);
       const orderSku = borzoFormatData[2];
 
       if (orderType === "ORD") {
-        const order = await Order.findOne({ orderId: orderId });
-        // console.log("order", order.skus);
+        let updateFields = {
+          "skus.$.tracking_info.status": null,
+        };
 
-        const updateSkus = order.skus.map((sku) => {
-          if (sku.sku === orderSku) {
-            let statusUpdate;
-            switch (borzoOrderStatus.toLowerCase()) {
-              case "created":
-              case "planned":
-                statusUpdate = "Confirmed";
-                sku.tracking_info.timestamps.confirmedAt = new Date();
-                break;
-              case "assigned":
-              case "courier_assigned":
-                statusUpdate = "Assigned";
-                sku.tracking_info.timestamps.assignedAt = new Date();
-                break;
-              case "courier_departed":
-                statusUpdate = "Picked Up";
-                sku.tracking_info.timestamps.pickedUpAt = new Date();
-                break;
-              case "courier_at_pickup":
-              case "parcel_picked_up":
-                statusUpdate = "Shipped";
-                sku.tracking_info.timestamps.shippedAt = new Date();
-                break;
+        switch (borzoOrderStatus.toLowerCase()) {
+          case "created":
+          case "planned":
+          case "reattempt_planned":
+            updateFields["skus.$.tracking_info.status"] = "Confirmed";
+            updateFields["skus.$.tracking_info.timestamps.confirmedAt"] = new Date();
+            break;
+          case "active":
+            updateFields["skus.$.tracking_info.status"] = "On_The_Way_To_Next_Delivery_Point";   
+            updateFields["skus.$.tracking_info.timestamps.onTheWayToNextDeliveryPointAt"] = new Date();
 
-              case "courier_arrived":
-                statusUpdate = "OUT_FOR_DELIVERY";
-                sku.tracking_info.timestamps.outForDeliveryAt = new Date();
-                break;
-              // case "delivered":
-              //   statusUpdate = "Delivered";
-              //   sku.timestamps.deliveredAt = new Date();
-              //   break;
-              // case "cancelled":
-              //   orderStatusUpdate.status = "Cancelled";
-              //   break;
-              // case "returned":
-              //   orderStatusUpdate.status = "Returned";
-              //   break;
-              default:
-                // Keep current status if unknown
-                break;
-            }
+          case "assigned":
+          case "courier_assigned":
+          case "reattempt_courier_assigned":
+            updateFields["skus.$.tracking_info.status"] = "Assigned";
+            updateFields["skus.$.tracking_info.timestamps.assignedAt"] = new Date();
+            break;
+          
 
-            return {
-              ...sku,
-              tracking_info: {
-                ...sku.tracking_info,
-                status: statusUpdate,
+          case "courier_departed":
+          case "reattempt_courier_departed":
+            updateFields["skus.$.tracking_info.status"] = "Picked Up";
+            updateFields["skus.$.tracking_info.timestamps.pickedUpAt"] = new Date();
+            break;
 
-              }
-            }
-          } else {
-            return sku;
-          }
-        });
+          case "courier_at_pickup":
+          case "parcel_picked_up":
+          case "reattempt_courier_picked_up":
+            updateFields["skus.$.tracking_info.status"] = "Shipped";
+            updateFields["skus.$.tracking_info.timestamps.shippedAt"] = new Date();
+            break;
 
-        await Order.updateOne({ orderId: orderId }, { $set: { skus: updateSkus } });
+          case "courier_arrived":
+            updateFields["skus.$.tracking_info.status"] = "OUT_FOR_DELIVERY";
+            updateFields["skus.$.tracking_info.timestamps.outForDeliveryAt"] = new Date();
+            break;
+          case "finished":
+          case "reattempt_finished":
+            updateFields["skus.$.tracking_info.status"] = "Delivered";
+            updateFields["skus.$.tracking_info.timestamps.deliveredAt"] = new Date();
+            break;
 
+          case "canceled":
+            updateFields["skus.$.tracking_info.status"] = "Cancelled";
+            updateFields["skus.$.tracking_info.timestamps.cancelledAt"] = new Date();
+            break;
 
+          default:
+            break;
+        }
 
+        await Order.updateOne(
+          { orderId: orderId, "skus.sku": orderSku },
+          { $set: updateFields }
+        );
+        const checkOrder = await Order.findOne(
+          { orderId: orderId },
+        );
+         // check all sku Delivered  then mark order as Delivered
+          const allDelivered = checkOrder.skus.every(
+            (sku) => sku.tracking_info.status === "Delivered"
+          );
+          if (allDelivered) {
+            checkOrder.status = "Delivered";
+            await checkOrder.save();
+          } 
+
+        //  console.log("checkOrder", checkOrder);  
       }
+
 
       return res.status(200).json({ success: true, message: "Webhook received successfully" });
     } else if (webhookData.event_type == "order_changed") {
@@ -6079,62 +6089,46 @@ console.log("webhookData", webhookData);
       const orderSku = borzoFormatData[2];
 
       if (orderType === "ORD") {
-        const order = await Order.findOne({ orderId: orderId });
-        // console.log("order", order);
+        let updateFields = {};
 
-        const updateSkus = order.skus.map((sku) => {
-          console.log("sku", sku);
-          if (sku.sku === orderSku) {
-            let statusUpdate;
-            switch (borzoOrderStatus.toLowerCase()) {
-              case "new":
-              case "available":
-              case "active":
-                statusUpdate = "Confirmed";
-                sku.tracking_info.timestamps.confirmedAt = new Date();
-                break;
-              case "completed":
-              case "courier_assigned":
-                statusUpdate = "Delivered";
-                sku.tracking_info.tracking_info.timestamps.deliveredAt = new Date();
-                break;
-              case "canceled":
-                statusUpdate = "Cancelled";
-                sku.tracking_info.timestamps.cancelledAt = new Date();
-                break;
+        switch (borzoOrderStatus.toLowerCase()) {
+          case "new":
+          case "available":
+          // case "active":
+            updateFields["skus.$.tracking_info.status"] = "Confirmed";
+            updateFields["skus.$.tracking_info.timestamps.confirmedAt"] = new Date();
+            break;
 
-              // case "delivered":
-              //   statusUpdate = "Delivered";
-              //   sku.timestamps.deliveredAt = new Date();
-              //   break;
-              // case "cancelled":
-              //   orderStatusUpdate.status = "Cancelled";
-              //   break;
-              // case "returned":
-              //   orderStatusUpdate.status = "Returned";
-              //   break;
-              default:
-                // Keep current status if unknown
-                break;
-            }
+          case "completed":
+          case "courier_assigned":
+            updateFields["skus.$.tracking_info.status"] = "Delivered";
+            updateFields["skus.$.tracking_info.timestamps.deliveredAt"] = new Date();
+            break;
 
-            return {
-              ...sku,
-              tracking_info: {
-                ...sku.tracking_info,
-                status: statusUpdate,
+          case "canceled":
+            updateFields["skus.$.tracking_info.status"] = "Cancelled";
+            updateFields["skus.$.tracking_info.timestamps.cancelledAt"] = new Date();
+            break;
 
-              }
-            }
-          } else {
-            return sku;
-          }
-        });
+          default:
+            break;
+        }
 
-        await Order.updateOne({ orderId: orderId }, { $set: { skus: updateSkus } });
+        await Order.updateOne(
+          { orderId: orderId, "skus.sku": orderSku },
+          { $set: updateFields }
+        );
+        const allDelivered = checkOrder.skus.every(
+            (sku) => sku.tracking_info.status === "Delivered"
+          );
+          if (allDelivered) {
+            checkOrder.status = "Delivered";
+            await checkOrder.save();
+          } 
       }
 
-      return res.status(200).json({uccess: true,  message: "Webhook received successfully" });
+
+      return res.status(200).json({ uccess: true, message: "Webhook received successfully" });
     } else {
       return res.status(200).json({ uccess: true, message: "Webhook received successfully" });
     }
