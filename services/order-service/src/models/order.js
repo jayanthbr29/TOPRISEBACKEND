@@ -60,10 +60,11 @@ const OrderSchema = new mongoose.Schema(
           borzo_payment_amount: Number,
           borzo_delivery_fee_amount: Number,
           borzo_weight_fee_amount: Number,
+          borzo_weight:Number,
           // Individual SKU status
           status: {
             type: String,
-            enum: ["Pending", "Confirmed", "Assigned", "Packed", "Shipped", "Delivered","OUT_FOR_DELIVERY","On_The_Way_To_Next_Delivery_Point", "Cancelled", "Returned"],
+            enum: ["Pending", "Confirmed", "Assigned", "Packed","Picked Up", "Shipped", "Delivered","OUT_FOR_DELIVERY","On_The_Way_To_Next_Delivery_Point", "Cancelled", "Returned"],
             default: "Pending"
           },
           // Individual SKU timestamps

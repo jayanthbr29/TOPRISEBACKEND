@@ -33,4 +33,8 @@ router.put("/:returnId/complete", returnController.completeReturn);
 // Additional features
 router.post("/:returnId/notes", returnController.addNote);
 
+router.put("/validate-return/:returnId",returnController.validateReturnRequest);
+router.put("/Intiate-Borzo-Return/:returnId",returnController.intiateBorzoOrderForReturn);
+router.put("/start-Inspection/:returnId",returnController.startReturnRequestInspection);
+router.put("/complete-Inspection/:returnId",returnController.completeReturnRequestInspection); 
 module.exports = router;

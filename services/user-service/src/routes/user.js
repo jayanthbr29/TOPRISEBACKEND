@@ -1145,4 +1145,10 @@ router.put(
   userController.updateDealerPermissions
 );
 
+router.get(
+  "/employee/getEmployee/byUserId/:userId",
+  
+  userController.getEmployeeByUserId
+);
+
 module.exports = router;

@@ -63,67 +63,122 @@ const ReturnSchema = new mongoose.Schema({
       "Completed",
       "Shipment_Intiated",
       "Shipment_Delivered",
-      "start_Inspection",
-      "complete_Inspection",
-      "Intiate_Refund",
-      "Refund_Completed"
+      "Shipment_Completed",
+      "Inspection_Started",
+      "Inspection_Completed",
+      "Intiated_Refund",
+      "Refund_Completed",
+      "Refund_Failed"
     ],
     default: "Requested",
   },
-
-
-  pickupRequest: {
-    pickupId: String,
-    scheduledDate: Date,
-    completedDate: Date,
-    logisticsPartner: String,
-    trackingNumber: String,
-    pickupAddress: {
-      address: String,
-      city: String,
-      pincode: String,
-      state: String,
+  tracking_info: {
+    borzo_order_id: String,
+    borzo_tracking_url: String,
+    borzo_tracking_status: String,
+    borzo_tracking_number: String,
+    borzo_order_status: String,
+    borzo_event_datetime: Date,
+    borzo_event_type: String,
+    borzo_last_updated: Date,
+    borzo_payment_amount: Number,
+    borzo_delivery_fee_amount: Number,
+    borzo_weight_fee_amount: Number,
+    // Individual SKU status
+    status: {
+      type: String,
+      enum: ["Pending", "Confirmed", "Assigned", "Packed", "Shipped", "Delivered", "OUT_FOR_DELIVERY", "On_The_Way_To_Next_Delivery_Point", "Cancelled", "Returned","Picked Up"],
+      default: "Pending"
     },
-    deliveryAddress: {
-      address: String,
-      city: String,
-      pincode: String,
-      state: String,
-    },
+    // Individual SKU timestamps
+    timestamps: {
+      confirmedAt: Date,
+      assignedAt: Date,
+      packedAt: Date,
+      shippedAt: Date,
+      outForDeliveryAt: Date,
+      deliveredAt: Date,
+      cancelledAt: Date,
+      onTheWayToNextDeliveryPointAt: Date,
+      
+
+    }
   },
+
+
+  // pickupRequest: {
+  //   pickupId: String,
+  //   scheduledDate: Date,
+  //   completedDate: Date,
+  //   logisticsPartner: String,
+  //   trackingNumber: String,
+  //   pickupAddress: {
+  //     address: String,
+  //     city: String,
+  //     pincode: String,
+  //     state: String,
+  //   },
+  //   deliveryAddress: {
+  //     address: String,
+  //     city: String,
+  //     pincode: String,
+  //     state: String,
+  //   },
+  // },
 
 
   inspection: {
     inspectedBy: String,
-    inspectedAt: Date,
+    inspectionStartedAt: Date,
+    inspectionCompletedAt: Date,
     skuMatch: {
       type: Boolean,
       default: false,
     },
     condition: {
       type: String,
-      enum: ["Excellent", "Good", "Fair", "Poor", "Damaged"],
+      enum: ["Excellent", "Good", "Fair", "Poor", "Damaged","N/A"],
+      default: "N/A",
     },
-    conditionNotes: String,
+    note: String,
     inspectionImages: [String],
     isApproved: {
       type: Boolean,
       default: false,
     },
-    rejectionReason: String,
+    status: {
+      type: String,
+      enum: ["Not_Started", "In_Progress", "Completed"],
+      default: "Not_Started",
+    },
+  },
+  timestamps: {
+    requestedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    validatedAt: Date,
+    pickupScheduledAt: Date,
+    pickupCompletedAt: Date,
+    borzoShipmentInitiatedAt: Date,
+    borzoShipmentCompletedAt: Date,
+    inspectionStartedAt: Date,
+    inspectionCompletedAt: Date,
+    refundInitiatedAt: Date,
+    refundCompletedAt: Date,
+    returnCompletedAt: Date,
   },
 
-
   refund: {
-    processedBy: String,
     processedAt: Date,
+    processCompletedAt: Date,
     refundAmount: {
       type: Number,
       required: true,
     },
     refundMethod: {
       type: String,
-      enum: ["Original_Payment_Method", "Wallet", "Store_Credit"],
+      enum: ["Original_Payment_Method", "Manual",],
       default: "Original_Payment_Method",
     },
     refundStatus: {
@@ -140,25 +195,13 @@ const ReturnSchema = new mongoose.Schema({
   },
 
 
-  actionTaken: {
-    type: String,
-    enum: ["Refund", "Replacement", "Exchange", "Rejected"],
-    default: "Refund",
-  },
+  // actionTaken: {
+  //   type: String,
+  //   enum: ["Refund", "Replacement", "Exchange", "Rejected"],
+  //   default: "Refund",
+  // },
 
-  timestamps: {
-    requestedAt: {
-      type: Date,
-      default: Date.now,
-    },
-    validatedAt: Date,
-    pickupScheduledAt: Date,
-    pickupCompletedAt: Date,
-    inspectionStartedAt: Date,
-    inspectionCompletedAt: Date,
-    refundProcessedAt: Date,
-    completedAt: Date,
-  },
+  
 
   originalOrderDate: Date,
   originalDeliveryDate: Date,

@@ -7,6 +7,7 @@ const { sendSuccess, sendError } = require("/packages/utils/responseHandler");
 const Order = require("../models/order");
 const Payment = require("../models/paymentModel");
 const ReturnModel = require("../models/return");
+const Return = require("../models/return");
 
 exports.createPayout = async (req, res) => {
   try {
@@ -250,6 +251,7 @@ exports.createPartialRefund = async (req, res) => {
         error: response.data.error,
       });
     }
+  
 
     const refundRecord = new Refund({
       order_id: orderId,
@@ -267,6 +269,10 @@ exports.createPartialRefund = async (req, res) => {
     const savedRefund = await refundRecord.save();
     order.refund_id = savedRefund._id;
     await order.save();
+    returnData.returnStatus="Intiated_Refund";
+    returnData.timestamps.refundInitiatedAt=  new Date();
+    returnData.refund.processedAt=new Date();
+    returnData.refund.refundStatus="Processing";
     returnData.refund.refund_id = savedRefund._id;
     await returnData.save();
     res.json({
@@ -317,6 +323,66 @@ exports.getRefundById = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching refund:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+exports.createManualRefund = async (req, res) => {
+  try {
+    const { returnId, reason = "refund approved" } = req.body;
+    
+
+    const returnData = await ReturnModel.findById(returnId);
+    if (!returnData) {
+      return res.status(404).json({
+        success: false,
+        message: "Return not found",
+      });
+    }
+    const orderId = returnData.orderId;
+    const amount = returnData.refund.refundAmount;
+    const order = await Order.findById(orderId).populate("payment_id");
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    const refundRecord = new Refund({
+      order_id: orderId,
+      razorpay_refund_id: null,
+      amount: amount,
+      currency: 'INR',
+      status: "processed",
+      entity: "refund",
+      refund_type: "Refund-Manual",
+      receipt: "manual_refund_"+Date.now(),
+      reason: reason,
+    });
+
+    const savedRefund = await refundRecord.save();
+    order.refund_id = savedRefund._id;
+    await order.save();
+    returnData.returnStatus="Refund_Completed";
+    returnData.timestamps.refundInitiatedAt=  new Date();
+    returnData.timestamps.refundCompletedAt=  new Date();
+    returnData.refund.processedAt=new Date();
+    returnData.refund.processCompletedAt=new Date();
+    returnData.refund.refundStatus="Processed";
+    returnData.refund.refund_id = savedRefund._id;
+    await returnData.save();
+    res.json({
+      success: true,
+      message: "Manual refund initiated successfully",
+      // refund: response.data,
+      record: refundRecord,
+    });
+  } catch (error) {
+    console.error("Partial refund error:", error);
     res.status(500).json({
       success: false,
       message: "Internal server error",

@@ -24,6 +24,7 @@ const {
   recordSLAViolation,
   updateOrderWithSLAViolation,
 } = require("../utils/slaViolationUtils");
+const Return = require("../models/return");
 const USER_SERVICE_URL =
   process.env.USER_SERVICE_URL ||
   "http://user-service:5001/api/users/api/users";
@@ -5658,6 +5659,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
                           sku.tracking_info.borzo_payment_amount = data.payment_amount;
                           sku.tracking_info.borzo_delivery_fee_amount = data.delivery_fee_amount;
                           sku.tracking_info.borzo_weight_fee_amount = data.weight_fee_amount;
+                          sku.tracking_info.borzo_weight = total_weight_kg;  
                         }
                       });
                     }
@@ -6073,6 +6075,64 @@ exports.borzoWebhookUpdated = async (req, res) => {
           } 
 
         //  console.log("checkOrder", checkOrder);  
+      }else if(orderType==="RTN"){
+        const returnOrder = await Return.findOne({_id: orderId });
+        console.log("returnOrder before update", returnOrder);
+        switch (borzoOrderStatus.toLowerCase()) {
+          case "created":
+          case "planned":
+          case "reattempt_planned":
+            returnOrder.tracking_info.status = "Confirmed";
+           returnOrder.tracking_info.timestamps.confirmedAt= new Date();
+            break;
+          case "active":
+            returnOrder.tracking_info.status == "On_The_Way_To_Next_Delivery_Point";   
+          returnOrder.tracking_info.timestamps.onTheWayToNextDeliveryPointAt = new Date();
+           break;
+          case "assigned":
+          case "courier_assigned":
+          case "reattempt_courier_assigned":
+            returnOrder.tracking_info.status  = "Assigned";
+            returnOrder.tracking_info.timestamps.assignedAt = new Date();
+            break;
+          
+
+          case "courier_departed":
+          case "reattempt_courier_departed":
+            returnOrder.tracking_info.status = "Picked Up";
+            returnOrder.tracking_info.timestamps.pickedUpAt = new Date();
+            break;
+
+          case "courier_at_pickup":
+          case "parcel_picked_up":
+          case "reattempt_courier_picked_up":
+            returnOrder.tracking_info.status = "Shipped";
+            returnOrder.tracking_info.timestamps.shippedAt = new Date();
+            break;
+
+          case "courier_arrived":
+            returnOrder.tracking_info.status = "OUT_FOR_DELIVERY";
+           returnOrder.tracking_info.timestamps.outForDeliveryAt= new Date();
+            break;
+          case "finished":
+          case "reattempt_finished":
+            returnOrder.tracking_info.status = "Delivered";
+           returnOrder.tracking_info.timestamps.deliveredAt = new Date();
+            returnOrder.returnStatus = "Shipment_Completed";
+             returnOrder.timestamps.borzoShipmentCompletedAt = new Date();
+            break;
+
+          case "canceled":
+            returnOrder.tracking_info.status = "Cancelled";
+            returnOrder.tracking_info.timestamps.cancelledAt = new Date();
+             returnOrder.returnStatus = "Shipment_Completed";
+              returnOrder.timestamps.borzoShipmentCompletedAt = new Date();
+            break;
+
+          default:
+            break;
+        }
+        await returnOrder.save();
       }
 
 
@@ -6103,6 +6163,7 @@ exports.borzoWebhookUpdated = async (req, res) => {
           case "courier_assigned":
             updateFields["skus.$.tracking_info.status"] = "Delivered";
             updateFields["skus.$.tracking_info.timestamps.deliveredAt"] = new Date();
+
             break;
 
           case "canceled":
@@ -6125,6 +6186,37 @@ exports.borzoWebhookUpdated = async (req, res) => {
             checkOrder.status = "Delivered";
             await checkOrder.save();
           } 
+     }else if(orderType==="RTN"){
+        const returnOrder = await Return.findOne({_id: orderId });
+        switch (borzoOrderStatus.toLowerCase()) {
+          case "new":
+          case "available":
+          // case "active":
+            returnOrder.tracking_info.status= "Confirmed";
+            returnOrder.tracking_info.timestamps.confirmedAt= new Date();
+            break;
+
+          case "completed":
+          case "courier_assigned":
+            returnOrder.tracking_info.status = "Delivered";
+            returnOrder.tracking_info.timestamps.deliveredAt = new Date();
+            returnOrder.returnStatus = "Shipment_Completed";
+            returnOrder.timestamps.borzoShipmentCompletedAt = new Date();
+            break;
+
+
+          case "canceled":
+            returnOrder.tracking_info.status= "Cancelled";
+           returnOrder.tracking_info.timestamps.cancelledAt = new Date();
+            returnOrder.returnStatus = "Shipment_Completed";
+             returnOrder.timestamps.borzoShipmentCompletedAt = new Date();
+            break;
+
+          default:
+            break;
+        }
+         await returnOrder.save();
+       
       }
 
 
