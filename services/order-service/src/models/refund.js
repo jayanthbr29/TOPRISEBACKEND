@@ -21,7 +21,7 @@ const refundSchema = new mongoose.Schema(
     },
     refund_type: {
       type: String,
-      enum: ["Refund-Online", "Refund-COD"],
+      enum: ["Refund-Online", "Refund-Manual"],
       required: true,
     },
     amount: {

@@ -8,8 +8,8 @@ const {
 
 router.post(
   "/createRefund-online",
-  authenticate,
-  authorizeRoles("Super-admin", "Inventory-Admin", "User"),
+  // authenticate,
+  // authorizeRoles("Super-admin", "Inventory-Admin", "User"),
   refundController.createPartialRefund
 );
 router.post(
@@ -31,6 +31,10 @@ router.get(
   authenticate,
   authorizeRoles("Super-admin", "Inventory-Admin", "User"),
   refundController.getRefundById
+);
+
+router.post("/processRefund/manual",
+  refundController.createManualRefund
 );
 
 

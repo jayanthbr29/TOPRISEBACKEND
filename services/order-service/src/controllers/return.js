@@ -40,6 +40,7 @@ exports.createReturnRequest = async (req, res) => {
 
     // Check if return already exists for this order and SKU
     const existingReturn = await Return.findOne({ orderId, sku });
+    console.log("Existing Return:", existingReturn);
     if (existingReturn) {
       return sendError(
         res,
@@ -64,7 +65,7 @@ exports.createReturnRequest = async (req, res) => {
       return sendError(res, "SKU not found in order");
     }
 
-    console.log("Order SKU:", orderSku);
+    // console.log("Order SKU:", orderSku,"orderSku.totalPrice",orderSku.totalPrice);
     // Check if quantity is valid
     if (quantity > orderSku.quantity) {
       return sendError(res, "Return quantity cannot exceed ordered quantity");
@@ -100,7 +101,6 @@ exports.createReturnRequest = async (req, res) => {
       },
       timestamps: {
         requestedAt: new Date(),
-        validatedAt: eligibilityResult.isEligible ? new Date() : null,
       },
     });
 
@@ -119,8 +119,7 @@ exports.createReturnRequest = async (req, res) => {
       [customerId],
       ["INAPP", "PUSH"],
       "Return Request Created",
-      `Your return request for ${sku} has been ${
-        eligibilityResult.isEligible ? "validated" : "submitted for review"
+      `Your return request for ${sku} has been ${eligibilityResult.isEligible ? "validated" : "submitted for review"
       }`,
       "",
       "",
@@ -186,8 +185,7 @@ exports.validateReturnRequest = async (req, res) => {
       [returnRequest.customerId],
       ["INAPP", "PUSH"],
       "Return Request Validated",
-      `Your return request has been ${
-        eligibilityResult.isEligible ? "approved" : "rejected"
+      `Your return request has been ${eligibilityResult.isEligible ? "approved" : "rejected"
       }: ${eligibilityResult.reason}`,
       "",
       "",
@@ -792,53 +790,53 @@ exports.getUserReturnRequests = async (req, res) => {
             orderSku,
             productDetails: productDetails
               ? {
-                  sku: productDetails.sku_code || returnReq.sku,
-                  productName:
-                    productDetails.product_name || "Product Name Not Available",
-                  brand: productDetails.brand_ref || "Brand Not Available",
-                  category:
-                    productDetails.category_ref || "Category Not Available",
-                  subcategory:
-                    productDetails.subcategory_ref ||
-                    "Subcategory Not Available",
-                  images: productDetails.images || [],
-                  isReturnable: productDetails.is_returnable || false,
-                  returnPolicy:
-                    productDetails.return_policy ||
-                    "Return policy not available",
-                }
+                sku: productDetails.sku_code || returnReq.sku,
+                productName:
+                  productDetails.product_name || "Product Name Not Available",
+                brand: productDetails.brand_ref || "Brand Not Available",
+                category:
+                  productDetails.category_ref || "Category Not Available",
+                subcategory:
+                  productDetails.subcategory_ref ||
+                  "Subcategory Not Available",
+                images: productDetails.images || [],
+                isReturnable: productDetails.is_returnable || false,
+                returnPolicy:
+                  productDetails.return_policy ||
+                  "Return policy not available",
+              }
               : {
-                  sku: returnReq.sku,
-                  productName: "Product details not available",
-                  brand: "Brand not available",
-                  category: "Category not available",
-                  subcategory: "Subcategory not available",
-                  images: [],
-                  isReturnable: false,
-                  returnPolicy: "Return policy not available",
-                },
+                sku: returnReq.sku,
+                productName: "Product details not available",
+                brand: "Brand not available",
+                category: "Category not available",
+                subcategory: "Subcategory not available",
+                images: [],
+                isReturnable: false,
+                returnPolicy: "Return policy not available",
+              },
             inspection: {
               ...returnReq.inspection,
               inspectedByUser: inspectionUser
                 ? {
-                    id: inspectionUser._id,
-                    name:
-                      inspectionUser.username ||
-                      inspectionUser.email ||
-                      "Unknown User",
-                    role: inspectionUser.role || "Unknown Role",
-                  }
+                  id: inspectionUser._id,
+                  name:
+                    inspectionUser.username ||
+                    inspectionUser.email ||
+                    "Unknown User",
+                  role: inspectionUser.role || "Unknown Role",
+                }
                 : null,
             },
             refund: {
               ...returnReq.refund,
               processedByUser: refundUser
                 ? {
-                    id: refundUser._id,
-                    name:
-                      refundUser.username || refundUser.email || "Unknown User",
-                    role: refundUser.role || "Unknown Role",
-                  }
+                  id: refundUser._id,
+                  name:
+                    refundUser.username || refundUser.email || "Unknown User",
+                  role: refundUser.role || "Unknown Role",
+                }
                 : null,
             },
             // Time-based calculations
@@ -1112,9 +1110,9 @@ async function validateReturnEligibility(order, sku) {
 
     const returnWindowDays = 7;
     const returnDeadline = new Date(deliveryDate);
-   
+
     returnDeadline.setDate(returnDeadline.getDate() + returnWindowDays);
- console.log("Return Deadline:", returnDeadline);
+    console.log("Return Deadline:", returnDeadline);
     const isWithinReturnWindow = new Date() <= returnDeadline;
 
     // Check if product is returnable
@@ -1136,8 +1134,8 @@ async function validateReturnEligibility(order, sku) {
     const reason = isEligible
       ? "Return request is eligible"
       : !isWithinReturnWindow
-      ? "Return window has expired"
-      : "Product is not returnable";
+        ? "Return window has expired"
+        : "Product is not returnable";
 
     return {
       isEligible,
@@ -1246,5 +1244,604 @@ async function findFulfillmentAdmins() {
   } catch (error) {
     logger.error("Find fulfillment admins error:", error);
     return [];
+  }
+}
+
+
+
+exports.validateReturnRequest = async (req, res) => {
+  try {
+    const { returnId } = req.params;
+
+    const returnRequest = await Return.findById(returnId);
+    if (!returnRequest) {
+      return sendError(res, "Return request not found");
+    }
+    const updatedReturnRequest = await Return.findByIdAndUpdate(
+      returnId,
+      {
+        $set: {
+          returnStatus: "Validated",
+          "timestamps.validatedAt": new Date()
+        }
+      },
+      { new: true }
+    );
+
+    return sendSuccess(
+      res,
+      updatedReturnRequest,
+      "Return request validated successfully"
+    );
+
+  } catch (error) {
+    logger.error("Validate return request error:", error);
+    return sendError(res, "Failed to validate return request");
+  }
+}
+
+exports.intiateBorzoOrderForReturn = async (req, res) => {
+  try {
+    const { returnId } = req.params;
+
+    const returnRequest = await Return.findById(returnId);
+    if (!returnRequest) {
+      return sendError(res, "Return request not found");
+    }
+    const order = await Order.findById(returnRequest.orderId);
+    if (!order) {
+      return sendError(res, "Order not found");
+    }
+    const total_weight_kg = order.skus.find(s => s.sku === returnRequest.sku)?.weight_kg || "3";
+    const authHeader = req.headers.authorization;
+    let pickupDealerId = returnRequest.dealerId || null;
+    const dealerInfo = pickupDealerId ? await fetchDealerInfo(pickupDealerId, authHeader) : null;
+    console.log("[BORZO] Dealer info:", dealerInfo);
+    const dealerAddressString =
+      dealerInfo?.address?.full ||
+      buildAddressString({
+        building_no: dealerInfo?.address?.building_no,
+        street: dealerInfo?.address?.street,
+        area: dealerInfo?.address?.area,
+        city: dealerInfo?.address?.city,
+        state: dealerInfo?.address?.state,
+        pincode: dealerInfo?.address?.pincode,
+        country: dealerInfo?.address?.country || "India",
+      }) ||
+      dealerInfo?.business_address ||
+      dealerInfo?.registered_address ||
+      "Pickup Address";
+    const dealerGeo = await geocodeAddress(dealerAddressString);
+    const customerAddressString =
+      order.customerDetails?.address ||
+      buildAddressString({
+        building_no: order.customerDetails?.building_no,
+        street: order.customerDetails?.street,
+        area: order.customerDetails?.area,
+        city: order.customerDetails?.city,
+        state: order.customerDetails?.state,
+        pincode: order.customerDetails?.pincode,
+        country: order.customerDetails?.country || "India",
+      }) ||
+      "Delivery Address";
+    const customerGeo = await geocodeAddress(customerAddressString);
+    const dropPoint = {
+      address: dealerAddressString,
+      contact_person: {
+        name: dealerInfo?.contact_person.name || dealerInfo?.legal_name || "Dealer",
+        phone:
+          dealerInfo?.contact_person.phone_number ||
+          dealerInfo?.contact_number ||
+          dealerInfo?.phone ||
+          "0000000000",
+      },
+      // latitude: dealerGeo?.latitude || 28.57908,
+      // longitude: dealerGeo?.longitude || 77.31912,
+      latitude: 28.583905,
+      longitude: 77.322733,
+      client_order_id: `RTN,${returnId},${returnRequest.sku}`,
+    };
+
+    const pickupPoint = {
+      address: customerAddressString,
+      contact_person: {
+        name: order.customerDetails?.name || "Customer",
+        phone: order.customerDetails?.phone || "0000000000",
+      },
+      // latitude: customerGeo?.latitude || 28.583905,
+      // longitude: customerGeo?.longitude || 77.322733,
+      latitude: 28.583905,
+      longitude: 77.322733,
+      client_order_id: `RTN,${returnId},${returnRequest.sku}`,
+    };
+    borzoPointsUsed = [pickupPoint, dropPoint];
+    const orderData = {
+      matter: "Food",
+      total_weight_kg: total_weight_kg || "3", // Dynamic weight from request body
+      insurance_amount: "000.00", // Default insurance
+      is_client_notification_enabled: true,
+      is_contact_person_notification_enabled: true,
+      points: borzoPointsUsed,
+    };
+    const instantReq = { body: { ...orderData, type: "standard" } };
+    const instantRes = {
+      status: (code) => ({
+        json: async (Data) => {
+          console.log("borzo instant response", Data, code);
+          if (code === 200) {
+            const data = Data.borzo_order.order;
+            borzoOrderResponse = { type: "instant", data };
+            if (data.order_id) {
+              console.log(
+                `Storing Borzo order ID: ${data.order_id} for order: ${order.orderId}`
+              );
+              const splitedOrderId = data.points[0].client_order_id.split(",");
+              const skuValue = splitedOrderId[2];
+             
+
+             
+              
+
+
+                    if (!returnRequest.tracking_info) {
+                      sku.tracking_info = {};
+                    }
+                    returnRequest.tracking_info.borzo_order_id = data.order_id.toString();
+                    if (data.tracking_url) returnRequest.tracking_info.borzo_tracking_url = data.tracking_url;
+                    if (data.tracking_number) returnRequest.tracking_info.borzo_tracking_number = data.tracking_number;
+                    returnRequest.tracking_info.status = "Confirmed";
+                    if (!returnRequest.tracking_info.timestamps) {
+                      returnRequest.tracking_info.timestamps = {};
+                    }
+                    returnRequest.tracking_info.timestamps.confirmedAt = new Date();
+                    returnRequest.tracking_info.borzo_payment_amount = data.payment_amount;
+                    returnRequest.tracking_info.borzo_delivery_fee_amount = data.delivery_fee_amount;
+                    returnRequest.tracking_info.borzo_weight_fee_amount = data.weight_fee_amount;
+                    returnRequest.tracking_info.borzo_weight = total_weight_kg;
+                
+              
+              await returnRequest.save();
+              try {
+                await logOrderAction({
+                  orderId: order._id,
+                  action: "BORZO_ORDER_CREATED_SUCCESS",
+                  performedBy: req.user?.userId || "system",
+                  performedByRole: req.user?.role || "system",
+                  details: { type: "instant", borzo_order_id: data.order_id, response: data },
+                  timestamp: new Date(),
+                });
+              } catch (_) { }
+              console.log(
+                `Successfully saved Borzo order ID: ${data.order_id} for order: ${order.orderId} and ${order.skus.length} SKUs`
+              );
+            }
+          } else {
+            // console.error("Borzo Instant Order Error:", data);
+            // Audit log failure
+            // try {
+            //   await logOrderAction({
+            //     orderId: order._id,
+            //     action: "BORZO_ORDER_CREATED_FAILED",
+            //     performedBy: req.user?.userId || "system",
+            //     performedByRole: req.user?.role || "system",
+            //     details: { type: "instant", error: data },
+            //     timestamp: new Date(),
+            //   });
+            // } catch (_) { }
+          }
+        },
+      }),
+    };
+    await exports.createOrderBorzoInstantUpdated(instantReq, instantRes);
+    return sendSuccess(res, borzoOrderResponse, "Borzo order initiated for return successfully");
+  } catch (error) {
+    console.error("Intiate Borzo Order For Return error:", error);
+    logger.error("Intiate Borzo Order For Return error:", error);
+    return sendError(res, "Failed to Intiate Borzo Order For Return");
+  }
+}
+function buildAddressString(parts) {
+  return [
+    parts?.building_no,
+    parts?.street,
+    parts?.area,
+    parts?.city,
+    parts?.state,
+    parts?.pincode,
+    parts?.country,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
+exports.createOrderBorzoInstantUpdated = async (req, res) => {
+  try {
+    const {
+      type = "standard",
+      matter = "Food",
+      total_weight_kg = "3",
+      insurance_amount = "500.00",
+      is_client_notification_enabled = true,
+      is_contact_person_notification_enabled = true,
+      points = [],
+    } = req.body;
+
+    // Validate required fields
+    if (!points || points.length < 2) {
+      return res.status(400).json({
+        error: "At least 2 points (pickup and delivery) are required",
+      });
+    }
+
+    // Validate total_weight_kg
+    if (
+      total_weight_kg &&
+      (isNaN(parseFloat(total_weight_kg)) || parseFloat(total_weight_kg) <= 0)
+    ) {
+      return res.status(400).json({
+        error: "total_weight_kg must be a positive number",
+      });
+    }
+
+    // Validate each point has required fields
+    for (let i = 0; i < points.length; i++) {
+      const point = points[i];
+      if (
+        !point.address ||
+        !point.contact_person ||
+        !point.contact_person.name ||
+        !point.contact_person.phone ||
+        !point.latitude ||
+        !point.longitude
+      ) {
+        return res.status(400).json({
+          error: `Point ${i + 1
+            } is missing required fields (address, contact_person, latitude, longitude)`,
+        });
+      }
+    }
+
+    // Create Borzo order payload with dynamic total_weight_kg
+    const borzoOrderPayload = {
+      type,
+      matter,
+      total_weight_kg: total_weight_kg.toString(),
+      insurance_amount: insurance_amount.toString(),
+      is_client_notification_enabled,
+      is_contact_person_notification_enabled,
+      points: points.map((point) => ({
+        address: point.address,
+        contact_person: {
+          name: point.contact_person.name,
+          phone: point.contact_person.phone,
+        },
+        latitude: point.latitude,
+        longitude: point.longitude,
+        client_order_id:
+          point.client_order_id ||
+          `BORZO_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      })),
+    };
+    console.log("borzoOrderPayload", borzoOrderPayload);
+    // Make the actual API call to Borzo
+    console.log(
+      "Borzo Order Payload:",
+      JSON.stringify(borzoOrderPayload, null, 2)
+    );
+
+    try {
+      const response = await axios.post(
+        "https://robotapitest-in.borzodelivery.com/api/business/1.6/create-order",
+        borzoOrderPayload,
+        {
+          headers: {
+            "X-DV-Auth-Token": "29C64BE0ED20FC6C654F947F7E3D8E33496F51F6",
+            "Content-Type": "application/json",
+          },
+          timeout: 30000, // 30 seconds timeout
+        }
+      );
+
+      console.log(
+        "Borzo API Response:",
+        JSON.stringify(response.data, null, 2)
+      );
+
+      return res.status(200).json({
+        message: "Borzo order created successfully",
+        borzo_order: response.data,
+        request_payload: borzoOrderPayload,
+      });
+    } catch (apiError) {
+      console.error("Borzo API Error:", {
+        status: apiError.response?.status,
+        statusText: apiError.response?.statusText,
+        data: apiError.response?.data,
+        message: apiError.message,
+      });
+
+      // Return appropriate error response
+      if (apiError.response) {
+        return res.status(apiError.response.status).json({
+          error: "Borzo API Error",
+          status: apiError.response.status,
+          message:
+            apiError.response.data?.message || apiError.response.statusText,
+          borzo_error: apiError.response.data,
+          request_payload: borzoOrderPayload,
+        });
+      } else if (apiError.request) {
+        return res.status(503).json({
+          error: "Borzo API Unavailable",
+          message: "Unable to reach Borzo API. Please try again later.",
+          request_payload: borzoOrderPayload,
+        });
+      } else {
+        return res.status(500).json({
+          error: "Internal Error",
+          message: apiError.message,
+          request_payload: borzoOrderPayload,
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Error creating Borzo order:", error);
+    return res.status(500).json({
+      error: "Failed to create Borzo order",
+      details: error.message,
+    });
+  }
+};
+
+async function fetchDealerInfo(dealerId, authorizationHeader) {
+  try {
+    const headers = { "Content-Type": "application/json" };
+    if (authorizationHeader) {
+      headers.Authorization = authorizationHeader;
+    }
+
+    const response = await axios.get(
+      `http://user-service:5001/api/users/dealer/${dealerId}`,
+      { timeout: 5000, headers }
+    );
+
+    return response.data?.data || null;
+  } catch (error) {
+    logger.warn(`Failed to fetch dealer info for ${dealerId}:`, error.message);
+    return null;
+  }
+}
+
+async function geocodeAddress(address) {
+  try {
+    if (!address || typeof address !== "string") return null;
+    const resp = await axios.get(
+      "https://nominatim.openstreetmap.org/search",
+      {
+        params: { q: address, format: "json", limit: 1 },
+        headers: { "User-Agent": "toprise-order-service/1.0" },
+        timeout: 10000,
+      }
+    );
+    const first = Array.isArray(resp.data) ? resp.data[0] : null;
+    if (first && first.lat && first.lon) {
+      return { latitude: parseFloat(first.lat), longitude: parseFloat(first.lon) };
+    }
+    return null;
+  } catch (e) {
+    logger.warn(`Geocoding failed for address: ${address} -> ${e.message}`);
+    return null;
+  }
+}
+
+exports.createOrderBorzoInstantUpdated = async (req, res) => {
+  try {
+    const {
+      type = "standard",
+      matter = "Food",
+      total_weight_kg = "3",
+      insurance_amount = "500.00",
+      is_client_notification_enabled = true,
+      is_contact_person_notification_enabled = true,
+      points = [],
+    } = req.body;
+
+    // Validate required fields
+    if (!points || points.length < 2) {
+      return res.status(400).json({
+        error: "At least 2 points (pickup and delivery) are required",
+      });
+    }
+
+    // Validate total_weight_kg
+    if (
+      total_weight_kg &&
+      (isNaN(parseFloat(total_weight_kg)) || parseFloat(total_weight_kg) <= 0)
+    ) {
+      return res.status(400).json({
+        error: "total_weight_kg must be a positive number",
+      });
+    }
+
+    // Validate each point has required fields
+    for (let i = 0; i < points.length; i++) {
+      const point = points[i];
+      if (
+        !point.address ||
+        !point.contact_person ||
+        !point.contact_person.name ||
+        !point.contact_person.phone ||
+        !point.latitude ||
+        !point.longitude
+      ) {
+        return res.status(400).json({
+          error: `Point ${i + 1
+            } is missing required fields (address, contact_person, latitude, longitude)`,
+        });
+      }
+    }
+
+    // Create Borzo order payload with dynamic total_weight_kg
+    const borzoOrderPayload = {
+      type,
+      matter,
+      total_weight_kg: total_weight_kg.toString(),
+      insurance_amount: insurance_amount.toString(),
+      is_client_notification_enabled,
+      is_contact_person_notification_enabled,
+      points: points.map((point) => ({
+        address: point.address,
+        contact_person: {
+          name: point.contact_person.name,
+          phone: point.contact_person.phone,
+        },
+        latitude: point.latitude,
+        longitude: point.longitude,
+        client_order_id:
+          point.client_order_id ||
+          `BORZO_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      })),
+    };
+    console.log("borzoOrderPayload", borzoOrderPayload);
+    // Make the actual API call to Borzo
+    console.log(
+      "Borzo Order Payload:",
+      JSON.stringify(borzoOrderPayload, null, 2)
+    );
+
+    try {
+      const response = await axios.post(
+        "https://robotapitest-in.borzodelivery.com/api/business/1.6/create-order",
+        borzoOrderPayload,
+        {
+          headers: {
+            "X-DV-Auth-Token": "29C64BE0ED20FC6C654F947F7E3D8E33496F51F6",
+            "Content-Type": "application/json",
+          },
+          timeout: 30000, // 30 seconds timeout
+        }
+      );
+
+      console.log(
+        "Borzo API Response:",
+        JSON.stringify(response.data, null, 2)
+      );
+
+      return res.status(200).json({
+        message: "Borzo order created successfully",
+        borzo_order: response.data,
+        request_payload: borzoOrderPayload,
+      });
+    } catch (apiError) {
+      console.error("Borzo API Error:", {
+        status: apiError.response?.status,
+        statusText: apiError.response?.statusText,
+        data: apiError.response?.data,
+        message: apiError.message,
+      });
+
+      // Return appropriate error response
+      if (apiError.response) {
+        return res.status(apiError.response.status).json({
+          error: "Borzo API Error",
+          status: apiError.response.status,
+          message:
+            apiError.response.data?.message || apiError.response.statusText,
+          borzo_error: apiError.response.data,
+          request_payload: borzoOrderPayload,
+        });
+      } else if (apiError.request) {
+        return res.status(503).json({
+          error: "Borzo API Unavailable",
+          message: "Unable to reach Borzo API. Please try again later.",
+          request_payload: borzoOrderPayload,
+        });
+      } else {
+        return res.status(500).json({
+          error: "Internal Error",
+          message: apiError.message,
+          request_payload: borzoOrderPayload,
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Error creating Borzo order:", error);
+    return res.status(500).json({
+      error: "Failed to create Borzo order",
+      details: error.message,
+    });
+  }
+};
+
+exports.startReturnRequestInspection = async (req, res) => {
+  try {
+    const { returnId } = req.params;
+    const {  inspectedBy } = req.body;
+
+    const returnRequest = await Return.findById(returnId);
+    if (!returnRequest) {
+      return sendError(res, "Return request not found");
+    }
+    if(returnRequest.returnStatus !== "Shipment_Completed") {
+      return sendError(res, "Return request is not eligible for inspection");
+    }
+
+    // Update inspection details
+    returnRequest.returnStatus = "Inspection_Started";
+    returnRequest.timestamps.inspectionStartedAt = new Date();
+    returnRequest.inspection.inspectedBy = inspectedBy;
+    returnRequest.inspection.inspectionStartedAt = new Date();
+    returnRequest.inspection.status = "In_Progress";
+
+    await returnRequest.save();
+
+    return sendSuccess(
+      res,
+      returnRequest,
+      "Return request inspection started successfully"
+    );
+  } catch (error) {
+    console.error("Error starting return request inspection:", error);  
+    logger.error("Start return request inspection error:", error);
+    return sendError(res, "Failed to start return request inspection");
+  }
+}
+
+exports.completeReturnRequestInspection = async (req, res) => {
+  try {
+    const { returnId } = req.params;
+    const { inspectedBy, condition, remarks,skuMatch,isApproved ,inspectionImages} = req.body;
+
+    const returnRequest = await Return.findById(returnId);
+    if (!returnRequest) {
+      return sendError(res, "Return request not found");
+    }
+    if(returnRequest.returnStatus !== "Inspection_Started") {
+      return sendError(res, "Return request is not eligible for inspection completion");
+    }
+
+    // Update inspection details
+    returnRequest.returnStatus = "Inspection_Completed";
+    returnRequest.timestamps.inspectionCompletedAt = new Date();
+    returnRequest.inspection.inspectedBy = inspectedBy;
+    returnRequest.inspection.inspectionCompletedAt = new Date();
+    returnRequest.inspection.condition = condition;
+    returnRequest.inspection.note = remarks;
+    returnRequest.inspection.skuMatch = skuMatch;
+    returnRequest.inspection.inspectionImages = inspectionImages || [];
+    returnRequest.inspection.isApproved = isApproved;
+    returnRequest.inspection.status = "Completed";
+
+    await returnRequest.save();
+
+    return sendSuccess(
+      res,
+      returnRequest,
+      "Return request inspection completed successfully"
+    );
+  } catch (error) {
+    console.error("Error completing return request inspection:", error);  
+    logger.error("Complete return request inspection error:", error);
+    return sendError(res, "Failed to complete return request inspection");
   }
 }

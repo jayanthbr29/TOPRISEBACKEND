@@ -366,6 +366,8 @@ exports.verifyPayment = async (req, res) => {
     if (!returnData) {
       return res.status(200).json({ error: "Return not found" });
     }
+    returnData.returnStatus = "Refund_Completed";
+    returnData.timestamps.refundCompletedAt = new Date();
     returnData.refund.refundStatus = "Processed";
     await returnData.save();
 
@@ -383,6 +385,8 @@ exports.verifyPayment = async (req, res) => {
     if (!returnData) {
       return res.status(200).json({ error: "Return not found" });
     }
+    returnData.returnStatus = "Refund_Failed";
+    returnData.timestamps.refundCompletedAt = new Date(); 
     returnData.refund.refundStatus = "Failed";
     await returnData.save();
 

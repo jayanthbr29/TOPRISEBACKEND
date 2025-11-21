@@ -4696,3 +4696,24 @@ exports.getDealerPermissions = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+
+exports.getEmployeeByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const employee = await Employee.findOne({ user_id: userId });
+    if (!employee) {
+      return res.status(404).json({ message: "Employee not found for the given User ID" });
+    }
+
+    res.status(200).json({
+      message: "Employee fetched successfully",
+      employee
+    });
+
+  } catch (error) {
+    console.error("Error fetching employee by User ID:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+}
