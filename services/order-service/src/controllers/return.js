@@ -9,7 +9,7 @@ const {
 
 // Product service URL for checking returnable status
 const PRODUCT_SERVICE_URL =
-  process.env.PRODUCT_SERVICE_URL || "http://product-service:5002/api/products";
+  process.env.PRODUCT_SERVICE_URL || "http://product-service:5001/products/v1";
 
 // User service URL for fetching user details
 const USER_SERVICE_URL =
@@ -64,6 +64,7 @@ exports.createReturnRequest = async (req, res) => {
       return sendError(res, "SKU not found in order");
     }
 
+    console.log("Order SKU:", orderSku);
     // Check if quantity is valid
     if (quantity > orderSku.quantity) {
       return sendError(res, "Return quantity cannot exceed ordered quantity");
@@ -71,7 +72,10 @@ exports.createReturnRequest = async (req, res) => {
 
     // Validate return eligibility
     const eligibilityResult = await validateReturnEligibility(order, sku);
-
+    // console.log("Eligibility Result:", eligibilityResult);
+    if (!eligibilityResult.isEligible) {
+      return sendError(res, "Return is not eligible");
+    }
     // Create return request
     const returnRequest = await Return.create({
       orderId,
@@ -89,10 +93,10 @@ exports.createReturnRequest = async (req, res) => {
       originalOrderDate: order.orderDate,
       originalDeliveryDate: order.skus.find((s) => s.sku === sku)?.tracking_info
         ?.timestamps?.deliveredAt,
-      dealerId: orderSku.dealerMapped?.[0]?.dealerId,
-      returnStatus: eligibilityResult.isEligible ? "Validated" : "Requested",
+      dealerId: order.dealerMapping.find((d) => d.sku === sku)?.dealerId,
+      returnStatus: eligibilityResult.isEligible ? "Requested" : "Rejected",
       refund: {
-        refundAmount: orderSku.selling_price * quantity,
+        refundAmount: orderSku.totalPrice,
       },
       timestamps: {
         requestedAt: new Date(),
@@ -1104,11 +1108,13 @@ async function validateReturnEligibility(order, sku) {
     if (!deliveryDate) {
       return { isEligible: false, reason: "Delivery date not found" };
     }
+    console.log("Delivery Date:", deliveryDate);
 
     const returnWindowDays = 7;
     const returnDeadline = new Date(deliveryDate);
+   
     returnDeadline.setDate(returnDeadline.getDate() + returnWindowDays);
-
+ console.log("Return Deadline:", returnDeadline);
     const isWithinReturnWindow = new Date() <= returnDeadline;
 
     // Check if product is returnable
@@ -1117,6 +1123,7 @@ async function validateReturnEligibility(order, sku) {
       const productResponse = await axios.get(
         `${PRODUCT_SERVICE_URL}/sku/${sku}`
       );
+      console.log("Product Response:", productResponse);
       if (productResponse.data?.success) {
         isProductReturnable = productResponse.data.data?.is_returnable || false;
       }

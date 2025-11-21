@@ -410,4 +410,6 @@ router.get(
   productController.hierarchicalSearch
 );
 
+router.get("/sku/:sku", productController.getProductBySku);
+
 module.exports = router;

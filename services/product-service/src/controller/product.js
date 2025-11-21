@@ -6449,3 +6449,29 @@ async function searchProducts(query, categoryId, brandId, modelId, variantId, li
     hasMore: products.length === limit
   };
 }
+
+
+exports.getProductBySku = async (req, res) => {
+  try {
+    const { sku } = req.params;
+
+    if (!sku || sku.trim().length === 0) {
+      return sendError(res, "SKU is required", 400);
+    }
+
+
+    const product = await Product.findOne({
+      sku_code: sku.trim(),
+    });
+
+    if (!product) {
+      return sendError(res, "Product not found", 404);
+    }  
+    logger.info(`✅ Product fetched by SKU: ${sku}`);
+    sendSuccess(res, product, "Product details fetched successfully");
+
+  } catch (error) {
+    logger.error(`❌ Get product by SKU error: ${error.message}`);
+    sendError(res, "Failed to fetch product", 500);
+  }
+}

@@ -63,7 +63,7 @@ const OrderSchema = new mongoose.Schema(
           // Individual SKU status
           status: {
             type: String,
-            enum: ["Pending", "Confirmed", "Assigned", "Packed", "Shipped", "Delivered","OUT_FOR_DELIVERY", "Cancelled", "Returned"],
+            enum: ["Pending", "Confirmed", "Assigned", "Packed", "Shipped", "Delivered","OUT_FOR_DELIVERY","On_The_Way_To_Next_Delivery_Point", "Cancelled", "Returned"],
             default: "Pending"
           },
           // Individual SKU timestamps
@@ -75,6 +75,7 @@ const OrderSchema = new mongoose.Schema(
             outForDeliveryAt: Date,
             deliveredAt: Date,
             cancelledAt: Date,
+            onTheWayToNextDeliveryPointAt: Date,
 
           }
         },

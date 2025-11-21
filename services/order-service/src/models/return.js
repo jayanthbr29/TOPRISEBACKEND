@@ -60,7 +60,13 @@ const ReturnSchema = new mongoose.Schema({
       "Approved",
       "Rejected",
       "Refund_Processed",
-      "Completed"
+      "Completed",
+      "Shipment_Intiated",
+      "Shipment_Delivered",
+      "start_Inspection",
+      "complete_Inspection",
+      "Intiate_Refund",
+      "Refund_Completed"
     ],
     default: "Requested",
   },
