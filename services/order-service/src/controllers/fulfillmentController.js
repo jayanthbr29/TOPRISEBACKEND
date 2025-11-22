@@ -232,10 +232,11 @@ exports.getPicklistsByEmployee = async (req, res) => {
 
     // Get picklists
     const picklists = await PickList.find(filter)
-      .populate('linkedOrderId', 'orderId orderDate customerDetails totalAmount status skus')
+      .populate('linkedOrderId' )
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNumber);
+      // console.log(picklists);
 
     // Get total count
     const total = await PickList.countDocuments(filter);
@@ -246,7 +247,9 @@ exports.getPicklistsByEmployee = async (req, res) => {
       
       return {
         picklistId: picklist._id,
+        order: order,
         orderId: order?.orderId || 'N/A',
+
         orderDate: order?.orderDate || picklist.createdAt,
         customerName: order?.customerDetails?.name || 'N/A',
         customerPhone: order?.customerDetails?.phone || 'N/A',
@@ -315,7 +318,7 @@ exports.getPicklistsByDealer = async (req, res) => {
 
     // Get picklists
     const picklists = await PickList.find(filter)
-      .populate('linkedOrderId', 'orderId orderDate customerDetails totalAmount status skus')
+      .populate('linkedOrderId')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNumber);
@@ -329,6 +332,7 @@ exports.getPicklistsByDealer = async (req, res) => {
       
       return {
         picklistId: picklist._id,
+          order: order,
         orderId: order?.orderId || 'N/A',
         orderDate: order?.orderDate || picklist.createdAt,
         customerName: order?.customerDetails?.name || 'N/A',
