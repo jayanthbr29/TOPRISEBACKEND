@@ -13,7 +13,9 @@ const authenticate = async (req, res, next) => {
       // A;
       console.log("token", token);
       decoded = await admin.auth().verifyIdToken(token);
+
       req.user = { id: decoded.uid, role: "User (Firebase)" };
+      
     } catch (err) {
       // Fallback to internal JWT verification
       decoded = jwt.verify(

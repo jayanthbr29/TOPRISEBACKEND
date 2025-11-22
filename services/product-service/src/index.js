@@ -26,7 +26,7 @@ const reportsRoutes = require("./route/reports");
 const catalogRoutes = require("./route/catalog");
 const productsByCategoryRoutes = require("./route/productsByCategory");
 const dotenvFlow = require("dotenv-flow");
-
+const productBulkSessionRoutes = require("./route/productbulkSessionRoutes");
 dotenvFlow.config({
   path: path.resolve(__dirname, "../../../../"),
   node_env: "development",
@@ -119,7 +119,7 @@ app.use("/api/pincodes", pincodeRoutes);
 app.use("/api/reports", reportsRoutes);
 app.use("/api/catalogs", catalogRoutes);
 app.use("/api/products-by-category", productsByCategoryRoutes);
-
+app.use("/api/product-bulk-session", productBulkSessionRoutes);
 // Routes
 
 // Health Check

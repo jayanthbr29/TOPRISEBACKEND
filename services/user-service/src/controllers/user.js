@@ -4717,3 +4717,23 @@ exports.getEmployeeByUserId = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 }
+
+exports.getDealersBydealerId = async (req, res) => {
+  try {
+    const { dealerId } = req.params;
+
+    const dealers = await Dealer.find({ dealerId: dealerId });
+    if (!dealers) {
+      return res.status(404).json({ message: "Dealers not found for the given dealer ID" });
+    }
+
+    res.status(200).json({
+      message: "Dealers fetched successfully",
+      dealers
+    });
+
+  } catch (error) {
+    console.error("Error fetching dealers by dealer ID:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+}
