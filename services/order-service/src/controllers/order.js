@@ -2835,7 +2835,7 @@ exports.getOrdersByDealerId = async (req, res) => {
       filter.status = status;
     }
 
-    const orders = await Order.find(filter).lean();
+    const orders = await Order.find(filter).lean().sort({ createdAt: -1 }) ;
 
     const result = orders.map((order) => {
       const dealerSkus = order.dealerMapping
@@ -3016,7 +3016,9 @@ exports.createOrderBySuperAdmin = async (req, res) => {
 exports.getOrderByPurchaseOrderId = async (req, res) => {
   try {
     const { purchaseOrderId } = req.params;
-    const order = await Order.findOne({ purchaseOrderId });
+    const order = await Order.findOne({ purchaseOrderId }).sort({
+      createdAt: -1,
+    });
     if (!order) return sendError(res, "Order not found", 404);
     return sendSuccess(res, order, "Order fetched successfully");
   } catch (error) {
@@ -3480,7 +3482,8 @@ exports.getBorzoOrderLabelsByInternalOrderId = async (req, res) => {
     // Find the order by internal order ID
     const order = await Order.findOne({
       $or: [{ _id: internalOrderId }, { orderId: internalOrderId }],
-    });
+    })
+    .sort({ created_at: -1 })
 
     if (!order) {
       return res.status(404).json({
@@ -5606,12 +5609,12 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
         const orderData = {
           matter: "Food",
           total_weight_kg: total_weight_kg || "3", // Dynamic weight from request body
-          insurance_amount: "500.00", // Default insurance
+          insurance_amount: "000.00", // Default insurance
           is_client_notification_enabled: true,
           is_contact_person_notification_enabled: true,
           points: borzoPointsUsed,
         };
-
+        console.log("borzo order data", borzoPointsUsed);
         // Call appropriate Borzo function based on delivery_type
         if (order.delivery_type.toLowerCase() === "standard") {
           console.log(

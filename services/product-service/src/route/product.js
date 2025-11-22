@@ -31,6 +31,32 @@ router.post(
   ]),
   productController.bulkUploadProducts
 );
+
+router.put(
+  "/bulk-edit-products",
+  optionalAuth,
+  ProductAuditLogger.createMiddleware(
+    "BULK_PRODUCTS_EDITED",
+    "Product",
+    "PRODUCT_MANAGEMENT"
+  ),
+  authenticate,
+  authorizeRoles("Super-admin", "Inventory-Admin"),
+  upload.fields([
+    { name: "dataFile", maxCount: 1 },
+    { name: "imageZip", maxCount: 1 }, // optional – for updated images
+  ]),
+  productController.bulkEditProducts
+);
+
+router.post(
+  "/bulk/assign-Dealers",
+  optionalAuth,
+  authenticate,
+  authorizeRoles("Super-admin", "Inventory-Admin"),
+  upload.fields([{ name: "dataFile", maxCount: 1 }]),
+  productController.bulkAssignDealersProducts
+);
 router.patch(
   "/products/:id/availableDealers/:dealerId",
   productController.decrementDealerStock
@@ -164,7 +190,7 @@ router.patch(
     "PRODUCT_MANAGEMENT"
   ),
   authenticate,
-  authorizeRoles("Super-admin"),
+  // authorizeRoles("Super-admin"),
   productController.bulkapproveProduct
 );
 router.patch(
@@ -188,7 +214,7 @@ router.put(
     "INVENTORY_MANAGEMENT"
   ),
   authenticate,
-  authorizeRoles("Dealer"),
+  authorizeRoles("Dealer","Super-admin"),
   productController.updateProductDealerStock
 );
 
@@ -245,7 +271,7 @@ router.post(
 );
 
 router.delete(
-  "/assign/dealer/:productId/:dealerId",
+  "/remove/dealer/:productId/:dealerId",
   authenticate,
   authorizeRoles("Super-admin", "Inventory-Admin", "Fulfillment-Admin"),
   productController.removeDealerAssignment

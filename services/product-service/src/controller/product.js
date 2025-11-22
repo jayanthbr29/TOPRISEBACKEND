@@ -18,6 +18,7 @@ const mongoose = require("mongoose");
 const Category = require("../models/category");
 const SubCategory = require("../models/subCategory");
 const { Parser } = require("json2csv");
+const Year= require("../models/year");
 
 const ProductBulkSession = require("../models/productBulkSessionModel"); // adjust as needed
 const {
@@ -405,6 +406,27 @@ exports.bulkUploadProducts = async (req, res) => {
       const key = s.name || s.subcategory_name;
       subcategoryMap.set(normalizeName(key), s._id);
     });
+    /* ────────────── 5.1  Build Year Map ────────────── */
+const uniqYears = [
+  ...new Set(
+    rows
+      .flatMap((r) => String(r.year_range || "")
+        .split(",")
+        .map((x) => normalizeName(x))
+        .filter(Boolean)
+      )
+  ),
+];
+
+const yearDocs = await Year.find({
+  year_name: { $in: uniqYears }
+});
+
+const yearMap = new Map(
+  yearDocs.map((y) => [normalizeName(y.year_name), y._id])
+);
+
+logger.info(`📆 Loaded ${yearDocs.length} Year records`);
 
     /* ──────────────  6  Transform Rows → Docs  ────────────── */
     const docs = [];
@@ -514,6 +536,29 @@ exports.bulkUploadProducts = async (req, res) => {
       const variants = row.variants
         ? row.variants.split(",").map((v) => ({ name: safeTrim(v) }))
         : [];
+       /* 6.6 Year Range Mapping */
+let yearIds = [];
+
+if (row.year_range) {
+  const years = String(row.year_range)
+    .split(",")
+    .map((y) => normalizeName(y))
+    .filter(Boolean);
+
+  yearIds = years
+    .map((y) => yearMap.get(y))
+    .filter(Boolean);   // remove invalid ones
+}
+
+if (!yearIds.length) {
+  errors.push({
+    row: i + 2,
+    error: `Unknown year_range «${row.year_range}»`,
+    rowData: row
+  });
+  failed++;
+  continue;
+}
 
       /* 6.5  Build doc */
       docs.push({
@@ -526,6 +571,7 @@ exports.bulkUploadProducts = async (req, res) => {
         brand: brandId, //    (see brand lookup below)
         product_type: row.product_type,
         variant: variantIds,
+        year_range: yearIds,  
         created_by: userId,
         created_by_role: userRole,
         model: modelId,
@@ -538,6 +584,7 @@ exports.bulkUploadProducts = async (req, res) => {
       });
       sessionLogs.push({ message: requiresApproval ? "Pending Approval" : "Created", productId: null });
     }
+   
     /* ──────────────  7  Bulk Insert  ────────────── */
     let inserted = 0;
     if (docs.length) {
@@ -747,6 +794,708 @@ exports.bulkUploadProducts = async (req, res) => {
     await session.save();
     logger.error(`Bulk upload failed: ${err.stack || err}`);
     return sendError(res, `Bulk upload failed: ${err.message}`, 500);
+  }
+};
+
+exports.bulkEditProducts = async (req, res) => {
+  /* ─────────────────────────  Helpers  ───────────────────────── */
+  const safeTrim = (v) => (v == null ? "" : String(v).trim());
+  const normalizeName = (name) => safeTrim(name).replace(/\s+/g, " "); // Normalize multiple spaces
+
+  const toBool = (v) => {
+    if (v === undefined || v === null || v === "") return undefined;
+    const s = String(v).trim().toLowerCase();
+    return ["1", "true", "yes", "y"].includes(s);
+  };
+
+  const toNum = (v) => {
+    if (v === undefined || v === null || v === "") return undefined;
+    const n = Number(v);
+    return Number.isNaN(n) ? undefined : n;
+  };
+
+  const t0 = Date.now();
+  logger.info(`📝 [BulkEdit] started ${new Date().toISOString()}`);
+
+  /* ───────────────────  0  Auth context  ─────────────────── */
+  let userId = null;
+  let userRole = null;
+  const token = (req.headers.authorization || "").replace(/^Bearer /, "");
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_PUBLIC_KEY, {
+        algorithms: ["ES256"],
+      });
+      userId = decoded?.id || decoded?._id || null;
+      userRole = decoded?.role || null;
+      logger.info(`👤  Verified user ${userId} with role ${userRole}`);
+    } catch (e) {
+      logger.warn(`🔒  verify() failed (${e.message}) – fallback to decode`);
+      const decoded = jwt.decode(token);
+      userId = decoded?.id || decoded?._id || null;
+      userRole = decoded?.role || null;
+      logger.info(
+        `👤  Decoded user ${userId || "UNKNOWN"} with role ${
+          userRole || "UNKNOWN"
+        }`
+      );
+    }
+  } else {
+    logger.warn("🔒  No Bearer token – edited_by will be null");
+  }
+
+  const requiresApproval = userRole !== "Super-admin";
+
+  /* ─────────────────────  1  Input Files  ───────────────────── */
+  const excelBuf = req.files?.dataFile?.[0]?.buffer;
+  const zipBuf = req.files?.imageZip?.[0]?.buffer; // optional
+
+  if (!excelBuf) {
+    return sendError(res, "dataFile is required", 400);
+  }
+
+  /* ───────────────────  2  Create Bulk Session  ─────────────── */
+  const session = await ProductBulkSession.create({
+    sessionTime: new Date(),
+    sessionId: new mongoose.Types.ObjectId().toString(),
+    status: "Pending",
+    created_by: userId,
+    created_by_role: userRole,
+    requires_approval: requiresApproval,
+    no_of_products: 0,
+    total_products_successful: 0,
+    total_products_failed: 0,
+    logs: [],
+    type: "EDIT",
+  });
+
+  try {
+    /* ──────────────  3  Parse Excel  ────────────── */
+    const wb = XLSX.read(excelBuf, { type: "buffer" });
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+    logger.info(`📄 [BulkEdit] Parsed ${rows.length} rows`);
+    session.no_of_products = rows.length;
+
+    if (!rows.length) {
+      session.status = "Completed";
+      session.updated_at = new Date();
+      await session.save();
+      return sendSuccess(res, { message: "No rows in file", totalRows: 0 });
+    }
+
+    /* ──────────────  4  Upload Images from ZIP (if provided) ────────────── */
+    const imageMap = {}; // manufacturer_part_name(lowercase) → S3 URL
+    let totalZip = 0,
+      imgOk = 0,
+      imgSkip = 0,
+      imgFail = 0;
+
+    if (zipBuf) {
+      const uploadPromises = [];
+      const zipStream = stream.Readable.from(zipBuf).pipe(
+        unzipper.Parse({ forceStream: true })
+      );
+
+      for await (const entry of zipStream) {
+        totalZip++;
+        if (entry.type === "Directory") {
+          imgSkip++;
+          entry.autodrain();
+          continue;
+        }
+        const base = path.basename(entry.path);
+        const m = base.match(/^(.+?)\.(jpe?g|png|webp)$/i);
+        if (!m) {
+          imgSkip++;
+          entry.autodrain();
+          continue;
+        }
+
+        const key = m[1].toLowerCase(); // expected to match manufacturer_part_name
+        const ext = m[2].toLowerCase();
+        const mime = `image/${ext === "jpg" ? "jpeg" : ext}`;
+
+        uploadPromises.push(
+          (async () => {
+            const buf = Buffer.concat(await streamToChunks(entry));
+            try {
+              const { Location } = await uploadFile(
+                buf,
+                base,
+                mime,
+                "products"
+              );
+              imageMap[key] = Location;
+              imgOk++;
+              logger.debug(`🖼️ [BulkEdit] Uploaded ${base}`);
+            } catch (e) {
+              imgFail++;
+              logger.error(`❌ [BulkEdit] Upload ${base} failed: ${e.message}`);
+            }
+          })()
+        );
+      }
+
+      await Promise.allSettled(uploadPromises);
+
+      logger.info(
+        `🗂️ [BulkEdit] ZIP done  total:${totalZip} ok:${imgOk} skip:${imgSkip} fail:${imgFail}`
+      );
+    }
+
+    /* ──────────────  5  Build lookup maps (Brand/Cat/Sub/Model/Variant/Year) ────────────── */
+    const uniqBrands = [
+      ...new Set(rows.map((r) => normalizeName(r.brand)).filter(Boolean)),
+    ];
+    const uniqCats = [
+      ...new Set(rows.map((r) => normalizeName(r.category)).filter(Boolean)),
+    ];
+    const uniqSubs = [
+      ...new Set(
+        rows.map((r) => normalizeName(r.sub_category)).filter(Boolean)
+      ),
+    ];
+    const uniqModels = [
+      ...new Set(rows.map((r) => normalizeName(r.model)).filter(Boolean)),
+    ];
+    const uniqVariants = [
+      ...new Set(
+        rows
+          .flatMap((r) => (r.variant || "").split(","))
+          .map((v) => normalizeName(v))
+          .filter(Boolean)
+      ),
+    ];
+    const uniqYears = [
+      ...new Set(
+        rows
+          .flatMap((r) =>
+            String(r.year_range || "")
+              .split(",")
+              .map((x) => normalizeName(x))
+              .filter(Boolean)
+          )
+      ),
+    ];
+
+    const [brandDocs, modelDocs, variantDocs, catDocs, subDocs, yearDocs] =
+      await Promise.all([
+        uniqBrands.length
+          ? Brand.find({ brand_name: { $in: uniqBrands } })
+          : [],
+        uniqModels.length
+          ? Model.find({ model_name: { $in: uniqModels } })
+          : [],
+        uniqVariants.length
+          ? Variant.find({ variant_name: { $in: uniqVariants } })
+          : [],
+        uniqCats.length
+          ? Category.find({
+              $or: [{ name: { $in: uniqCats } }, { category_name: { $in: uniqCats } }],
+            })
+          : [],
+        uniqSubs.length
+          ? SubCategory.find({
+              $or: [
+                { name: { $in: uniqSubs } },
+                { subcategory_name: { $in: uniqSubs } },
+              ],
+            })
+          : [],
+        uniqYears.length
+          ? Year.find({ year_name: { $in: uniqYears } })
+          : [],
+      ]);
+
+    const brandMap = new Map(
+      brandDocs.map((b) => [normalizeName(b.brand_name), b._id])
+    );
+    const modelMap = new Map(
+      modelDocs.map((d) => [normalizeName(d.model_name), d._id])
+    );
+    const variantMap = new Map(
+      variantDocs.map((d) => [normalizeName(d.variant_name), d._id])
+    );
+
+    const categoryMap = new Map();
+    catDocs.forEach((c) => {
+      const key = c.name || c.category_name;
+      categoryMap.set(normalizeName(key), c._id);
+    });
+
+    const subcategoryMap = new Map();
+    subDocs.forEach((s) => {
+      const key = s.name || s.subcategory_name;
+      subcategoryMap.set(normalizeName(key), s._id);
+    });
+
+    const yearMap = new Map(
+      yearDocs.map((y) => [normalizeName(y.year_name), y._id])
+    );
+
+    logger.info(
+      `📚 [BulkEdit] Maps: brands=${brandMap.size}, cats=${categoryMap.size}, subs=${subcategoryMap.size}, models=${modelMap.size}, variants=${variantMap.size}, years=${yearMap.size}`
+    );
+
+    /* ──────────────  6  Process rows & update products ────────────── */
+    const errors = [];
+    const sessionLogs = [];
+    let updated = 0;
+    let failed = 0;
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNumber = i + 2; // Excel row (header is row 1)
+      const sku = safeTrim(row.sku_code || row.sku);
+
+      if (!sku) {
+        errors.push({
+          row: rowNumber,
+          error: "Missing sku_code",
+          rowData: row,
+        });
+        failed++;
+        sessionLogs.push({
+          productId: null,
+          message: "Missing sku_code",
+        });
+        continue;
+      }
+
+      const update = {};
+
+      try {
+        // Basic text / scalar fields (only if present)
+        if (row.product_name)
+          update.product_name = safeTrim(row.product_name);
+        if (row.manufacturer_part_name)
+          update.manufacturer_part_name = safeTrim(row.manufacturer_part_name);
+        if (row.hsn_code) update.hsn_code = safeTrim(row.hsn_code);
+        if (row.admin_notes) update.admin_notes = safeTrim(row.admin_notes);
+        if (row.key_specifications)
+          update.key_specifications = safeTrim(row.key_specifications);
+        if (row.fitment_notes)
+          update.fitment_notes = safeTrim(row.fitment_notes);
+        if (row.product_Version)
+          update.product_Version = safeTrim(row.product_Version);
+        if (row.seo_title) update.seo_title = safeTrim(row.seo_title);
+        if (row.seo_description)
+          update.seo_description = safeTrim(row.seo_description);
+        if (row.seo_metaData)
+          update.seo_metaData = safeTrim(row.seo_metaData);
+        if (row.return_policy)
+          update.return_policy = safeTrim(row.return_policy);
+
+        // Numeric fields
+        const no_of_stock = toNum(row.no_of_stock);
+        if (no_of_stock !== undefined) update.no_of_stock = no_of_stock;
+
+        const fulfillment_priority = toNum(row.fulfillment_priority);
+        if (fulfillment_priority !== undefined)
+          update.fulfillment_priority = fulfillment_priority;
+
+        const weight = toNum(row.weight);
+        if (weight !== undefined) update.weight = weight;
+
+        const warranty = toNum(row.warranty);
+        if (warranty !== undefined) update.warranty = warranty;
+
+        const mrp_with_gst = toNum(row.mrp_with_gst);
+        if (mrp_with_gst !== undefined) update.mrp_with_gst = mrp_with_gst;
+
+        const selling_price = toNum(row.selling_price);
+        if (selling_price !== undefined) update.selling_price = selling_price;
+
+        const gst_percentage = toNum(row.gst_percentage);
+        if (gst_percentage !== undefined)
+          update.gst_percentage = gst_percentage;
+
+        const stock_expiry_rule = toNum(row.stock_expiry_rule);
+        if (stock_expiry_rule !== undefined)
+          update.stock_expiry_rule = stock_expiry_rule;
+
+        // Booleans
+        const out_of_stock = toBool(row.out_of_stock);
+        if (out_of_stock !== undefined) update.out_of_stock = out_of_stock;
+
+        const is_universal = toBool(row.is_universal);
+        if (is_universal !== undefined) update.is_universal = is_universal;
+
+        const is_consumable = toBool(row.is_consumable);
+        if (is_consumable !== undefined) update.is_consumable = is_consumable;
+
+        const is_returnable = toBool(row.is_returnable);
+        if (is_returnable !== undefined) update.is_returnable = is_returnable;
+
+        const brochure_available = toBool(row.brochure_available);
+        if (brochure_available !== undefined)
+          update.brochure_available = brochure_available;
+
+        // Dimensions
+        const L = toNum(row.L);
+        const W = toNum(row.W);
+        const H = toNum(row.H);
+        if (L !== undefined || W !== undefined || H !== undefined) {
+          update["dimensions"] = {};
+          if (L !== undefined) update.dimensions.L = L;
+          if (W !== undefined) update.dimensions.W = W;
+          if (H !== undefined) update.dimensions.H = H;
+        }
+
+        // Category
+        if (row.category) {
+          const catKey = normalizeName(row.category);
+          const categoryId = categoryMap.get(catKey);
+          if (!categoryId) {
+            throw new Error(`Unknown category «${row.category}»`);
+          }
+          update.category = categoryId;
+        }
+
+        // Subcategory
+        if (row.sub_category) {
+          const subKey = normalizeName(row.sub_category);
+          const subcategoryId = subcategoryMap.get(subKey);
+          if (!subcategoryId) {
+            throw new Error(`Unknown sub_category «${row.sub_category}»`);
+          }
+          update.sub_category = subcategoryId;
+        }
+
+        // Brand
+        if (row.brand) {
+          const brandId = brandMap.get(normalizeName(row.brand));
+          if (!brandId) {
+            throw new Error(`Unknown brand «${row.brand}»`);
+          }
+          update.brand = brandId;
+        }
+
+        // Model
+        if (row.model) {
+          const modelId = modelMap.get(normalizeName(row.model));
+          if (!modelId) {
+            throw new Error(`Unknown model «${row.model}»`);
+          }
+          update.model = modelId;
+        }
+
+        // Variants
+        if (row.variant) {
+          const variantIds = String(row.variant)
+            .split(",")
+            .map((v) => normalizeName(v))
+            .map((v) => variantMap.get(v))
+            .filter(Boolean);
+
+          if (!variantIds.length) {
+            throw new Error(`No valid variants for «${row.variant}»`);
+          }
+
+          update.variant = variantIds;
+        }
+
+        // Year range
+        if (row.year_range) {
+          const years = String(row.year_range)
+            .split(",")
+            .map((y) => normalizeName(y))
+            .filter(Boolean);
+
+          const yearIds = years
+            .map((y) => yearMap.get(y))
+            .filter(Boolean);
+
+          if (!yearIds.length) {
+            throw new Error(`Unknown year_range «${row.year_range}»`);
+          }
+
+          update.year_range = yearIds;
+        }
+
+        // Search tags
+        if (row.search_tags) {
+          const tags = String(row.search_tags)
+            .split(",")
+            .map((t) => safeTrim(t))
+            .filter(Boolean);
+          update.search_tags = tags;
+        }
+
+        // Video URL
+        if (row.video_url) {
+          update.video_url = safeTrim(row.video_url);
+        }
+
+        // Live status / QC status (optional override)
+        if (row.live_status) {
+          update.live_status = safeTrim(row.live_status);
+        }
+        if (row.Qc_status || row.qc_status) {
+          update.Qc_status = safeTrim(row.Qc_status || row.qc_status);
+        }
+
+        // Images (from ZIP) – keyed by manufacturer_part_name
+        if (row.manufacturer_part_name && Object.keys(imageMap).length > 0) {
+          const partKey = safeTrim(row.manufacturer_part_name).toLowerCase();
+          if (imageMap[partKey]) {
+            update.images = [imageMap[partKey]];
+          }
+        }
+
+        // Always bump updated_at
+        update.updated_at = new Date();
+
+        // If nothing to update, skip
+        if (!Object.keys(update).length) {
+          sessionLogs.push({
+            productId: null,
+            message: `Row ${rowNumber}: no updatable fields`,
+          });
+          continue;
+        }
+
+        // Apply update
+        const updatedDoc = await Product.findOneAndUpdate(
+          { sku_code: safeTrim(sku).toUpperCase() },
+          { $set: update },
+          { new: true }
+        );
+        console.log(" updatedDoc:", updatedDoc);
+        if (!updatedDoc) {
+          errors.push({
+            row: rowNumber,
+            error: `Product not found for sku_code «${sku}»`,
+            rowData: row,
+          });
+          failed++;
+          sessionLogs.push({
+            productId: null,
+            message: `Not found: sku_code «${sku}»`,
+          });
+          continue;
+        }
+
+        updated++;
+        sessionLogs.push({
+          productId: updatedDoc._id,
+          message: requiresApproval ? "Updated (Pending Approval)" : "Updated",
+        });
+      } catch (err) {
+        failed++;
+        errors.push({
+          row: rowNumber,
+          error: err.message,
+          rowData: row,
+        });
+        sessionLogs.push({
+          productId: null,
+          message: `Error at row ${rowNumber}: ${err.message}`,
+        });
+        logger.error(`❌ [BulkEdit] Row ${rowNumber} failed: ${err.message}`);
+      }
+    }
+
+    /* ──────────────  7  Finalize Session  ────────────── */
+    session.status = "Completed";
+    session.updated_at = new Date();
+    session.total_products_successful = updated;
+    session.total_products_failed = failed;
+    session.logs = sessionLogs;
+    await session.save();
+
+    const secs = ((Date.now() - t0) / 1000).toFixed(1);
+    logger.info(
+      `🏁 [BulkEdit] Completed: updated=${updated}, failed=${failed}, rows=${rows.length} in ${secs}s`
+    );
+
+    return sendSuccess(res, {
+      totalRows: rows.length,
+      updated,
+      failed,
+      imgSummary: zipBuf
+        ? { total: totalZip, ok: imgOk, skip: imgSkip, fail: imgFail }
+        : null,
+      errors,
+      sessionId: session._id,
+      durationSec: secs,
+      message: "Bulk product edit completed",
+    });
+  } catch (err) {
+    session.status = "Failed";
+    session.updated_at = new Date();
+    session.logs.push({
+      productId: null,
+      message: `Unexpected error: ${err.message}`,
+    });
+    await session.save();
+    logger.error(`❌ [BulkEdit] failed: ${err.stack || err}`);
+    return sendError(res, `Bulk edit failed: ${err.message}`, 500);
+  }
+};
+
+
+
+exports.bulkAssignDealersProducts = async (req, res) => {
+  try {
+    const excelBuf = req.files?.dataFile?.[0]?.buffer;
+
+    if (!excelBuf)
+      return res.status(400).json({
+        success: false,
+        message: "dataFile is required",
+      });
+
+    // Parse CSV / Excel
+    const workbook = XLSX.read(excelBuf, { type: "buffer" });
+    const rows = XLSX.utils.sheet_to_json(
+      workbook.Sheets[workbook.SheetNames[0]]
+    );
+
+    if (!rows.length)
+      return res.status(400).json({
+        success: false,
+        message: "File is empty",
+      });
+
+    const logs = [];
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowIndex = i + 2; // Excel row number
+
+      const sku = String(row.sku_code || "").trim();
+      const dealerId = String(row.dealer_id || "").trim();
+
+      if (!sku || !dealerId) {
+        failCount++;
+        logs.push({
+          row: rowIndex,
+          error: "Missing sku_code or dealer_id",
+          rowData: row,
+        });
+        continue;
+      }
+
+      try {
+        /* -------------------------------
+         Fetch Dealer from Dealer Service
+        --------------------------------*/
+        let dealer;
+        let delalerResp;
+        try {
+           delalerResp = await axios.get(
+            `http://user-service:5001/api/users/dealer/getDealer/bydelarId/${dealerId}`
+          );
+          // console.log(" delalerResp:", delalerResp);
+          dealer = delalerResp.data?.dealers[0];
+        } catch (e) {
+          console.log(e);
+          throw new Error(`Dealer with ID ${dealerId} not found in Dealer Service`);
+        }
+        
+        if(dealer.is_active === false){
+          throw new Error(`Dealer with ID ${dealerId} is not active in Dealer Service`);
+        } 
+    
+        const allowedCategories = dealer?.categories_allowed || [];
+
+        /* -------------------------------
+            Get Product by sku_code
+        --------------------------------*/
+        const product = await Product.findOne({ sku_code: sku.toUpperCase() });
+
+        if (!product) {
+          throw new Error(`Product not found for sku_code ${sku}`);
+        }
+
+        // Category Permission Check
+        const productCategory = product.category?.toString();
+
+        if (
+          allowedCategories.length &&
+          !allowedCategories.includes(productCategory)
+        ) {
+          throw new Error(
+            `Dealer ${dealerId} NOT allowed to sell product category ${productCategory}`
+          );
+        }
+
+
+        /* -------------------------------
+            Prepare dealer assignment payload
+        --------------------------------*/
+        const quantity = Number(row.quantity_per_dealer || 0);
+        const margin = Number(row.dealer_margin || 0);
+        const priority = Number(row.dealer_priority_override || 0);
+
+        const inStock = quantity > 0 ? true : false;
+
+        const existingDealer = product.available_dealers.find(
+          (d) => d.dealers_Ref?.toString() === dealer._id
+        );
+
+        if (existingDealer) {
+          // Update existing dealer block
+          existingDealer.inStock = inStock;
+          existingDealer.quantity_per_dealer = quantity;
+          existingDealer.dealer_margin = margin;
+          existingDealer.dealer_priority_override = priority;
+        } else {
+          // Add new dealer block
+          product.available_dealers.push({
+            dealers_Ref: dealer._id,
+            inStock,
+            quantity_per_dealer: quantity,
+            dealer_margin: margin,
+            dealer_priority_override: priority,
+          });
+        }
+
+        // If any dealer has stock → product is NOT out of stock
+        // if (quantity > 0) {
+        //   product.out_of_stock = false;
+        // }
+        product.out_of_stock = product.available_dealers.some(
+          (d) => !d.inStock
+        )
+
+        await product.save();
+
+        successCount++;
+        logs.push({
+          row: rowIndex,
+          productId: product._id,
+          message: "Dealer assigned successfully",
+        });
+      } catch (err) {
+        failCount++;
+        logs.push({
+          row: rowIndex,
+          error: err.message,
+          rowData: row,
+        });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Bulk dealer assignment completed",
+      totalRows: rows.length,
+      successCount,
+      failCount,
+      logs,
+    });
+  } catch (error) {
+    console.error("Bulk Dealer Assignment Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Bulk dealer assignment failed",
+      error: error.message,
+    });
   }
 };
 
@@ -1697,6 +2446,7 @@ exports.createProductSingle = async (req, res) => {
         Authorization: req.headers.authorization,
       },
     });
+    // console.log(" User data:", userData.data);  
 
     let filteredUsers = userData.data.data.filter(
       (user) =>
@@ -2863,6 +3613,7 @@ exports.updateProductDealerStock = async (req, res) => {
       }
       return dealer;
     });
+    product.out_of_stock=product.available_dealers.some(dealer => !dealer.inStock);
     const updatedProduct = await product.save();
 
     return res.status(200).json({
@@ -4028,6 +4779,7 @@ exports.removeDealerAssignment = async (req, res) => {
         message: "Dealer not found for this product",
       });
     }
+    product.out_of_stock = product.available_dealers.some(dealer => !dealer.inStock);
 
     // Save the product
     const updatedProduct = await product.save();
