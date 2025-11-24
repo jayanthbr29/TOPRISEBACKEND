@@ -1387,7 +1387,7 @@ exports.intiateBorzoOrderForReturn = async (req, res) => {
                       sku.tracking_info = {};
                     }
                     returnRequest.tracking_info.borzo_order_id = data.order_id.toString();
-                    if (data.tracking_url) returnRequest.tracking_info.borzo_tracking_url = data.tracking_url;
+                    if (data.points[1].tracking_url) returnRequest.tracking_info.borzo_tracking_url = data.points[1].tracking_url;
                     if (data.tracking_number) returnRequest.tracking_info.borzo_tracking_number = data.tracking_number;
                     returnRequest.tracking_info.status = "Confirmed";
                     if (!returnRequest.tracking_info.timestamps) {
@@ -1398,7 +1398,7 @@ exports.intiateBorzoOrderForReturn = async (req, res) => {
                     returnRequest.tracking_info.borzo_delivery_fee_amount = data.delivery_fee_amount;
                     returnRequest.tracking_info.borzo_weight_fee_amount = data.weight_fee_amount;
                     returnRequest.tracking_info.borzo_weight = total_weight_kg;
-                
+                    returnRequest.tracking_info.borzo_last_updated = new Date();
               
               await returnRequest.save();
               try {

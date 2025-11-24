@@ -29,6 +29,10 @@ const USER_SERVICE_URL =
   process.env.USER_SERVICE_URL ||
   "http://user-service:5001/api/users/api/users";
 
+const DealerSLA = require("../models/dealerSla");
+const SlaTypes = require("../models/slaType");
+const SlaViolation = require("../models/slaViolation");
+
 // Geocode an address string to { latitude, longitude }
 async function geocodeAddress(address) {
   try {
@@ -2835,7 +2839,7 @@ exports.getOrdersByDealerId = async (req, res) => {
       filter.status = status;
     }
 
-    const orders = await Order.find(filter).lean().sort({ createdAt: -1 }) ;
+    const orders = await Order.find(filter).lean().sort({ createdAt: -1 });
 
     const result = orders.map((order) => {
       const dealerSkus = order.dealerMapping
@@ -3483,7 +3487,7 @@ exports.getBorzoOrderLabelsByInternalOrderId = async (req, res) => {
     const order = await Order.findOne({
       $or: [{ _id: internalOrderId }, { orderId: internalOrderId }],
     })
-    .sort({ created_at: -1 })
+      .sort({ created_at: -1 })
 
     if (!order) {
       return res.status(404).json({
@@ -5478,7 +5482,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
     order.dealerMapping = order.dealerMapping.map((mapping) => {
       if (mapping.dealerId.toString() === dealerId && mapping.sku === sku) {
         dealerFound = true;
-        return { ...mapping.toObject(), status: "Packed" };
+        return { ...mapping.toObject(), status: "Packed", packedAt: new Date() };
       }
       return mapping;
     });
@@ -5489,7 +5493,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
       (mapping) => mapping.status === "Packed"
     );
     console.log(" allPacked: ", allPacked);
-
+    await checkSLAViolationOnPackingForDealer(order._id, dealerId, new Date(), order.type_of_delivery);
     // Visibility logs for Borzo creation criteria
     console.log(
       `[BORZO] Dealer packed update: orderId=${order.orderId}, dealerId=${dealerId}, allPacked=${allPacked}, delivery_type=${order.delivery_type || "N/A"}`
@@ -5586,10 +5590,10 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
               dealerInfo?.phone ||
               "0000000000",
           },
-          // latitude: dealerGeo?.latitude || 28.57908,
-          // longitude: dealerGeo?.longitude || 77.31912,
-          latitude: 28.583905,
-          longitude: 77.322733,
+          latitude: dealerGeo?.latitude || 28.57908,
+          longitude: dealerGeo?.longitude || 77.31912,
+          // latitude: 28.583905,
+          // longitude: 77.322733,
           client_order_id: `ORD,${order.orderId},${sku}`,
         };
 
@@ -5599,10 +5603,10 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
             name: order.customerDetails?.name || "Customer",
             phone: order.customerDetails?.phone || "0000000000",
           },
-          // latitude: customerGeo?.latitude || 28.583905,
-          // longitude: customerGeo?.longitude || 77.322733,
-          latitude: 28.583905,
-          longitude: 77.322733,
+          latitude: customerGeo?.latitude || 28.583905,
+          longitude: customerGeo?.longitude || 77.322733,
+          // latitude: 28.583905,
+          // longitude: 77.322733,
           client_order_id: `ORD,${order.orderId},${sku}`,
         };
         borzoPointsUsed = [pickupPoint, dropPoint];
@@ -5652,7 +5656,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
                             sku.tracking_info = {};
                           }
                           sku.tracking_info.borzo_order_id = data.order_id.toString();
-                          if (data.tracking_url) sku.tracking_info.borzo_tracking_url = data.tracking_url;
+                          if (data.points[1].tracking_url) sku.tracking_info.borzo_tracking_url = data.points[1].tracking_url;
                           if (data.tracking_number) sku.tracking_info.borzo_tracking_number = data.tracking_number;
                           sku.tracking_info.status = "Confirmed";
                           if (!sku.tracking_info.timestamps) {
@@ -5662,7 +5666,9 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
                           sku.tracking_info.borzo_payment_amount = data.payment_amount;
                           sku.tracking_info.borzo_delivery_fee_amount = data.delivery_fee_amount;
                           sku.tracking_info.borzo_weight_fee_amount = data.weight_fee_amount;
-                          sku.tracking_info.borzo_weight = total_weight_kg;  
+                          sku.tracking_info.borzo_weight = total_weight_kg;
+                          sku.tracking_info.borzo_order_status = data.points[1].delivery.status;
+                          sku.tracking_info.borzo_last_updated = new Date();
                         }
                       });
                     }
@@ -5739,13 +5745,14 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
                           sku.tracking_info = {};
                         }
                         sku.tracking_info.borzo_order_id = data.order_id.toString();
-                        if (data.tracking_url) sku.tracking_info.borzo_tracking_url = data.tracking_url;
+                        if (data.points[1].tracking_url) sku.tracking_info.borzo_tracking_url = data.tracking_url;
                         if (data.tracking_number) sku.tracking_info.borzo_tracking_number = data.tracking_number;
                         sku.tracking_info.status = "Confirmed";
                         if (!sku.tracking_info.timestamps) {
                           sku.tracking_info.timestamps = {};
                         }
                         sku.tracking_info.timestamps.confirmedAt = new Date();
+                        sku.tracking_info.borzo_last_updated = new Date();
                       });
                     }
 
@@ -6016,23 +6023,31 @@ exports.borzoWebhookUpdated = async (req, res) => {
           case "reattempt_planned":
             updateFields["skus.$.tracking_info.status"] = "Confirmed";
             updateFields["skus.$.tracking_info.timestamps.confirmedAt"] = new Date();
+            updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
+            updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
             break;
           case "active":
-            updateFields["skus.$.tracking_info.status"] = "On_The_Way_To_Next_Delivery_Point";   
+            updateFields["skus.$.tracking_info.status"] = "On_The_Way_To_Next_Delivery_Point";
             updateFields["skus.$.tracking_info.timestamps.onTheWayToNextDeliveryPointAt"] = new Date();
-
+            updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
+            updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
+            break;
           case "assigned":
           case "courier_assigned":
           case "reattempt_courier_assigned":
             updateFields["skus.$.tracking_info.status"] = "Assigned";
             updateFields["skus.$.tracking_info.timestamps.assignedAt"] = new Date();
+            updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
+            updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
             break;
-          
+
 
           case "courier_departed":
           case "reattempt_courier_departed":
             updateFields["skus.$.tracking_info.status"] = "Picked Up";
             updateFields["skus.$.tracking_info.timestamps.pickedUpAt"] = new Date();
+            updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
+            updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
             break;
 
           case "courier_at_pickup":
@@ -6040,21 +6055,29 @@ exports.borzoWebhookUpdated = async (req, res) => {
           case "reattempt_courier_picked_up":
             updateFields["skus.$.tracking_info.status"] = "Shipped";
             updateFields["skus.$.tracking_info.timestamps.shippedAt"] = new Date();
+            updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
+            updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
             break;
 
           case "courier_arrived":
             updateFields["skus.$.tracking_info.status"] = "OUT_FOR_DELIVERY";
             updateFields["skus.$.tracking_info.timestamps.outForDeliveryAt"] = new Date();
+            updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
+            updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
             break;
           case "finished":
           case "reattempt_finished":
             updateFields["skus.$.tracking_info.status"] = "Delivered";
             updateFields["skus.$.tracking_info.timestamps.deliveredAt"] = new Date();
+            updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
+            updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
             break;
 
           case "canceled":
             updateFields["skus.$.tracking_info.status"] = "Cancelled";
             updateFields["skus.$.tracking_info.timestamps.cancelledAt"] = new Date();
+            updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
+            updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
             break;
 
           default:
@@ -6068,42 +6091,51 @@ exports.borzoWebhookUpdated = async (req, res) => {
         const checkOrder = await Order.findOne(
           { orderId: orderId },
         );
-         // check all sku Delivered  then mark order as Delivered
-          const allDelivered = checkOrder.skus.every(
-            (sku) => sku.tracking_info.status === "Delivered"
-          );
-          if (allDelivered) {
-            checkOrder.status = "Delivered";
-            await checkOrder.save();
-          } 
+        // check all sku Delivered  then mark order as Delivered
+        const allDelivered = checkOrder.skus.every(
+          (sku) => sku.tracking_info.status === "Delivered"
+        );
+        if (allDelivered) {
+          checkOrder.status = "Delivered";
+          await checkOrder.save();
+        }
 
         //  console.log("checkOrder", checkOrder);  
-      }else if(orderType==="RTN"){
-        const returnOrder = await Return.findOne({_id: orderId });
+      } else if (orderType === "RTN") {
+        const returnOrder = await Return.findOne({ _id: orderId });
         console.log("returnOrder before update", returnOrder);
         switch (borzoOrderStatus.toLowerCase()) {
           case "created":
           case "planned":
           case "reattempt_planned":
             returnOrder.tracking_info.status = "Confirmed";
-           returnOrder.tracking_info.timestamps.confirmedAt= new Date();
-            break;
+            returnOrder.tracking_info.timestamps.confirmedAt = new Date();
+            returnOrder.tracking_info.borzo_last_updated = new Date();
+            returnOrder.tracking_info.borzo_tracking_status = borzoOrderStatus.toLowerCase();
+            returnOrder.
+              break;
           case "active":
-            returnOrder.tracking_info.status == "On_The_Way_To_Next_Delivery_Point";   
-          returnOrder.tracking_info.timestamps.onTheWayToNextDeliveryPointAt = new Date();
-           break;
+            returnOrder.tracking_info.status == "On_The_Way_To_Next_Delivery_Point";
+            returnOrder.tracking_info.timestamps.onTheWayToNextDeliveryPointAt = new Date();
+            returnOrder.tracking_info.borzo_last_updated = new Date();
+            returnOrder.tracking_info.borzo_tracking_status = borzoOrderStatus.toLowerCase();
+            break;
           case "assigned":
           case "courier_assigned":
           case "reattempt_courier_assigned":
-            returnOrder.tracking_info.status  = "Assigned";
+            returnOrder.tracking_info.status = "Assigned";
             returnOrder.tracking_info.timestamps.assignedAt = new Date();
+            returnOrder.tracking_info.borzo_last_updated = new Date();
+            returnOrder.tracking_info.borzo_tracking_status = borzoOrderStatus.toLowerCase();
             break;
-          
+
 
           case "courier_departed":
           case "reattempt_courier_departed":
             returnOrder.tracking_info.status = "Picked Up";
             returnOrder.tracking_info.timestamps.pickedUpAt = new Date();
+            returnOrder.tracking_info.borzo_last_updated = new Date();
+            returnOrder.tracking_info.borzo_tracking_status = borzoOrderStatus.toLowerCase();
             break;
 
           case "courier_at_pickup":
@@ -6111,25 +6143,33 @@ exports.borzoWebhookUpdated = async (req, res) => {
           case "reattempt_courier_picked_up":
             returnOrder.tracking_info.status = "Shipped";
             returnOrder.tracking_info.timestamps.shippedAt = new Date();
+            returnOrder.tracking_info.borzo_last_updated = new Date();
+            returnOrder.tracking_info.borzo_tracking_status = borzoOrderStatus.toLowerCase();
             break;
 
           case "courier_arrived":
             returnOrder.tracking_info.status = "OUT_FOR_DELIVERY";
-           returnOrder.tracking_info.timestamps.outForDeliveryAt= new Date();
+            returnOrder.tracking_info.timestamps.outForDeliveryAt = new Date();
+            returnOrder.tracking_info.borzo_last_updated = new Date();
+            returnOrder.tracking_info.borzo_tracking_status = borzoOrderStatus.toLowerCase();
             break;
           case "finished":
           case "reattempt_finished":
             returnOrder.tracking_info.status = "Delivered";
-           returnOrder.tracking_info.timestamps.deliveredAt = new Date();
+            returnOrder.tracking_info.timestamps.deliveredAt = new Date();
             returnOrder.returnStatus = "Shipment_Completed";
-             returnOrder.timestamps.borzoShipmentCompletedAt = new Date();
+            returnOrder.timestamps.borzoShipmentCompletedAt = new Date();
+            returnOrder.tracking_info.borzo_last_updated = new Date();
+            returnOrder.tracking_info.borzo_tracking_status = borzoOrderStatus.toLowerCase();
             break;
 
           case "canceled":
             returnOrder.tracking_info.status = "Cancelled";
             returnOrder.tracking_info.timestamps.cancelledAt = new Date();
-             returnOrder.returnStatus = "Shipment_Completed";
-              returnOrder.timestamps.borzoShipmentCompletedAt = new Date();
+            returnOrder.returnStatus = "Shipment_Completed";
+            returnOrder.timestamps.borzoShipmentCompletedAt = new Date();
+            returnOrder.tracking_info.borzo_last_updated = new Date();
+            returnOrder.tracking_info.borzo_tracking_status = borzoOrderStatus.toLowerCase();
             break;
 
           default:
@@ -6157,21 +6197,26 @@ exports.borzoWebhookUpdated = async (req, res) => {
         switch (borzoOrderStatus.toLowerCase()) {
           case "new":
           case "available":
-          // case "active":
+            // case "active":
             updateFields["skus.$.tracking_info.status"] = "Confirmed";
             updateFields["skus.$.tracking_info.timestamps.confirmedAt"] = new Date();
+            updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
+            updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
             break;
 
           case "completed":
           case "courier_assigned":
             updateFields["skus.$.tracking_info.status"] = "Delivered";
             updateFields["skus.$.tracking_info.timestamps.deliveredAt"] = new Date();
-
+            updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
+            updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
             break;
 
           case "canceled":
             updateFields["skus.$.tracking_info.status"] = "Cancelled";
             updateFields["skus.$.tracking_info.timestamps.cancelledAt"] = new Date();
+            updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
+            updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
             break;
 
           default:
@@ -6183,20 +6228,22 @@ exports.borzoWebhookUpdated = async (req, res) => {
           { $set: updateFields }
         );
         const allDelivered = checkOrder.skus.every(
-            (sku) => sku.tracking_info.status === "Delivered"
-          );
-          if (allDelivered) {
-            checkOrder.status = "Delivered";
-            await checkOrder.save();
-          } 
-     }else if(orderType==="RTN"){
-        const returnOrder = await Return.findOne({_id: orderId });
+          (sku) => sku.tracking_info.status === "Delivered"
+        );
+        if (allDelivered) {
+          checkOrder.status = "Delivered";
+          await checkOrder.save();
+        }
+      } else if (orderType === "RTN") {
+        const returnOrder = await Return.findOne({ _id: orderId });
         switch (borzoOrderStatus.toLowerCase()) {
           case "new":
           case "available":
-          // case "active":
-            returnOrder.tracking_info.status= "Confirmed";
-            returnOrder.tracking_info.timestamps.confirmedAt= new Date();
+            // case "active":
+            returnOrder.tracking_info.status = "Confirmed";
+            returnOrder.tracking_info.timestamps.confirmedAt = new Date();
+            returnOrder.tracking_info.borzo_last_updated = new Date();
+            returnOrder.tracking_info.borzo_tracking_status = borzoOrderStatus.toLowerCase();
             break;
 
           case "completed":
@@ -6205,21 +6252,25 @@ exports.borzoWebhookUpdated = async (req, res) => {
             returnOrder.tracking_info.timestamps.deliveredAt = new Date();
             returnOrder.returnStatus = "Shipment_Completed";
             returnOrder.timestamps.borzoShipmentCompletedAt = new Date();
+            returnOrder.tracking_info.borzo_last_updated = new Date();
+            returnOrder.tracking_info.borzo_tracking_status = borzoOrderStatus.toLowerCase();
             break;
 
 
           case "canceled":
-            returnOrder.tracking_info.status= "Cancelled";
-           returnOrder.tracking_info.timestamps.cancelledAt = new Date();
+            returnOrder.tracking_info.status = "Cancelled";
+            returnOrder.tracking_info.timestamps.cancelledAt = new Date();
             returnOrder.returnStatus = "Shipment_Completed";
-             returnOrder.timestamps.borzoShipmentCompletedAt = new Date();
+            returnOrder.timestamps.borzoShipmentCompletedAt = new Date();
+            returnOrder.tracking_info.borzo_last_updated = new Date();
+            returnOrder.tracking_info.borzo_tracking_status = borzoOrderStatus.toLowerCase();
             break;
 
           default:
             break;
         }
-         await returnOrder.save();
-       
+        await returnOrder.save();
+
       }
 
 
@@ -6533,3 +6584,61 @@ exports.borzoWebhookUpdated = async (req, res) => {
     });
   }
 };
+
+async function checkSLAViolationOnPackingForDealer(orderId, delaerId, packedAt, orderType) {
+  try {
+
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return { hasViolation: false, violation: null, error: "Order not found" };
+    }
+    const slaType = await SlaTypes.findOne({ name: orderType });
+    const dealerSLA = await DealerSLA.findOne({ dealer_id: delaerId, sla_type: slaType._id }).populate("sla_type");
+    // if (!dealerSLA) {
+    //   return { hasViolation: false, violation: null, error: "Dealer SLA not found" };
+    // }
+    const addHours = (date, hours) =>
+      new Date(date.getTime() + hours * 60 * 60 * 1000);
+    const packedTime = new Date(packedAt);
+    if (dealerSLA) {
+      const assignedTime = new Date(mapping.assignedAt);
+
+
+
+      const expectedPackingEndTime = addHours(assignedTime, dealerSLA.dispatch_hours.end);
+      const maxExpectedPackingTime = addHours(assignedTime, dealerSLA.sla_type.expected_hours);
+
+      // Violation Check
+      if (packedTime > expectedPackingEndTime || packedTime > maxExpectedPackingTime) {
+        const violation = new SlaViolation({
+          order_id: orderId,
+          dealer_id: delaerId,
+          violation_type: "packing",
+          expected_fulfillment_time: expectedPackingEndTime,
+          actual_fulfillment_time: packedTime,
+        });
+        await violation.save();
+        return { hasViolation: true, violation: violation, error: null };
+      }
+
+    } else {
+      const maxExpectedPackingTime = addHours(assignedTime, slaType.expected_hours);
+
+      // Violation Check
+      if (packedTime > maxExpectedPackingTime) {
+        const violation = new SlaViolation({
+          order_id: orderId,
+          dealer_id: delaerId,
+          violation_type: "packing",
+          expected_fulfillment_time: maxExpectedPackingTime,
+          actual_fulfillment_time: packedTime,
+        });
+        await violation.save();
+        return { hasViolation: true, violation: violation, error: null };
+      }
+    }
+  } catch (error) {
+    logger.error("Error checking SLA violation on packing:", error);
+    return { hasViolation: false, violation: null, error: error.message };
+  }
+}
