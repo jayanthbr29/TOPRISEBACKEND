@@ -194,6 +194,10 @@ const productSchema = new mongoose.Schema({
         type: Number,
         // required: true
       },
+      last_stock_updated: {
+        type: Date,
+        default: Date.now,
+      },
     },
   ],
   last_stock_inquired: {

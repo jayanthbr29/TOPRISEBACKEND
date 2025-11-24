@@ -113,6 +113,8 @@ const OrderSchema = new mongoose.Schema(
           enum: ["Pending", "Scanning", "Packed"],
           default: "Pending",
         },
+        assignedAt: Date,
+        packedAt: Date,
       },
     ],
     status: {

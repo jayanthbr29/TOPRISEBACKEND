@@ -17,23 +17,55 @@ const minsAgo = (m) => Date.now() - m * 60_000;
  * @param {Document} p – mongoose Product doc (lean or full)
  * @param {Number}   nowMs – Date.now() already computed for speed
  */
-function computeOOS(p, nowMs) {
-  // rule #1 – no dealers array or empty
-  if (!Array.isArray(p.available_dealers) || p.available_dealers.length === 0) {
-    return true;
-  }
+// function computeOOS(p, nowMs) {
+//   // rule #1 – no dealers array or empty
+//   if (!Array.isArray(p.available_dealers) || p.available_dealers.length === 0) {
+//     return true;
+//   }
 
-  // rule #2 – every dealer fails qty > 0 *or* is stale
-  const expiryMin = p.stock_expiry_rule || DEFAULT_EXPIRY_MIN;
-  const cutoffMs = nowMs - expiryMin * 60_000;
+//   // rule #2 – every dealer fails qty > 0 *or* is stale
+//   const expiryMin = p.stock_expiry_rule || DEFAULT_EXPIRY_MIN;
+//   const cutoffMs = nowMs - expiryMin * 60_000;
 
-  const anyFreshInStock = p.available_dealers.some((d) => {
-    const qty = d.quantity_per_dealer ?? 0;
-    const ts = new Date(d.last_stock_update || 0).getTime();
-    return qty > 0 && ts >= cutoffMs;
+//   const anyFreshInStock = p.available_dealers.some((d) => {
+//     const qty = d.quantity_per_dealer ?? 0;
+//     const ts = new Date(d.last_stock_update || 0).getTime();
+//     return qty > 0 && ts >= cutoffMs;
+//   });
+
+//   return !anyFreshInStock;
+// }
+
+function cleanAndComputeOOS(p, nowMs) {
+  const sevenDayCutoff = nowMs - SEVEN_DAYS_MS;
+
+  // First: remove dealers with stale stock > 7 days
+  const freshDealers = (p.available_dealers || []).filter((d) => {
+    const lastUpdate = new Date(d.last_stock_updated || 0).getTime();
+    return lastUpdate >= sevenDayCutoff;
   });
 
-  return !anyFreshInStock;
+  const removedCount = (p.available_dealers || []).length - freshDealers.length;
+
+  // Overwrite the array with fresh dealers
+  p.available_dealers = freshDealers;
+
+  // If no dealers remain → product is out of stock
+  if (freshDealers.length === 0) {
+    return { outOfStock: true, removedCount };
+  }
+
+  // Compute stock expiry rule-based OOS
+  const expiryMin = p.stock_expiry_rule || DEFAULT_EXPIRY_MIN;
+  const expiryCutoff = nowMs - expiryMin * 60_000;
+
+  const anyFreshInStock = freshDealers.some((d) => {
+    const qty = d.quantity_per_dealer ?? 0;
+    const ts = new Date(d.last_stock_updated || 0).getTime();
+    return qty > 0 && ts >= expiryCutoff;
+  });
+
+  return { outOfStock: !anyFreshInStock, removedCount };
 }
 
 /* ───────────────────────── scheduled task ───────────────────────── */
@@ -48,7 +80,7 @@ async function sweep() {
       _id: 1,
       out_of_stock: 1,
       available_dealers: 1,
-      stock_expiry_rule: 1,
+      // stock_expiry_rule: 1,
     }
   )
     .lean()
@@ -58,43 +90,99 @@ async function sweep() {
     updated = 0,
     logs = [];
 
+  // for await (const prod of cursor) {
+  //   checked++;
+  //   const shouldBeOOS = computeOOS(prod, started);
+
+
+
+  //   if (shouldBeOOS !== prod.out_of_stock) {
+  //     // • update only if changed
+  //     await Product.updateOne(
+  //       { _id: prod._id },
+  //       {
+  //         $set: { out_of_stock: shouldBeOOS, updated_at: new Date() },
+  //         $inc: { iteration_number: 1 },
+  //       }
+  //     );
+
+  //     updated++;
+  //     logs.push({
+  //       job_type: "Stock-Sweep",
+  //       product_ref: prod._id,
+  //       user: "SYSTEM",
+  //       changed_fields: ["out_of_stock"],
+  //       changed_value: [
+  //         {
+  //           field: "out_of_stock",
+  //           old_value: prod.out_of_stock,
+  //           new_value: shouldBeOOS,
+  //         },
+  //       ],
+  //     });
+  //   }
+  // }
   for await (const prod of cursor) {
     checked++;
-    const shouldBeOOS = computeOOS(prod, started);
+    const { outOfStock: shouldBeOOS, removedCount } = cleanAndComputeOOS(prod, started);
 
-    if (shouldBeOOS !== prod.out_of_stock) {
-      // • update only if changed
+    if (removedCount > 0 || shouldBeOOS !== prod.out_of_stock) {
+      const updateDoc = {
+        available_dealers: prod.available_dealers,
+        updated_at: new Date(),
+      };
+
+      if (shouldBeOOS !== prod.out_of_stock) {
+        updateDoc.out_of_stock = shouldBeOOS;
+      }
+
       await Product.updateOne(
         { _id: prod._id },
         {
-          $set: { out_of_stock: shouldBeOOS, updated_at: new Date() },
-          $inc: { iteration_number: 1 },
+          $set: updateDoc,
+          $inc: { iteration_number: 1 }
         }
       );
 
       updated++;
+
+      const changedFields = [];
+      const changedValue = [];
+
+      if (removedCount > 0) {
+        changedFields.push("available_dealers");
+        changedValue.push({
+          field: "available_dealers",
+          old_value: `[${removedCount} dealer removed due to stale stock]`,
+          new_value: prod.available_dealers,
+        });
+      }
+
+      if (shouldBeOOS !== prod.out_of_stock) {
+        changedFields.push("out_of_stock");
+        changedValue.push({
+          field: "out_of_stock",
+          old_value: prod.out_of_stock,
+          new_value: shouldBeOOS,
+        });
+      }
+
       logs.push({
         job_type: "Stock-Sweep",
         product_ref: prod._id,
         user: "SYSTEM",
-        changed_fields: ["out_of_stock"],
-        changed_value: [
-          {
-            field: "out_of_stock",
-            old_value: prod.out_of_stock,
-            new_value: shouldBeOOS,
-          },
-        ],
+        changed_fields: changedFields,
+        changed_value: changedValue,
       });
     }
+
   }
 
   // bulk-insert logs (if any)
   if (logs.length) await ProductLog.insertMany(logs);
 
   logger.info(
-    `✅ sweep done – checked:${checked}  updated:${updated}  ${
-      Date.now() - started
+    `✅ sweep done – checked:${checked}  updated:${updated}  ${Date.now() - started
     } ms`
   );
 }

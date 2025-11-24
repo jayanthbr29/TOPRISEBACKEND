@@ -70,6 +70,7 @@ dealerAssignmentQueue.process(async (job) => {
           sku,
           dealerId: new mongoose.Types.ObjectId(chosen.dealerId),
           status: "Pending",
+          assignedAt: new Date(),
         });
         line.dealerMapped.push({ dealerId: new mongoose.Types.ObjectId(chosen.dealerId) });
 

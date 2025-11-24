@@ -3116,6 +3116,7 @@ exports.decrementDealerStock = async (req, res) => {
           ...dealer,
           quantity_per_dealer: Math.max(dealer.quantity_per_dealer - qty, 0),
           inStock: (dealer.quantity_per_dealer-qty) > 0,
+          last_stock_updated: Date.now(),
         };
       }
       return dealer;
@@ -3609,6 +3610,7 @@ exports.updateProductDealerStock = async (req, res) => {
           ...dealer,
           quantity_per_dealer: quantity,
           inStock: quantity > 0,
+          last_stock_updated: new Date(),
         };
       }
       return dealer;
