@@ -802,12 +802,33 @@ exports.shipOrder = async (req, res) => {
 
 exports.getOrders = async (req, res) => {
   try {
-    const orders = await Order.find().lean();
+    // Pagination inputs
+    let page = parseInt(req.query.page) || 1;
+    let limit = parseInt(req.query.limit) || 10;
+    let skip = (page - 1) * limit;
 
+    // Sorting (optional)
+    const sortField = req.query.sortBy || "createdAt";
+    const sortOrder = req.query.order === "asc" ? 1 : -1;
+
+    // Count total for pagination metadata
+    const totalOrders = await Order.countDocuments();
+
+    // Fetch paginated orders
+    const orders = await Order.find()
+      .sort({ [sortField]: sortOrder })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    // Add user info and dealer info
     for (let order of orders) {
+      // Attach user profile
       order.customerDetails.userInfo = await fetchUser(
         order.customerDetails.userId
       );
+
+      // Attach dealer profile for each dealer
       order.dealerMapping = await Promise.all(
         order.dealerMapping.map(async (m) => ({
           ...m,
@@ -816,11 +837,35 @@ exports.getOrders = async (req, res) => {
       );
     }
 
-    return sendSuccess(res, orders, "Orders fetched");
+    // Pagination response
+    const totalPages = Math.ceil(totalOrders / limit);
+
+    return sendSuccess(res, {
+      // page,
+      // limit,
+      // totalOrders,
+      // totalPages,
+      // hasNextPage: page < totalPages,
+      // hasPrevPage: page > 1,
+      orders,
+      pagination: {
+        totalItems: totalOrders,
+        totalPages,
+        currentPage: page,
+        itemsPerPage: limit,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      }
+    },
+      "Orders fetched"
+    );
+
   } catch (err) {
+    console.error("Error fetching orders:", err);
     return sendError(res, "Failed to get orders", 500);
   }
 };
+
 
 exports.getOrderById = async (req, res) => {
   try {
@@ -6643,7 +6688,7 @@ async function checkSLAViolationOnPackingForDealer(orderId, delaerId, packedAt, 
   }
 }
 
-exports.testGeoCode=async (req, res) => {
+exports.testGeoCode = async (req, res) => {
   try {
     const orderId = req.params.orderId;
     const order = await Order.findById(orderId);
@@ -6664,24 +6709,24 @@ exports.testGeoCode=async (req, res) => {
 
     const customerGeo = await geocodeAddress(customerAddressString);
 
-   let pickupDealerId = order.dealerMapping[0].dealerId || null;
-        const dealerInfo = pickupDealerId ? await fetchDealerInfo(pickupDealerId, authHeader) : null;
-        console.log("[BORZO] Dealer info:", dealerInfo);
-        const dealerAddressString =
-          dealerInfo?.address?.full ||
-          buildAddressString({
-            building_no: dealerInfo?.address?.building_no,
-            street: dealerInfo?.address?.street,
-            area: dealerInfo?.address?.area,
-            city: dealerInfo?.address?.city,
-            state: dealerInfo?.address?.state,
-            pincode: dealerInfo?.address?.pincode,
-            country: dealerInfo?.address?.country || "India",
-          }) ||
-          dealerInfo?.business_address ||
-          dealerInfo?.registered_address ||
-          "Pickup Address";
-        const dealerGeo = await geocodeAddress(dealerAddressString);
+    let pickupDealerId = order.dealerMapping[0].dealerId || null;
+    const dealerInfo = pickupDealerId ? await fetchDealerInfo(pickupDealerId, authHeader) : null;
+    console.log("[BORZO] Dealer info:", dealerInfo);
+    const dealerAddressString =
+      dealerInfo?.address?.full ||
+      buildAddressString({
+        building_no: dealerInfo?.address?.building_no,
+        street: dealerInfo?.address?.street,
+        area: dealerInfo?.address?.area,
+        city: dealerInfo?.address?.city,
+        state: dealerInfo?.address?.state,
+        pincode: dealerInfo?.address?.pincode,
+        country: dealerInfo?.address?.country || "India",
+      }) ||
+      dealerInfo?.business_address ||
+      dealerInfo?.registered_address ||
+      "Pickup Address";
+    const dealerGeo = await geocodeAddress(dealerAddressString);
 
     return res.json({
       success: true,
