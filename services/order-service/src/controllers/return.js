@@ -1399,7 +1399,8 @@ exports.intiateBorzoOrderForReturn = async (req, res) => {
                     returnRequest.tracking_info.borzo_weight_fee_amount = data.weight_fee_amount;
                     returnRequest.tracking_info.borzo_weight = total_weight_kg;
                     returnRequest.tracking_info.borzo_last_updated = new Date();
-              
+                   returnRequest.returnStatus="Shipment_Intiated";
+                   returnRequest.timestamps.borzoShipmentInitiatedAt = new Date();
               await returnRequest.save();
               try {
                 await logOrderAction({

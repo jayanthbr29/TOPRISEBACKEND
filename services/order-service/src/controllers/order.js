@@ -5590,10 +5590,10 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
               dealerInfo?.phone ||
               "0000000000",
           },
-          latitude: dealerGeo?.latitude || 28.57908,
-          longitude: dealerGeo?.longitude || 77.31912,
-          // latitude: 28.583905,
-          // longitude: 77.322733,
+          // latitude: dealerGeo?.latitude || 28.57908,
+          // longitude: dealerGeo?.longitude || 77.31912,
+          latitude: 28.583905,
+          longitude: 77.322733,
           client_order_id: `ORD,${order.orderId},${sku}`,
         };
 
@@ -5603,10 +5603,10 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
             name: order.customerDetails?.name || "Customer",
             phone: order.customerDetails?.phone || "0000000000",
           },
-          latitude: customerGeo?.latitude || 28.583905,
-          longitude: customerGeo?.longitude || 77.322733,
-          // latitude: 28.583905,
-          // longitude: 77.322733,
+          // latitude: customerGeo?.latitude || 28.583905,
+          // longitude: customerGeo?.longitude || 77.322733,
+          latitude: 28.583905,
+          longitude: 77.322733,
           client_order_id: `ORD,${order.orderId},${sku}`,
         };
         borzoPointsUsed = [pickupPoint, dropPoint];
@@ -6640,5 +6640,57 @@ async function checkSLAViolationOnPackingForDealer(orderId, delaerId, packedAt, 
   } catch (error) {
     logger.error("Error checking SLA violation on packing:", error);
     return { hasViolation: false, violation: null, error: error.message };
+  }
+}
+
+exports.testGeoCode=async (req, res) => {
+  try {
+    const orderId = req.params.orderId;
+    const order = await Order.findById(orderId);
+
+    if (!order) return res.status(404).json({ error: "Order not found" });
+
+    const customerAddressString =
+      order.customerDetails?.address ||
+      buildAddressString({
+        building_no: order.customerDetails?.building_no,
+        street: order.customerDetails?.street,
+        area: order.customerDetails?.area,
+        city: order.customerDetails?.city,
+        state: order.customerDetails?.state,
+        pincode: order.customerDetails?.pincode,
+        country: order.customerDetails?.country || "India",
+      });
+
+    const customerGeo = await geocodeAddress(customerAddressString);
+
+   let pickupDealerId = order.dealerMapping[0].dealerId || null;
+        const dealerInfo = pickupDealerId ? await fetchDealerInfo(pickupDealerId, authHeader) : null;
+        console.log("[BORZO] Dealer info:", dealerInfo);
+        const dealerAddressString =
+          dealerInfo?.address?.full ||
+          buildAddressString({
+            building_no: dealerInfo?.address?.building_no,
+            street: dealerInfo?.address?.street,
+            area: dealerInfo?.address?.area,
+            city: dealerInfo?.address?.city,
+            state: dealerInfo?.address?.state,
+            pincode: dealerInfo?.address?.pincode,
+            country: dealerInfo?.address?.country || "India",
+          }) ||
+          dealerInfo?.business_address ||
+          dealerInfo?.registered_address ||
+          "Pickup Address";
+        const dealerGeo = await geocodeAddress(dealerAddressString);
+
+    return res.json({
+      success: true,
+      addressUsed: customerAddressString,
+      customerGeo: customerGeo,
+      dealerGeo: dealerGeo
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 }
