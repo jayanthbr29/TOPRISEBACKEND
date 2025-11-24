@@ -8,7 +8,7 @@ const logger = require("/packages/utils/logger");
 const MONGO_URI =
   "mongodb+srv://techdev:dLLlFqu0Wx103dzp@toprisedev.xoptvj9.mongodb.net/?retryWrites=true&w=majority&appName=toprisedev";
 const DEFAULT_EXPIRY_MIN = 60 * 24; // 24 h if stock_expiry_rule not set
-
+ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 /* ───────────────────────────── helpers ──────────────────────────── */
 const minsAgo = (m) => Date.now() - m * 60_000;
 
@@ -70,6 +70,8 @@ function cleanAndComputeOOS(p, nowMs) {
 
 /* ───────────────────────── scheduled task ───────────────────────── */
 async function sweep() {
+ 
+
   const started = Date.now();
   logger.info("🔄 Stock-sweeper tick…");
 
