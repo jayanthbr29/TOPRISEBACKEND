@@ -442,6 +442,8 @@ exports.createOrder = async (req, res) => {
       created_at: new Date(),
       payment_status: "Paid",
     })
+    await payment.save();
+    // console.log("payment",payment);
 
     // Log order creation audit
     // await logOrderAction({
