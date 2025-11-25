@@ -140,7 +140,7 @@ exports.updateModel = async (req, res) => {
       model_code,
       brand_ref,
       updated_by,
-      // status,
+      status,
       updated_at: new Date(),
     };
 
@@ -152,6 +152,9 @@ exports.updateModel = async (req, res) => {
         "models"
       );
       updateData.model_image = uploaded.Location;
+    }
+    if(status === "Inactive"){
+      await Product.updateMany({ model_ref: id }, { live_status: "Rejected" });
     }
 
     const updatedModel = await Model.findByIdAndUpdate(modelId, updateData, {
@@ -380,10 +383,16 @@ exports.bulkUploadModels = async (req, res) => {
 exports.activateOrDeactivateModel = async (req, res) => {
   try {
     const {id} = req.params;
-    const {  status } = req.body;
+    // const {  status } = req.body;
     const model = await Model.findById(id);
     if (!model) {
       return sendError(res, "Model not found", 404);
+    }
+    let status;
+    if (model.status === "Inactive") {
+      status = "Active";
+    } else {
+      status = "Inactive";
     }
     model.status = status;
     await model.save();

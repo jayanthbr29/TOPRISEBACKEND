@@ -175,12 +175,16 @@ exports.updateBrand = async (req, res) => {
     if (!existingBrand) {
       return sendError(res, "Brand not found", 404);
     }
+    
+    if(status === 'inactive') {
+      await Product.updateMany({ brand: id }, { live_status: 'Rejected' });
+    } 
 
     const updateData = {
       brand_name,
       brand_code,
       brand_description,
-      // status,
+      status,
       updated_by,
       preview_video,
       updated_at: new Date(),
@@ -528,10 +532,16 @@ exports.getBrandCount = async (req, res) => {
 exports.activateOrDeactivateBrand = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    // const { status } = req.body;
     const brand = await Brand.findById(id);
     if (!brand) {
       return sendError(res, "Brand not found", 404);
+    }
+    let status ;
+    if(brand.status === 'active') {
+      status = 'inactive';
+    }else{
+      status = 'active';
     }
     brand.status = status;
     const updatedBrand = await brand.save();
