@@ -31,6 +31,14 @@ const updateCartItemsPrice = async (items, token) => {
             logger.error(`❌ Product not found for product: ${item.productId}`);
             return null;
         }
+        if (product.data.data.live_status == "Rejected") {
+            logger.error(`❌ Product no longer available: ${item.productId}`);
+            return null;
+        }
+        // if (product.data.data.out_of_stock) {
+        //     logger.error(`❌ Product out of stock: ${item.productId}`);
+        //     return null;
+        // }
         const productData = product.data.data;
         item.product_image = productData.images.length > 0 ? productData.images : ["https://firebasestorage.googleapis.com/v0/b/lmseducationplaform.appspot.com/o/Media%201.svg?alt=media&token=454fba64-184a-4612-a5df-e473f964daa1"];
         item.product_name = productData.product_name;
@@ -248,6 +256,10 @@ exports.moveItemToCart = async (req, res) => {
             sendError(res, "Product not found", 404);
         }
         const productData = product.data.data;
+        if (product.data.data.out_of_stock) {
+            logger.error(`❌ Product out of stock: ${productId}`);
+            sendError(res, "Product out of stock", 404);
+        }
 
         const quantity = 1;
 

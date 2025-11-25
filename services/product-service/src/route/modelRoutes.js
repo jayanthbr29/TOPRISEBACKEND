@@ -45,4 +45,11 @@ router.post(
   modelController.bulkUploadModels
 );
 
+router.patch(
+  "/active/deactive/model/:id",
+  authenticate,
+  authorizeRoles("Super-admin", "Fulfillment-Admin"),
+  modelController.activateOrDeactivateModel
+);
+
 module.exports = router;

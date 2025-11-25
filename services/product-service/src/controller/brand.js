@@ -10,6 +10,7 @@ const stream = require("stream");
 const path = require("path");
 const unzipper = require("unzipper");
 const Type = require("../models/type");
+const Product = require("../models/productModel");
 
 // ✅ CREATE BRAND
 exports.createBrand = async (req, res) => {
@@ -63,7 +64,7 @@ exports.createBrand = async (req, res) => {
       updated_by,
       brand_logo,
       preview_video,
-      status,
+      // status,
     });
 
     // await redisClient.del("brands:all");
@@ -106,7 +107,7 @@ exports.createBrand = async (req, res) => {
 exports.getAllBrands = async (req, res) => {
   try {
     const cacheKey = "brands:all";
-    const {featured} = req.query
+    const {featured,status} = req.query
     // const cached = await redisClient.get(cacheKey);
     // if (cached) {
     //   logger.info("🔁 Served brands from cache");
@@ -118,6 +119,9 @@ exports.getAllBrands = async (req, res) => {
     } else if (featured === "false") {
       featuredFilter = { featured_brand: false };
     }
+    if (status ) {
+      featuredFilter = { ...featuredFilter, status: status };
+    } 
     const brands = await Brand.find(featuredFilter).populate("type").sort({ created_at: -1 });
     // await redisClient.set(cacheKey, JSON.stringify(brands), "EX", 3600);
     logger.info("✅ Fetched all brands");
@@ -176,7 +180,7 @@ exports.updateBrand = async (req, res) => {
       brand_name,
       brand_code,
       brand_description,
-      status,
+      // status,
       updated_by,
       preview_video,
       updated_at: new Date(),
@@ -517,6 +521,27 @@ exports.getBrandCount = async (req, res) => {
   } catch (error) {
     logger.error("❌ Get brand count failed:", error);
     sendError(res, "Failed to get brand count", 500);
+  }
+};
+
+
+exports.activateOrDeactivateBrand = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const brand = await Brand.findById(id);
+    if (!brand) {
+      return sendError(res, "Brand not found", 404);
+    }
+    brand.status = status;
+    const updatedBrand = await brand.save();
+    if(status === 'inactive') {
+      await Product.updateMany({ brand: id }, { live_status: 'Rejected' });
+    } 
+    sendSuccess(res, updatedBrand, "Brand status updated successfully");
+  } catch (error) {
+    logger.error("❌ Update brand status failed:", error);
+    sendError(res, "Failed to update brand status", 500);
   }
 };
 

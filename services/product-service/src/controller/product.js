@@ -18,7 +18,7 @@ const mongoose = require("mongoose");
 const Category = require("../models/category");
 const SubCategory = require("../models/subCategory");
 const { Parser } = require("json2csv");
-const Year= require("../models/year");
+const Year = require("../models/year");
 
 const ProductBulkSession = require("../models/productBulkSessionModel"); // adjust as needed
 const {
@@ -258,9 +258,10 @@ exports.bulkUploadProducts = async (req, res) => {
 
   // Determine if approval is required based on user role
   const requiresApproval = userRole !== "Super-admin";
-  const initialStatus = requiresApproval ? "Pending" : "Approved";
-  const initialQcStatus = requiresApproval ? "Pending" : "Approved";
-
+  // const initialStatus = requiresApproval ? "Rejected" : "Approved";
+  // const initialQcStatus = requiresApproval ? "Pending" : "Approved";
+  const initialStatus = "Rejected";
+  const initialQcStatus = "Pending";
   logger.info(`🔐 Approval required: ${requiresApproval} (User role: ${userRole})`);
 
   /* ─────────────────────  1  Input Files  ───────────────────── */
@@ -407,26 +408,26 @@ exports.bulkUploadProducts = async (req, res) => {
       subcategoryMap.set(normalizeName(key), s._id);
     });
     /* ────────────── 5.1  Build Year Map ────────────── */
-const uniqYears = [
-  ...new Set(
-    rows
-      .flatMap((r) => String(r.year_range || "")
-        .split(",")
-        .map((x) => normalizeName(x))
-        .filter(Boolean)
-      )
-  ),
-];
+    const uniqYears = [
+      ...new Set(
+        rows
+          .flatMap((r) => String(r.year_range || "")
+            .split(",")
+            .map((x) => normalizeName(x))
+            .filter(Boolean)
+          )
+      ),
+    ];
 
-const yearDocs = await Year.find({
-  year_name: { $in: uniqYears }
-});
+    const yearDocs = await Year.find({
+      year_name: { $in: uniqYears }
+    });
 
-const yearMap = new Map(
-  yearDocs.map((y) => [normalizeName(y.year_name), y._id])
-);
+    const yearMap = new Map(
+      yearDocs.map((y) => [normalizeName(y.year_name), y._id])
+    );
 
-logger.info(`📆 Loaded ${yearDocs.length} Year records`);
+    logger.info(`📆 Loaded ${yearDocs.length} Year records`);
 
     /* ──────────────  6  Transform Rows → Docs  ────────────── */
     const docs = [];
@@ -536,29 +537,29 @@ logger.info(`📆 Loaded ${yearDocs.length} Year records`);
       const variants = row.variants
         ? row.variants.split(",").map((v) => ({ name: safeTrim(v) }))
         : [];
-       /* 6.6 Year Range Mapping */
-let yearIds = [];
+      /* 6.6 Year Range Mapping */
+      let yearIds = [];
 
-if (row.year_range) {
-  const years = String(row.year_range)
-    .split(",")
-    .map((y) => normalizeName(y))
-    .filter(Boolean);
+      if (row.year_range) {
+        const years = String(row.year_range)
+          .split(",")
+          .map((y) => normalizeName(y))
+          .filter(Boolean);
 
-  yearIds = years
-    .map((y) => yearMap.get(y))
-    .filter(Boolean);   // remove invalid ones
-}
+        yearIds = years
+          .map((y) => yearMap.get(y))
+          .filter(Boolean);   // remove invalid ones
+      }
 
-if (!yearIds.length) {
-  errors.push({
-    row: i + 2,
-    error: `Unknown year_range «${row.year_range}»`,
-    rowData: row
-  });
-  failed++;
-  continue;
-}
+      if (!yearIds.length) {
+        errors.push({
+          row: i + 2,
+          error: `Unknown year_range «${row.year_range}»`,
+          rowData: row
+        });
+        failed++;
+        continue;
+      }
 
       /* 6.5  Build doc */
       docs.push({
@@ -571,7 +572,7 @@ if (!yearIds.length) {
         brand: brandId, //    (see brand lookup below)
         product_type: row.product_type,
         variant: variantIds,
-        year_range: yearIds,  
+        year_range: yearIds,
         created_by: userId,
         created_by_role: userRole,
         model: modelId,
@@ -584,7 +585,7 @@ if (!yearIds.length) {
       });
       sessionLogs.push({ message: requiresApproval ? "Pending Approval" : "Created", productId: null });
     }
-   
+
     /* ──────────────  7  Bulk Insert  ────────────── */
     let inserted = 0;
     if (docs.length) {
@@ -836,8 +837,7 @@ exports.bulkEditProducts = async (req, res) => {
       userId = decoded?.id || decoded?._id || null;
       userRole = decoded?.role || null;
       logger.info(
-        `👤  Decoded user ${userId || "UNKNOWN"} with role ${
-          userRole || "UNKNOWN"
+        `👤  Decoded user ${userId || "UNKNOWN"} with role ${userRole || "UNKNOWN"
         }`
       );
     }
@@ -992,16 +992,16 @@ exports.bulkEditProducts = async (req, res) => {
           : [],
         uniqCats.length
           ? Category.find({
-              $or: [{ name: { $in: uniqCats } }, { category_name: { $in: uniqCats } }],
-            })
+            $or: [{ name: { $in: uniqCats } }, { category_name: { $in: uniqCats } }],
+          })
           : [],
         uniqSubs.length
           ? SubCategory.find({
-              $or: [
-                { name: { $in: uniqSubs } },
-                { subcategory_name: { $in: uniqSubs } },
-              ],
-            })
+            $or: [
+              { name: { $in: uniqSubs } },
+              { subcategory_name: { $in: uniqSubs } },
+            ],
+          })
           : [],
         uniqYears.length
           ? Year.find({ year_name: { $in: uniqYears } })
@@ -1387,7 +1387,7 @@ exports.bulkAssignDealersProducts = async (req, res) => {
         let dealer;
         let delalerResp;
         try {
-           delalerResp = await axios.get(
+          delalerResp = await axios.get(
             `http://user-service:5001/api/users/dealer/getDealer/bydelarId/${dealerId}`
           );
           // console.log(" delalerResp:", delalerResp);
@@ -1396,11 +1396,11 @@ exports.bulkAssignDealersProducts = async (req, res) => {
           console.log(e);
           throw new Error(`Dealer with ID ${dealerId} not found in Dealer Service`);
         }
-        
-        if(dealer.is_active === false){
+
+        if (dealer.is_active === false) {
           throw new Error(`Dealer with ID ${dealerId} is not active in Dealer Service`);
-        } 
-    
+        }
+
         const allowedCategories = dealer?.categories_allowed || [];
 
         /* -------------------------------
@@ -2169,8 +2169,8 @@ exports.deactivateProductsSingle = async (req, res) => {
     const product = await Product.findOneAndUpdate(
       filter,
       {
-        live_status: "Pending",
-        out_of_stock: true,
+        live_status: "Rejected",
+        // out_of_stock: true,
         updated_at: new Date(),
         $push: {
           change_logs: {
@@ -2258,8 +2258,8 @@ exports.deactivateProductsBulk = async (req, res) => {
   try {
     /* 3️⃣  Update products in-place ---------------------------------- */
     const { matchedCount, modifiedCount } = await Product.updateMany(filter, {
-      live_status: "Pending",
-      out_of_stock: true,
+      live_status: "Rejected",
+      // out_of_stock: true,
       updated_at: new Date(),
       $push: {
         change_logs: {
@@ -2874,19 +2874,19 @@ exports.approveProduct = async (req, res) => {
     if (!product) return sendError(res, "Product not found", 404);
 
     const oldVals = {
-      live_status: product.live_status,
+      // live_status: product.live_status,
       Qc_status: product.Qc_status,
     };
 
-    product.live_status = "Approved"; // or "Live" if that's your rule
+    // product.live_status = "Approved"; // or "Live" if that's your rule
     product.Qc_status = "Approved";
 
     buildChangeLog({
       product,
-      changedFields: ["live_status", "Qc_status"],
+      changedFields: ["Qc_status"],
       oldVals,
       newVals: {
-        live_status: product.live_status,
+        // live_status: product.live_status,
         Qc_status: product.Qc_status,
       },
       userId,
@@ -3108,20 +3108,20 @@ exports.decrementDealerStock = async (req, res) => {
     //   { new: true } // return the full updated product
     // ).lean();
 
-    const product = await  Product.findById(id);
+    const product = await Product.findById(id);
 
     product.available_dealers = product.available_dealers.map((dealer) => {
       if (dealer.dealers_Ref.toString() === dealerId) {
         return {
           ...dealer,
           quantity_per_dealer: Math.max(dealer.quantity_per_dealer - qty, 0),
-          inStock: (dealer.quantity_per_dealer-qty) > 0,
+          inStock: (dealer.quantity_per_dealer - qty) > 0,
           last_stock_updated: Date.now(),
         };
       }
       return dealer;
     });
-    product.out_of_stock=product.available_dealers.every((d) => !d.inStock)
+    product.out_of_stock = product.available_dealers.every((d) => !d.inStock)
     const updatedProduct = await product.save();
 
     if (!product) {
@@ -3365,19 +3365,19 @@ exports.bulkapproveProduct = async (req, res) => {
         }
 
         const oldVals = {
-          live_status: product.live_status,
+          // live_status: product.live_status,
           Qc_status: product.Qc_status,
         };
 
-        product.live_status = "Approved"; // or "Live" if that's your rule
+        // product.live_status = "Approved"; // or "Live" if that's your rule
         product.Qc_status = "Approved";
 
         buildChangeLog({
           product,
-          changedFields: ["live_status", "Qc_status"],
+          changedFields: ["Qc_status"],
           oldVals,
           newVals: {
-            live_status: product.live_status,
+            // live_status: product.live_status,
             Qc_status: product.Qc_status,
           },
           userId,
@@ -3479,7 +3479,7 @@ exports.bulkrejectProduct = async (req, res) => {
     let result = [];
     for (const id of productIds) {
       try {
-        const product = await Product.findById(new mongoose.Types.ObjectId(id));       
+        const product = await Product.findById(new mongoose.Types.ObjectId(id));
         if (!product) {
           result.push({
             productId: id,
@@ -3615,7 +3615,7 @@ exports.updateProductDealerStock = async (req, res) => {
       }
       return dealer;
     });
-    product.out_of_stock=product.available_dealers.some(dealer => !dealer.inStock);
+    product.out_of_stock = product.available_dealers.some(dealer => !dealer.inStock);
     const updatedProduct = await product.save();
 
     return res.status(200).json({
@@ -3737,11 +3737,11 @@ exports.getProductsByFiltersWithPagination = async (req, res) => {
      */
     const total = await Product.countDocuments(filter);
     let sorting;
-    if(sort_by=="A-Z"){
+    if (sort_by == "A-Z") {
       sorting = { product_name: 1 };
-    }else if(sort_by=="Z-A"){
+    } else if (sort_by == "Z-A") {
       sorting = { product_name: -1 };
-    }else{
+    } else {
       sorting = { created_at: -1 };
     }
 
@@ -4446,7 +4446,7 @@ exports.bulkUploadProductsByDealer = async (req, res) => {
         created_by: userId,
         model: modelId,
         qc_status: "Pending",
-        live_status: "Pending",
+        live_status: "Rejected",
         addedByDealer: true,
         addedByDealerId: req.body.dealerId,
         available_dealers: [
@@ -4781,7 +4781,12 @@ exports.removeDealerAssignment = async (req, res) => {
         message: "Dealer not found for this product",
       });
     }
-    product.out_of_stock = product.available_dealers.some(dealer => !dealer.inStock);
+    if (product.available_dealers.length > 0) {
+      product.out_of_stock = product.available_dealers.some(dealer => !dealer.inStock);
+
+    } else {
+      product.out_of_stock = true;
+    }
 
     // Save the product
     const updatedProduct = await product.save();
@@ -5250,20 +5255,20 @@ exports.approveSingleProduct = async (req, res) => {
 
     // Update product status
     const oldVals = {
-      live_status: product.live_status,
+      // live_status: product.live_status,
       Qc_status: product.Qc_status,
     };
 
-    product.live_status = "Approved";
+    // product.live_status = "Approved";
     product.Qc_status = "Approved";
 
     // Add approval log
     buildChangeLog({
       product,
-      changedFields: ["live_status", "Qc_status"],
+      changedFields: [ "Qc_status"],
       oldVals,
       newVals: {
-        live_status: product.live_status,
+        // live_status: product.live_status,
         Qc_status: product.Qc_status,
       },
       userId: userId || "system",
@@ -5456,20 +5461,20 @@ exports.bulkApproveProducts = async (req, res) => {
 
         // Update product status
         const oldVals = {
-          live_status: product.live_status,
+          // live_status: product.live_status,
           Qc_status: product.Qc_status,
         };
 
-        product.live_status = "Approved";
+        // product.live_status = "Approved";
         product.Qc_status = "Approved";
 
         // Add approval log
         buildChangeLog({
           product,
-          changedFields: ["live_status", "Qc_status"],
+          changedFields: [ "Qc_status"],
           oldVals,
           newVals: {
-            live_status: product.live_status,
+            // live_status: product.live_status,
             Qc_status: product.Qc_status,
           },
           userId: userId || "system",
@@ -6524,7 +6529,7 @@ async function detectSearchIntent(query, limit) {
       { manufacturer_part_name: { $regex: query, $options: 'i' } },
       { manufacturer_part_name: query } // Exact match for manufacturer part
     ],
-    live_status: { $in: ['Live', 'Approved', 'Created', 'Pending'] }
+    live_status: { $in: [ 'Approved', ] }
   })
     .populate('brand', 'brand_name brand_code brand_logo')
     .populate('category', 'category_name category_code')
@@ -7220,7 +7225,7 @@ exports.getProductBySku = async (req, res) => {
 
     if (!product) {
       return sendError(res, "Product not found", 404);
-    }  
+    }
     logger.info(`✅ Product fetched by SKU: ${sku}`);
     sendSuccess(res, product, "Product details fetched successfully");
 
@@ -7229,3 +7234,37 @@ exports.getProductBySku = async (req, res) => {
     sendError(res, "Failed to fetch product", 500);
   }
 }
+
+
+exports.updateLiveStatus = async (req, res) => {
+  try {
+    const { ids, status } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return sendError(res, "ids must be a non-empty array", 400);
+    }
+
+    const result = [];
+    for (const id of ids) {
+      try {
+        const product = await Product.findById(id);
+        if (!product) {
+          return sendError(res, "Product not found", 404);
+        }
+
+        product.live_status = status;
+        await product.save();
+        result.push({ id, message: "Live status updated successfully", status: status });
+
+      } catch (err) {
+        logger.error(`❌ Update live status error: ${err.message}`);
+        result.push({ id, message: err });
+      }
+
+    }
+    return sendSuccess(res, result, "Products updated successfully");
+  } catch (err) {
+    logger.error(`❌ Update live status error: ${err.message}`);
+    return sendError(res, err);
+  }
+};

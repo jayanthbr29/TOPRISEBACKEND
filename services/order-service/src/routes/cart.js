@@ -29,12 +29,12 @@ router.post(
   cartController.removeProduct
 );
 
-router.get(
-  "/getCart/:userId",
-  authenticate,
-  authorizeRoles("Super-admin", "Inventory-Admin", "User"),
-  cartController.getCart
-);
+// router.get(
+//   "/getCart/:userId",
+//   authenticate,
+//   authorizeRoles("Super-admin", "Inventory-Admin", "User"),
+//   cartController.getCart
+// );
 router.get(
   "/getCart/:userId",
   authenticate,

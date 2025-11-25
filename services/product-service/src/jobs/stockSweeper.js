@@ -88,6 +88,8 @@ async function sweep() {
     .lean()
     .cursor();
 
+    // console.log("cursor", cursor)
+
   let checked = 0,
     updated = 0,
     logs = [];

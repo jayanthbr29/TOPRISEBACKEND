@@ -209,9 +209,13 @@ const productSchema = new mongoose.Schema({
   },
   live_status: {
     type: String,
-    enum: ["Created", "Pending", "Rejected", "Live", "Approved"],
-    default: "Pending",
+    enum: ["Rejected",  "Approved"],
+    default: "Rejected",
   }, //edited by admin
+  // live_status: {
+  //   type:Boolean,
+  //   default:false
+  // },
   created_at: {
     type: Date,
     default: Date.now,
