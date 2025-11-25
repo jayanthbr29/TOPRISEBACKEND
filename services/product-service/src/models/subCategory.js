@@ -13,7 +13,7 @@ const SubcategorySchema = new mongoose.Schema({
   subcategory_status: {
     type: String,
     enum: ["Active", "Inactive", "Pending", "Created", "Rejected"],
-    default: "Created",
+    default: "Inactive",
     validate: {
       validator: function (value) {
         return ["Active", "Inactive", "Pending", "Created", "Rejected"].includes(
