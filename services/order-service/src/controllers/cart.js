@@ -66,6 +66,14 @@ const updateCartItemsPrice = async (items, token) => {
         logger.error(`❌ Product not found for product: ${item.productId}`);
         return null;
       }
+      if(product.data.data.live_status=="Rejected"){
+        logger.error(`❌ Product no longer available: ${item.productId}`);
+        return null;
+      }
+      if(product.data.data.out_of_stock){
+        logger.error(`❌ Product out of stock: ${item.productId}`);
+        return null;
+      }
       const productData = product.data.data;
       item.product_image =
         productData.images.length > 0
@@ -336,6 +344,7 @@ exports.getCart = async (req, res) => {
     // })
 
     const cart = await Cart.findOne({ userId });
+
     if (!cart) {
       logger.error(`❌ Cart not found for user: ${userId}`);
       return res.status(404).json({ message: "Cart not found" });

@@ -11,7 +11,7 @@ const XLSX = require("xlsx");
 const stream = require("stream");
 const path = require("path");
 const unzipper = require("unzipper");
-
+const  Product = require("../models/productModel");
 
 // ✅ Create Model
 exports.createModel = async (req, res) => {
@@ -64,7 +64,7 @@ exports.createModel = async (req, res) => {
       model_image,
       created_by,
       updated_by,
-      status,
+      // status,
     });
 
     const userData = await axios.get(`http://user-service:5001/api/users/`, {
@@ -140,7 +140,7 @@ exports.updateModel = async (req, res) => {
       model_code,
       brand_ref,
       updated_by,
-      status,
+      // status,
       updated_at: new Date(),
     };
 
@@ -374,5 +374,25 @@ exports.bulkUploadModels = async (req, res) => {
   } catch (err) {
     console.error("Bulk upload models error:", err);
     return sendError(res, err.message, 500);
+  }
+};
+
+exports.activateOrDeactivateModel = async (req, res) => {
+  try {
+    const {id} = req.params;
+    const {  status } = req.body;
+    const model = await Model.findById(id);
+    if (!model) {
+      return sendError(res, "Model not found", 404);
+    }
+    model.status = status;
+    await model.save();
+    if(status === "Inactive"){
+      await Product.updateMany({ model_ref: id }, { live_status: "Rejected" });
+    }
+    return sendSuccess(res, model, "Model status updated successfully");
+  } catch (err) {
+    logger.error(`❌ Update model status error: ${err.message}`);
+    return sendError(res, err);
   }
 };

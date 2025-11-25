@@ -69,4 +69,10 @@ router.post(
   brandController.bulkUploadBrands
 );
 
+router.patch(
+  "/active/deactive/brand/:id",
+  authenticate,
+  brandController.activateOrDeactivateBrand
+);
+
 module.exports = router;

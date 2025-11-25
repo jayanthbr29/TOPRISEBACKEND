@@ -38,7 +38,7 @@ const modelSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ["Active", "Inactive", "Pending", "Created", "Rejected"],
-    default: "Created",
+    default: "Inactive",
     validate: {
       validator: function (value) {
         console.log(value);

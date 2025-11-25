@@ -5503,7 +5503,12 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
     const { orderId, dealerId, total_weight_kg, sku, forcePacking = false } = req.body;
     if (!forcePacking) {
 
-      const picklist = await PickList.findOne({ linkedOrderId: orderId });
+      const picklist = await PickList.findOne({
+        linkedOrderId: orderId,
+        skuList: {
+          $elemMatch: { sku: sku }
+        }
+      });
       if (!picklist) {
         return res.status(404).json({ error: "Picklist not found" });
       }
@@ -5512,6 +5517,27 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
       if (status.scanStatus !== "Completed") {
         return res.status(400).json({ error: "Item Inspection not completed" });
       }
+
+    } else {
+
+      const picklist = await PickList.findOne({
+        linkedOrderId: orderId,
+        skuList: {
+          $elemMatch: { sku: sku }
+        }
+      });
+      if (!picklist) {
+        return res.status(404).json({ error: "Picklist not found" });
+      }
+      // update picklist status
+      picklist.skuList = picklist.skuList.map((item) => {
+        if (item.sku === sku) {
+          item.status = "Completed";
+        }
+        return item;
+      });
+      picklist.scanStatus = picklist.skuList.every((item) => item.status === "Completed") ? "Completed" : "In Progress";
+      await picklist.save();
 
     }
 
