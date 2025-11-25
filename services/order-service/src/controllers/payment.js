@@ -451,7 +451,7 @@ exports.getPaymentDetails = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
     const { payment_status, payment_method, startDate, endDate } = req.query;
-
+   console.log("query", req.query)
     // Build filter
     const filter = {};
     if (payment_status) filter.payment_status = payment_status;
