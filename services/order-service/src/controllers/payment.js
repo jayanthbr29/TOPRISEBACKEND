@@ -362,7 +362,7 @@ exports.verifyPayment = async (req, res) => {
       return res.status(200).json({ error: "Payment not found" });
     }
     // Update payment details
-    payment.status = "failed";
+    payment.status = "Failed";
     await payment.save();
   } else if (req.body.event === 'refund.processed') {
     console.log("inside refund", req.body.payload.refund)
@@ -454,13 +454,14 @@ exports.getPaymentDetails = async (req, res) => {
    console.log("query", req.query)
     // Build filter
     const filter = {};
-    if (payment_status) filter.payment_status = payment_status;
-    if (payment_method) filter.payment_method = payment_method;
+    if (payment_status!=="all") filter.payment_status = payment_status;
+    if (payment_method!=="all") filter.payment_method = payment_method;
     if (startDate || endDate) {
       filter.created_at = {};
       if (startDate) filter.created_at.$gte = new Date(startDate);
       if (endDate) filter.created_at.$lte = new Date(endDate);
     }
+    console.log("filter", filter)
 
     const totalPayments = await Payment.countDocuments(filter);
 
