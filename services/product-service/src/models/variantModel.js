@@ -54,7 +54,7 @@ const variantSchema = new mongoose.Schema({
   variant_status: {
     type: String,
     enum: ["active", "inactive", "pending", "created", "rejected"],
-    default: "active",
+    default: "inactive",
   },
   variant_Description: {
     type: String,

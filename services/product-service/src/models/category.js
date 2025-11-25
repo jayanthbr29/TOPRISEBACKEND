@@ -30,7 +30,7 @@ const CategorySchema = new mongoose.Schema({
   category_Status: {
     type: String,
     enum: ["Active", "Inactive", "Pending", "Created", "Rejected"],
-    default: "Active",
+    default: "Inactive",
     validate: {
       validator: function (value) {
         return ["Active", "Inactive", "Pending", "Created", "Rejected"].includes(
