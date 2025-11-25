@@ -19,7 +19,7 @@ const ReturnModel = require("../models/return");
 const { generatePdfAndUploadInvoice } = require("../../../../packages/utils/generateInvoice");
 exports.createPayment = async (req, res) => {
   try {
-    const { userId, amount, orderSource, orderType, customerDetails } =
+    const { userId, amount, orderSource, orderType, customerDetails ,type_of_delivery,delivery_type} =
       req.body;
     if (!userId || !amount) {
       logger.error("User ID and amount are required");
@@ -38,6 +38,8 @@ exports.createPayment = async (req, res) => {
         orderSource: orderSource,
         orderType: orderType,
         customerDetails: JSON.stringify(customerDetails),
+        type_of_delivery:type_of_delivery,
+        delivery_type:delivery_type
         //   cart_id:cart_id
       },
     };
@@ -179,6 +181,8 @@ exports.verifyPayment = async (req, res) => {
       orderId,
       orderSource: req.body.payload.payment.entity.notes.orderSource,
       orderType: req.body.payload.payment.entity.notes.orderType,
+      type_of_delivery: req.body.payload.payment.entity.notes.type_of_delivery,
+      delivery_type: req.body.payload.payment.entity.notes.delivery_type,
       order_Amount: req.body.payload.payment.entity.amount / 100,
       paymentType: "Prepaid",
       orderDate: new Date(),
