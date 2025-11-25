@@ -154,8 +154,8 @@ exports.verifyPayment = async (req, res) => {
 
     // Update payment details
     payment.payment_id = req.body.payload.payment.entity.id;
-    payment.payment_status = "paid";
-    payment.payment_method = req.body.payload.payment.entity.method;
+    payment.payment_status = "Paid";
+    payment.razorpay_payment_method = req.body.payload.payment.entity.method;
     payment.acquirer_data = req.body.payload.payment.entity.acquirer_data;
     await payment.save();
     const cart = await Cart.findOne({
