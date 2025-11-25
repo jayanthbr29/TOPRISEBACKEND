@@ -32,7 +32,7 @@ const USER_SERVICE_URL =
 const DealerSLA = require("../models/dealerSla");
 const SlaTypes = require("../models/slaType");
 const SlaViolation = require("../models/slaViolation");
-
+const Payment =  require("../models/paymentModel");
 // Geocode an address string to { latitude, longitude }
 async function geocodeAddress(address) {
   try {
@@ -433,7 +433,15 @@ exports.createOrder = async (req, res) => {
 
     newOrder.invoiceNumber = invoiceNumber;
     newOrder.invoiceUrl = invoiceResult.Location;
-    await newOrder.save();
+    const savedOrder=await newOrder.save();
+    const payment = new Payment({
+      order_id: savedOrder._id,
+      payment_method: "COD",
+      razorpay_order_id: null,
+      amount:savedOrder.order_Amount,
+      created_at: new Date(),
+      payment_status: "Paid",
+    })
 
     // Log order creation audit
     // await logOrderAction({
