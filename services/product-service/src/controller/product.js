@@ -302,7 +302,7 @@ exports.bulkUploadProducts = async (req, res) => {
     const zipStream = stream.Readable.from(zipBuf).pipe(
       unzipper.Parse({ forceStream: true })
     );
-
+    let sku;
     for await (const entry of zipStream) {
       totalZip++;
       if (entry.type === "Directory") {
@@ -476,9 +476,28 @@ exports.bulkUploadProducts = async (req, res) => {
       }
 
       /* 6.2  Generate SKU based on category */
-      let sku;
+
       try {
-        sku = await genSKU(categoryId);
+        if (!sku) {
+          sku = await genSKU(categoryId);
+        } else {
+          const category = await Category.findById(categoryId).populate('type');
+          if (!category) {
+            return sendError(res, "Category not found", 404);
+          }
+          const vehicleType = category.type.type_name.toLowerCase();
+          let vehicleCode = 'T'; // Default to two-wheeler
+
+          if (vehicleType.includes('four') || vehicleType.includes('4') || vehicleType.includes('car') || vehicleType.includes('auto')) {
+            vehicleCode = 'F'; // Four-wheeler
+          }
+          const highestSku = sku;
+          const currentNumber = parseInt(highestSku.substring(4)); // Remove 'TOPX' prefix
+          const nextNumber = currentNumber + 1;
+          sku = `TOP${vehicleCode}${nextNumber}`;
+        }
+
+        console.log("SKU generated:", sku);
         if (seen.has(sku)) {
           errors.push({ row: i + 2, sku, error: "Duplicate SKU", rowData: row });
           sessionLogs.push({ message: "Duplicate SKU", productId: null });
@@ -613,8 +632,8 @@ exports.bulkUploadProducts = async (req, res) => {
               model: productData.model,
               variants: productData.variant,
               productType: productData.product_type,
-              status: requiresApproval ? "Pending" : "Approved",
-              qcStatus: requiresApproval ? "Pending" : "Approved",
+              status:  "Pending" ,
+              qcStatus: "Pending" ,
               images: productData.images?.length || 0,
               createdBy: userId,
               createdByRole: userRole,
@@ -5265,7 +5284,7 @@ exports.approveSingleProduct = async (req, res) => {
     // Add approval log
     buildChangeLog({
       product,
-      changedFields: [ "Qc_status"],
+      changedFields: ["Qc_status"],
       oldVals,
       newVals: {
         // live_status: product.live_status,
@@ -5471,7 +5490,7 @@ exports.bulkApproveProducts = async (req, res) => {
         // Add approval log
         buildChangeLog({
           product,
-          changedFields: [ "Qc_status"],
+          changedFields: ["Qc_status"],
           oldVals,
           newVals: {
             // live_status: product.live_status,
@@ -6529,7 +6548,7 @@ async function detectSearchIntent(query, limit) {
       { manufacturer_part_name: { $regex: query, $options: 'i' } },
       { manufacturer_part_name: query } // Exact match for manufacturer part
     ],
-    live_status: { $in: [ 'Approved', ] }
+    live_status: { $in: ['Approved',] }
   })
     .populate('brand', 'brand_name brand_code brand_logo')
     .populate('category', 'category_name category_code')
