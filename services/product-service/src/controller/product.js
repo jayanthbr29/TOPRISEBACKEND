@@ -2447,6 +2447,46 @@ exports.createProductSingle = async (req, res) => {
       logger.error(`SKU generation error: ${skuError.message}`);
       return sendError(res, "Failed to generate SKU", 500);
     }
+    let yearRangeArray = [];
+
+    if (data.year_range) {
+      if (Array.isArray(data.year_range)) {
+        yearRangeArray = data.year_range; // Already array
+      } else {
+        yearRangeArray = [data.year_range]; // Convert single to array
+      }
+    }
+    for (const yearId of yearRangeArray) {
+      const yearDoc = await Year.findById(yearId);
+      if (!yearDoc) {
+        return sendError(res, `Invalid year ID: ${yearId}`, 400);
+      }
+    }
+    let variantArray = [];
+
+    if (data.variant) {
+      if (Array.isArray(data.variant)) {
+        variantArray = data.variant; // Already array
+      } else {
+        variantArray = [data.variant]; // Convert single to array
+      }
+    }
+    for (const variantId of variantArray) {
+      const variantDoc = await Variant.findById(variantId);
+      if (!variantDoc) {
+        return sendError(res, `Invalid variant ID: ${variantId}`, 400);
+      }
+    }
+    let searchTagsArray = [];
+
+    if (data.search_tags) {
+      if (Array.isArray(data.search_tags)) {
+        searchTagsArray = data.search_tags; // Already array
+      } else {
+        searchTagsArray = [data.search_tags]; // Convert single to array
+      }
+    }
+
 
     // Remove SKU from request data if provided (since we're generating it automatically)
     const { sku_code, ...productDataWithoutSku } = data;
@@ -2455,6 +2495,9 @@ exports.createProductSingle = async (req, res) => {
       ...productDataWithoutSku,
       sku_code: generatedSku,
       images: imageUrls,
+       year_range: yearRangeArray, 
+       variant: variantArray,
+       search_tags: searchTagsArray 
     };
     console.log(productPayload);
 
