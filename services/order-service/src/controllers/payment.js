@@ -459,7 +459,14 @@ exports.getPaymentDetails = async (req, res) => {
     if (startDate || endDate) {
       filter.created_at = {};
       if (startDate) filter.created_at.$gte = new Date(startDate);
-      if (endDate) filter.created_at.$lte = new Date(endDate);
+      if (endDate){ 
+        filter.created_at.$lte = new Date(endDate);
+        //set end date hours to 23:59:59
+        filter.created_at.$lte.setHours(23);
+        filter.created_at.$lte.setMinutes(59);
+        filter.created_at.$lte.setSeconds(59);
+      
+      }
     }
     console.log("filter", filter)
 
