@@ -3752,11 +3752,11 @@ exports.getProductsByFiltersWithPagination = async (req, res) => {
     if (status && status !== "all") {
       if (status.includes(",")) {
         const statusArray = csvToIn(status);
-        statusConditions.push({ live_status: { $in: statusArray } });
-        // statusConditions.push({ Qc_status: { $in: statusArray } });
+        // statusConditions.push({ live_status: { $in: statusArray } });
+        statusConditions.push({ Qc_status: { $in: statusArray } });
       } else {
-        statusConditions.push({ live_status: status });
-        // statusConditions.push({ Qc_status: status });
+        // statusConditions.push({ live_status: status });
+        statusConditions.push({ Qc_status: status });
       }
     } else if (!status) {
       // Default: show Approved / Live
