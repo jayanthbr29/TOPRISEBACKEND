@@ -131,6 +131,10 @@ const ReturnSchema = new mongoose.Schema({
     inspectedBy: String,
     inspectionStartedAt: Date,
     inspectionCompletedAt: Date,
+    isSuperAdminInspected: {
+      type: Boolean,
+      default: false,
+    },
     skuMatch: {
       type: Boolean,
       default: false,
