@@ -2505,7 +2505,7 @@ exports.createProductSingle = async (req, res) => {
          quantity_per_dealer: dealer.quantity_per_dealer,
          inStock:dealer.quantity_per_dealer>0?true:false
        })),
-       out_of_stock: data.available_dealers ?data.available_dealers.some(dealer => dealer.quantity_per_dealer>0 ):false,
+       out_of_stock: data.available_dealers ?data.available_dealers.some(dealer => dealer.quantity_per_dealer>0 )?false:true:true,
     };
     // console.log(productPayload);
 
@@ -2562,7 +2562,7 @@ exports.createProductSingle = async (req, res) => {
 exports.editProductSingle = async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
+    let updateData = req.body;
     const user = req.user?.id || updateData.updated_by || "system";
 
     const existingProduct = await Product.findById(id);
@@ -2610,7 +2610,16 @@ exports.editProductSingle = async (req, res) => {
     if (!updatedFields.length) {
       return sendSuccess(res, existingProduct, "No changes detected");
     }
-
+    if(updateData.available_dealers){
+      updateData.available_dealers=updateData.available_dealers.map((dealer) => ({
+        dealer_id: dealer.dealer_id,
+        quantity_per_dealer: dealer.quantity_per_dealer,
+        inStock:dealer.quantity_per_dealer>0?true:false
+      }));
+    } 
+    if(updateData.out_of_stock){
+      updateData.out_of_stock=updateData.available_dealers.some(dealer => dealer.inStock=== true)?false:true;
+    }
     // Perform update
     const updatedProduct = await Product.findByIdAndUpdate(id, updateData, {
       new: true,
