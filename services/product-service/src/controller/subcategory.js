@@ -115,7 +115,7 @@ exports.getAllSubCategories = async (req, res) => {
       subcategory_statusFilter = { subcategory_status: subcategory_status };
     }
     console.log(subcategory_statusFilter);
-    const subcategories = await Subcategory.find(subcategory_statusFilter).populate("category_ref");
+    const subcategories = await Subcategory.find(subcategory_statusFilter).populate("category_ref").sort({ created_at: -1 }) ;
     // await redisClient.setEx(cacheKey, 300, JSON.stringify(subcategories));
     logger.info("✅ Fetched all subcategories from DB");
     sendSuccess(res, subcategories);
@@ -299,7 +299,8 @@ exports.getLiveSubCategory = async (req, res) => {
   try {
     const subcategories = await Subcategory.find({
       subcategory_status: "Active",
-    });
+    })
+    .sort({ created_at: -1 }) ;
     if (!subcategories || subcategories.length === 0)
       return sendError(res, "No active subcategories found", 404);
 

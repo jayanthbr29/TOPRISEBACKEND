@@ -172,7 +172,7 @@ exports.getAllCategories = async (req, res) => {
       category_StatusFilter = { category_Status: category_Status };
     }
 
-    const categories = await Category.find(category_StatusFilter);
+    const categories = await Category.find(category_StatusFilter).sort({ created_at: -1 }) ;
     // await redisClient.setEx(cacheKey, 300, JSON.stringify(categories));
     logger.info("✅ Fetched all categories from DB");
     sendSuccess(res, categories);
@@ -424,7 +424,7 @@ exports.getLiveCategory = async (req, res) => {
       filter.type = type; // expecting type as an ObjectId string
     }
 
-    const categories = await Category.find(filter).populate("type");
+    const categories = await Category.find(filter).populate("type").sort({ created_at: -1 }) ;
 
     if (!categories || categories.length === 0) {
       return sendError(res, "No live categories found", 404);

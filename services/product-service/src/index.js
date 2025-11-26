@@ -65,6 +65,7 @@ const WHITELIST = [
   "http://193.203.161.146:3000", // your prod IP (if you serve UI there)
   "https://toprise.in", // Production domain
   "https://www.toprise.in", // Production domain with www
+  "http://localhost:3001",
 ];
 app.use(
   cors({

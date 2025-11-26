@@ -69,7 +69,8 @@ app.use(
     origin: [
       "http://localhost:3000",
       "https://toprise.in",
-      "https://www.toprise.in"
+      "https://www.toprise.in",
+      "http://localhost:3001",
     ],
     credentials: true,
     allowedHeaders: "Content-Type,Authorization",
