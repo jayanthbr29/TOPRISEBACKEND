@@ -1777,7 +1777,7 @@ exports.createOrderBorzoInstantUpdated = async (req, res) => {
 exports.startReturnRequestInspection = async (req, res) => {
   try {
     const { returnId } = req.params;
-    const {  inspectedBy } = req.body;
+    const {  inspectedBy ,isSuperAdmin=false} = req.body;
 
     const returnRequest = await Return.findById(returnId);
     if (!returnRequest) {
@@ -1789,6 +1789,7 @@ exports.startReturnRequestInspection = async (req, res) => {
 
     // Update inspection details
     returnRequest.returnStatus = "Inspection_Started";
+    returnRequest,inspection.isSuperAdminInspected= isSuperAdmin
     returnRequest.timestamps.inspectionStartedAt = new Date();
     returnRequest.inspection.inspectedBy = inspectedBy;
     returnRequest.inspection.inspectionStartedAt = new Date();
@@ -1811,7 +1812,7 @@ exports.startReturnRequestInspection = async (req, res) => {
 exports.completeReturnRequestInspection = async (req, res) => {
   try {
     const { returnId } = req.params;
-    const { inspectedBy, condition, remarks,skuMatch,isApproved ,inspectionImages} = req.body;
+    const { inspectedBy,isSuperAdmin=false, condition, remarks,skuMatch,isApproved ,inspectionImages} = req.body;
 
     const returnRequest = await Return.findById(returnId);
     if (!returnRequest) {
@@ -1831,6 +1832,7 @@ exports.completeReturnRequestInspection = async (req, res) => {
     returnRequest.inspection.skuMatch = skuMatch;
     returnRequest.inspection.inspectionImages = inspectionImages || [];
     returnRequest.inspection.isApproved = isApproved;
+    returnRequest.inspection.isSuperAdminInspected= isSuperAdmin;
     returnRequest.inspection.status = "Completed";
 
     await returnRequest.save();
