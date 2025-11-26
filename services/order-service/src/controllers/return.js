@@ -1789,7 +1789,7 @@ exports.startReturnRequestInspection = async (req, res) => {
 
     // Update inspection details
     returnRequest.returnStatus = "Inspection_Started";
-    returnRequest,inspection.isSuperAdminInspected= isSuperAdmin
+    returnRequest.inspection.isSuperAdminInspected= isSuperAdmin
     returnRequest.timestamps.inspectionStartedAt = new Date();
     returnRequest.inspection.inspectedBy = inspectedBy;
     returnRequest.inspection.inspectionStartedAt = new Date();
