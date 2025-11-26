@@ -170,7 +170,7 @@ const productSchema = new mongoose.Schema({
   }, // edited by admin
   return_policy: {
     type: String,
-    required: true,
+    required: false,
   }, // edited by admin
   available_dealers: [
     {
