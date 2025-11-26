@@ -2411,6 +2411,7 @@ exports.createProductSingle = async (req, res) => {
         imageUrls.push(uploaded.Location);
       }
     }
+    console.log("data", data);
 
     // Generate SKU automatically
     let generatedSku;
@@ -2488,6 +2489,7 @@ exports.createProductSingle = async (req, res) => {
     }
 
 
+
     // Remove SKU from request data if provided (since we're generating it automatically)
     const { sku_code, ...productDataWithoutSku } = data;
 
@@ -2497,12 +2499,23 @@ exports.createProductSingle = async (req, res) => {
       images: imageUrls,
        year_range: yearRangeArray, 
        variant: variantArray,
-       search_tags: searchTagsArray 
+       search_tags: searchTagsArray ,
+       available_dealers:data.available_dealers&&  data.available_dealers.map((dealer) => ({
+         dealer_id: dealer.dealer_id,
+         quantity_per_dealer: dealer.quantity_per_dealer,
+         inStock:dealer.quantity_per_dealer>0?true:false
+       })),
+       out_of_stock: data.available_dealers ?data.available_dealers.some(dealer => dealer.quantity_per_dealer>0 ):false,
     };
-    console.log(productPayload);
+    // console.log(productPayload);
 
     const newProduct = await Product.create(productPayload);
 
+    if (!newProduct) {
+      return sendError(res, "Failed to create product", 500);
+    }
+    //  newProduct.out_of_stock= newProduct.available_dealers.some(dealer => dealer.inStock=== true);
+    //  await newProduct.save();
     const userData = await axios.get(`http://user-service:5001/api/users/`, {
       headers: {
         Authorization: req.headers.authorization,
