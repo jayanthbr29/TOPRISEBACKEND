@@ -970,3 +970,27 @@ exports.getCategoryCount = async (req, res) => {
     sendError(res, "Failed to get category count", 500);
   }
 };
+
+exports.getCategoriesByDealerId = async (req, res) => {
+  try {
+    const { dealerId } = req.params;
+    // get user details from user-service
+     const dealerData = await axios.get(`http://user-service:5001/api/users/dealer/${dealerId}`, {
+        headers: {
+          Authorization: req.headers.authorization,
+        },
+        timeout: 5000,
+      });
+    const dealer =dealerData.data.data;
+
+    const allowedCategories= dealer.categories_allowed.map((category) => new mongoose.Types.ObjectId(category));
+   
+    const categories = await Category.find({
+      _id: { $in: allowedCategories },
+      category_Status: "Active",
+    });
+    return sendSuccess(res, categories, "Categories fetched successfully");
+  } catch (error) {
+    return sendError(res, "Failed to fetch categories", 500);
+  }
+};
