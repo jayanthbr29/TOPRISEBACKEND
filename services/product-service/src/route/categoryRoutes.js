@@ -98,4 +98,11 @@ router.post(
   categoryController.bulkUploadCategories
 );
 
+router.get(
+  "/getCategories/byDealer/:dealerId",
+  authenticate,
+  authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Analytics-Admin"),
+  categoryController.getCategoriesByDealerId
+);
+
 module.exports = router;
