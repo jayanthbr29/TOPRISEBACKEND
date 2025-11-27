@@ -2958,11 +2958,11 @@ exports.approveProduct = async (req, res) => {
     if (!product) return sendError(res, "Product not found", 404);
 
     const oldVals = {
-      // live_status: product.live_status,
+      live_status: product.live_status,
       Qc_status: product.Qc_status,
     };
 
-    // product.live_status = "Approved"; // or "Live" if that's your rule
+    product.live_status = "Approved"; // or "Live" if that's your rule
     product.Qc_status = "Approved";
 
     buildChangeLog({
@@ -2970,7 +2970,7 @@ exports.approveProduct = async (req, res) => {
       changedFields: ["Qc_status"],
       oldVals,
       newVals: {
-        // live_status: product.live_status,
+        live_status: product.live_status,
         Qc_status: product.Qc_status,
       },
       userId,
@@ -3449,11 +3449,11 @@ exports.bulkapproveProduct = async (req, res) => {
         }
 
         const oldVals = {
-          // live_status: product.live_status,
+          live_status: product.live_status,
           Qc_status: product.Qc_status,
         };
 
-        // product.live_status = "Approved"; // or "Live" if that's your rule
+        product.live_status = "Approved"; // or "Live" if that's your rule
         product.Qc_status = "Approved";
 
         buildChangeLog({
@@ -3461,7 +3461,7 @@ exports.bulkapproveProduct = async (req, res) => {
           changedFields: ["Qc_status"],
           oldVals,
           newVals: {
-            // live_status: product.live_status,
+            live_status: product.live_status,
             Qc_status: product.Qc_status,
           },
           userId,
@@ -5339,11 +5339,11 @@ exports.approveSingleProduct = async (req, res) => {
 
     // Update product status
     const oldVals = {
-      // live_status: product.live_status,
+      live_status: product.live_status,
       Qc_status: product.Qc_status,
     };
 
-    // product.live_status = "Approved";
+    product.live_status = "Approved";
     product.Qc_status = "Approved";
 
     // Add approval log
@@ -5352,7 +5352,7 @@ exports.approveSingleProduct = async (req, res) => {
       changedFields: ["Qc_status"],
       oldVals,
       newVals: {
-        // live_status: product.live_status,
+        live_status: product.live_status,
         Qc_status: product.Qc_status,
       },
       userId: userId || "system",
@@ -5545,11 +5545,11 @@ exports.bulkApproveProducts = async (req, res) => {
 
         // Update product status
         const oldVals = {
-          // live_status: product.live_status,
+          live_status: product.live_status,
           Qc_status: product.Qc_status,
         };
 
-        // product.live_status = "Approved";
+        product.live_status = "Approved";
         product.Qc_status = "Approved";
 
         // Add approval log
@@ -5558,7 +5558,7 @@ exports.bulkApproveProducts = async (req, res) => {
           changedFields: ["Qc_status"],
           oldVals,
           newVals: {
-            // live_status: product.live_status,
+            live_status: product.live_status,
             Qc_status: product.Qc_status,
           },
           userId: userId || "system",
