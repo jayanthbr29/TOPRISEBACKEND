@@ -252,7 +252,7 @@ exports.createTicket = async (req, res) => {
       const existingTicket = await Ticket.findOne({
         userRef,
         order_id,
-        status: { $in: ["Open", "In Progress"] },
+        status: { $in: ["Open", "Pending"] },
       });
 
       if (existingTicket) {

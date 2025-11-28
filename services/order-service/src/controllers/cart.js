@@ -82,7 +82,7 @@ const updateCartItemsPrice = async (items, token) => {
               "https://firebasestorage.googleapis.com/v0/b/lmseducationplaform.appspot.com/o/Media%201.svg?alt=media&token=454fba64-184a-4612-a5df-e473f964daa1",
             ];
       item.product_name = productData.product_name;
-      item.selling_price = productData.selling_price;
+      item.selling_price = productData.selling_price * item.quantity ;
       item.mrp = productData.mrp_with_gst * item.quantity;
       item.mrp_gst_amount =
         (productData.mrp_with_gst / 100) *

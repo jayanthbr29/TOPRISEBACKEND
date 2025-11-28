@@ -67,7 +67,7 @@ app.use(
 app.use(express.json());
 app.use(morgan("dev"));
 startUserConsumer();
-require("./jobs/ticketAssignment");
+// require("./jobs/ticketAssignment");
 require("./jobs/dealerAssignmentWorker");
 
 // Initialize SLA Violation Scheduler
