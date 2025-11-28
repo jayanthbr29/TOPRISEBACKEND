@@ -5551,6 +5551,53 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
 
     }
 
+    // logic for checking address is valid or not
+//      try{
+//        const authHeader = req.headers.authorization;
+// const dealerInfo = pickupDealerId ? await fetchDealerInfo(pickupDealerId, authHeader) : null;
+//         console.log("[BORZO] Dealer info:", dealerInfo);
+//         const dealerAddressString =
+//           dealerInfo?.address?.full ||
+//           buildAddressString({
+//             building_no: dealerInfo?.address?.building_no,
+//             street: dealerInfo?.address?.street,
+//             area: dealerInfo?.address?.area,
+//             city: dealerInfo?.address?.city,
+//             state: dealerInfo?.address?.state,
+//             pincode: dealerInfo?.address?.pincode,
+//             country: dealerInfo?.address?.country || "India",
+//           }) ||
+//           dealerInfo?.business_address ||
+//           dealerInfo?.registered_address ||
+//           "Pickup Address";
+//         const dealerGeo = await geocodeAddress(dealerAddressString);
+//         if(dealerGeo?.latitude === null || dealerGeo?.longitude === null){
+//           return res.status(400).json({ error: "Invalid address" });
+//         }
+
+//         const customerAddressString =
+//           order.customerDetails?.address ||
+//           buildAddressString({
+//             building_no: order.customerDetails?.building_no,
+//             street: order.customerDetails?.street,
+//             area: order.customerDetails?.area,
+//             city: order.customerDetails?.city,
+//             state: order.customerDetails?.state,
+//             pincode: order.customerDetails?.pincode,
+//             country: order.customerDetails?.country || "India",
+//           }) ||
+//           "Delivery Address";
+//         const customerGeo = await geocodeAddress(customerAddressString);
+//         if(customerGeo?.latitude === null || customerGeo?.longitude === null){
+//           return res.status(400).json({ error: "Invalid address" });
+//         }
+
+
+//      }catch(error){
+//       return res.status(400).json({ error: "Invalid address" });
+//      }
+
+
 
     const order = await Order.findById(orderId);
 
@@ -5671,10 +5718,10 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
               dealerInfo?.phone ||
               "0000000000",
           },
-          // latitude: dealerGeo?.latitude || 28.57908,
-          // longitude: dealerGeo?.longitude || 77.31912,
-          latitude: 28.583905,
-          longitude: 77.322733,
+          latitude: dealerGeo?.latitude || 28.57908,
+          longitude: dealerGeo?.longitude || 77.31912,
+          // latitude: 28.583905,
+          // longitude: 77.322733,
           client_order_id: `ORD,${order.orderId},${sku}`,
         };
 
@@ -5684,10 +5731,10 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
             name: order.customerDetails?.name || "Customer",
             phone: order.customerDetails?.phone || "0000000000",
           },
-          // latitude: customerGeo?.latitude || 28.583905,
-          // longitude: customerGeo?.longitude || 77.322733,
-          latitude: 28.583905,
-          longitude: 77.322733,
+          latitude: customerGeo?.latitude || 28.583905,
+          longitude: customerGeo?.longitude || 77.322733,
+          // latitude: 28.583905,
+          // longitude: 77.322733,
           client_order_id: `ORD,${order.orderId},${sku}`,
         };
         borzoPointsUsed = [pickupPoint, dropPoint];
@@ -6726,6 +6773,7 @@ async function checkSLAViolationOnPackingForDealer(orderId, delaerId, packedAt, 
 
 exports.testGeoCode = async (req, res) => {
   try {
+     const authHeader = req.headers.authorization;
     const orderId = req.params.orderId;
     const order = await Order.findById(orderId);
 
@@ -6742,6 +6790,7 @@ exports.testGeoCode = async (req, res) => {
         pincode: order.customerDetails?.pincode,
         country: order.customerDetails?.country || "India",
       });
+      console.log("customerAddressString", customerAddressString);  
 
     const customerGeo = await geocodeAddress(customerAddressString);
 
@@ -6772,6 +6821,7 @@ exports.testGeoCode = async (req, res) => {
     });
 
   } catch (err) {
+    console.log(err);
     res.status(500).json({ error: err.message });
   }
 }

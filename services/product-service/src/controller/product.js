@@ -1576,16 +1576,18 @@ exports.getProductsByFilters = async (req, res) => {
       max_price,
     } = req.query;
 
-    let { page = "0", limit = "10" } = req.query; // default page = 0
+    let { page = "1", limit = "10" } = req.query; // default page = 0
 
     // Convert page and limit to numbers with safe defaults
     let pageNumber = parseInt(page, 10);
     let limitNumber = parseInt(limit, 10);
 
-    if (isNaN(pageNumber) || pageNumber < 0) pageNumber = 0; // accept 0-based index
+    if (isNaN(pageNumber) || pageNumber < 0) pageNumber = 1; // accept 0-based index
     if (isNaN(limitNumber) || limitNumber < 1) limitNumber = 10;
 
-    const skip = pageNumber * limitNumber; // no -1 adjustment now
+    // const skip = pageNumber * limitNumber; // no -1 adjustment now
+  const internalPage = pageNumber - 1;
+    const skip = internalPage * limitNumber;
 
     // Prepare filters
     const filter = {};
@@ -1715,27 +1717,25 @@ exports.getProductsByFilters = async (req, res) => {
     const products = allProducts.slice(skip, skip + limitNumber);
 
     // Pagination metadata
-    const totalPages = Math.ceil(totalCount / limitNumber);
-    const hasNextPage = pageNumber < totalPages - 1;
-    const hasPrevPage = pageNumber > 0;
+  const totalPages = Math.ceil(totalCount / limitNumber);
 
-    return sendSuccess(
-      res,
-      {
-        products,
-        pagination: {
-          currentPage: pageNumber,
-          totalPages,
-          totalItems: totalCount,
-          hasNextPage,
-          hasPrevPage,
-          limit: limitNumber,
-          nextPage: hasNextPage ? pageNumber + 1 : null,
-          prevPage: hasPrevPage ? pageNumber - 1 : null,
-        },
-      },
-      "Products fetched successfully"
-    );
+const hasNextPage = pageNumber < totalPages;
+const hasPrevPage = pageNumber > 1;
+
+return sendSuccess(res, {
+  products,
+  pagination: {
+    currentPage: pageNumber,
+    totalPages,
+    totalItems: totalCount,
+    hasNextPage,
+    hasPrevPage,
+    limit: limitNumber,
+    nextPage: hasNextPage ? pageNumber + 1 : null,
+    prevPage: hasPrevPage ? pageNumber - 1 : null,
+  }
+});
+
   } catch (err) {
     logger.error(`❌ getProductsByFilters error: ${err.stack}`);
     return sendError(res, err.message || "Internal server error");
