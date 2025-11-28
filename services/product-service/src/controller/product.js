@@ -1577,9 +1577,9 @@ exports.getProductsByFilters = async (req, res) => {
     } = req.query;
 
     let { page = "0", limit = "10" } = req.query; // default page = 0
-    console.log("req.query",req.query);
-    console.log("page",page);
-    console.log("limit",limit);
+    // console.log("req.query",req.query);
+    // console.log("page",page);
+    // console.log("limit",limit);
 
     // Convert page and limit to numbers with safe defaults
     let pageNumber = parseInt(page, 10);
