@@ -5718,10 +5718,10 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
               dealerInfo?.phone ||
               "0000000000",
           },
-          latitude: dealerGeo?.latitude || 28.57908,
-          longitude: dealerGeo?.longitude || 77.31912,
-          // latitude: 28.583905,
-          // longitude: 77.322733,
+          // latitude: dealerGeo?.latitude || 28.57908,
+          // longitude: dealerGeo?.longitude || 77.31912,
+          latitude: 28.583905,
+          longitude: 77.322733,
           client_order_id: `ORD,${order.orderId},${sku}`,
         };
 
@@ -5758,7 +5758,9 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
             status: (code) => ({
               json: async (Data) => {
                 console.log("borzo instant response", Data, code);
-                      console.log("details Error ",Data?.borzo_error?.parameter_errors)
+                      console.log("details Error ",Data?.borzo_error?.parameter_errors.points[0])
+                      console.log("details Error ",Data?.borzo_error?.parameter_errors.points[1])
+
                 if (code === 200) {
                   const data = Data.borzo_order.order;
                   borzoOrderResponse = { type: "instant", data };
