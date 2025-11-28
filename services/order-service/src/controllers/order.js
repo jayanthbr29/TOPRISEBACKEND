@@ -5758,6 +5758,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
             status: (code) => ({
               json: async (Data) => {
                 console.log("borzo instant response", Data, code);
+                      console.log("details Error ",Data?.borzo_error?.parameter_errors)
                 if (code === 200) {
                   const data = Data.borzo_order.order;
                   borzoOrderResponse = { type: "instant", data };
