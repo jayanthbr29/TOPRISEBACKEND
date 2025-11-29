@@ -450,12 +450,15 @@ exports.getPaymentDetails = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-    const { payment_status, payment_method, startDate, endDate } = req.query;
+    const { payment_status, payment_method, startDate, endDate ,razorpay_payment_method} = req.query;
    console.log("query", req.query)
     // Build filter
     const filter = {};
     if (payment_status!=="all") filter.payment_status = payment_status;
     if (payment_method!=="all") filter.payment_method = payment_method;
+    if(payment_method === "Razorpay" && razorpay_payment_method && razorpay_payment_method !=="all"){
+      filter.razorpay_payment_method = razorpay_payment_method;
+    }
     if (startDate || endDate) {
       filter.created_at = {};
       if (startDate) filter.created_at.$gte = new Date(startDate);
