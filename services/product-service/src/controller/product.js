@@ -632,8 +632,8 @@ exports.bulkUploadProducts = async (req, res) => {
               model: productData.model,
               variants: productData.variant,
               productType: productData.product_type,
-              status:  "Pending" ,
-              qcStatus: "Pending" ,
+              status: "Pending",
+              qcStatus: "Pending",
               images: productData.images?.length || 0,
               createdBy: userId,
               createdByRole: userRole,
@@ -2500,15 +2500,15 @@ exports.createProductSingle = async (req, res) => {
       ...productDataWithoutSku,
       sku_code: generatedSku,
       images: imageUrls,
-       year_range: yearRangeArray, 
-       variant: variantArray,
-       search_tags: searchTagsArray ,
-       available_dealers:data.available_dealers&&  data.available_dealers.map((dealer) => ({
-         dealer_id: dealer.dealer_id,
-         quantity_per_dealer: dealer.quantity_per_dealer,
-         inStock:dealer.quantity_per_dealer>0?true:false
-       })),
-       out_of_stock: data.available_dealers ?data.available_dealers.some(dealer => dealer.quantity_per_dealer>0 )?false:true:true,
+      year_range: yearRangeArray,
+      variant: variantArray,
+      search_tags: searchTagsArray,
+      available_dealers: data.available_dealers && data.available_dealers.map((dealer) => ({
+        dealer_id: dealer.dealer_id,
+        quantity_per_dealer: dealer.quantity_per_dealer,
+        inStock: dealer.quantity_per_dealer > 0 ? true : false
+      })),
+      out_of_stock: data.available_dealers ? data.available_dealers.some(dealer => dealer.quantity_per_dealer > 0) ? false : true : true,
     };
     // console.log(productPayload);
 
@@ -2613,15 +2613,15 @@ exports.editProductSingle = async (req, res) => {
     if (!updatedFields.length) {
       return sendSuccess(res, existingProduct, "No changes detected");
     }
-    if(updateData.available_dealers){
-      updateData.available_dealers=updateData.available_dealers.map((dealer) => ({
+    if (updateData.available_dealers) {
+      updateData.available_dealers = updateData.available_dealers.map((dealer) => ({
         dealer_id: dealer.dealer_id,
         quantity_per_dealer: dealer.quantity_per_dealer,
-        inStock:dealer.quantity_per_dealer>0?true:false
+        inStock: dealer.quantity_per_dealer > 0 ? true : false
       }));
-    } 
-    if(updateData.out_of_stock){
-      updateData.out_of_stock=updateData.available_dealers.some(dealer => dealer.inStock=== true)?false:true;
+    }
+    if (updateData.out_of_stock) {
+      updateData.out_of_stock = updateData.available_dealers.some(dealer => dealer.inStock === true) ? false : true;
     }
     // Perform update
     const updatedProduct = await Product.findByIdAndUpdate(id, updateData, {
@@ -7338,8 +7338,8 @@ exports.updateLiveStatus = async (req, res) => {
         if (!product) {
           return sendError(res, "Product not found", 404);
         }
-
         product.live_status = status;
+        product.Qc_status = status; 
         await product.save();
         result.push({ id, message: "Live status updated successfully", status: status });
 

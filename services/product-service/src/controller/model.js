@@ -154,7 +154,7 @@ exports.updateModel = async (req, res) => {
       updateData.model_image = uploaded.Location;
     }
     if(status === "Inactive"){
-      await Product.updateMany({ model_ref: modelId }, { live_status: "Rejected" });
+      await Product.updateMany({ model_ref: modelId }, { live_status: "Rejected",Qc_status: "Rejected" });
     }
 
     const updatedModel = await Model.findByIdAndUpdate(modelId, updateData, {
