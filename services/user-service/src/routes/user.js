@@ -1163,4 +1163,10 @@ router.put(
   
   userController.updateDealerLastfullfillmentTime
 );
+
+router.get(
+  "/fulfillment/get/allEmployees",
+  
+  userController.getAllfullfillmentStafsAndAdmins
+);
 module.exports = router;

@@ -4762,3 +4762,25 @@ exports.updateDealerLastfullfillmentTime= async (req, res) => {
   }
 
 }
+
+
+
+exports.getAllfullfillmentStafsAndAdmins = async (req, res) => {
+  try {
+    const users = await Employee.find({
+      role: { $in: ["Fulfillment-Staff", "Fulfillment-Admin"] },
+      active: true,
+    })
+    logger.info(
+      `Fetched ${users.length} fulfillment staff and admin members`
+    );
+    return sendSuccess(
+      res,
+      { data: users },
+      "Fulfillment staff and admin retrieved successfully"
+    );
+  } catch (error) {
+    logger.error(`Error fetching fulfillment staff and admin: ${error.message}`);
+    return sendError(res, error);
+  }
+}
