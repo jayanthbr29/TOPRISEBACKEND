@@ -5665,7 +5665,10 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
     }
 
     await order.save();
-
+const headers = { "Content-Type": "application/json" };
+    if (req.headers.authorization) {
+      headers.Authorization = req.headers.authorization;
+    }
     // logic for  delaer last fulfillment update
     const response = await axios.put(
       `http://user-service:5001/api/users/dealer/update/lastfullfillmentSync/${dealerId}`,
