@@ -4737,3 +4737,28 @@ exports.getDealersBydealerId = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 }
+
+
+exports.updateDealerLastfullfillmentTime= async (req, res) => {
+  try {
+    const { dealerId } = req.params;
+    const dealer = await Dealer.findOne({ _id: dealerId });
+    if (!dealer) {
+      return res.status(404).json({ message: "Dealer not found for the given dealer ID" });
+    }
+
+    dealer.last_fulfillment_date = new Date();
+    dealer.updated_at = new Date();
+    await dealer.save();
+
+    res.status(200).json({
+      message: "Dealer last fullfillment time updated successfully",
+      dealer
+    });
+
+  } catch (error) {
+    console.error("Error updating dealer last fullfillment time:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+
+}

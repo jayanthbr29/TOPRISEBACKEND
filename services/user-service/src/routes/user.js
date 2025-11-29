@@ -1157,4 +1157,10 @@ router.get(
   
   userController.getDealersBydealerId
 )
+
+router.put(
+  "/dealer/update/lastfullfillmentSync/:dealerId",
+  
+  userController.updateDealerLastfullfillmentTime
+);
 module.exports = router;
