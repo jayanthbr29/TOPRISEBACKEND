@@ -33,6 +33,7 @@ const DealerSLA = require("../models/dealerSla");
 const SlaTypes = require("../models/slaType");
 const SlaViolation = require("../models/slaViolation");
 const Payment =  require("../models/paymentModel");
+const moment = require("moment-timezone");
 // Geocode an address string to { latitude, longitude }
 async function geocodeAddress(address) {
   try {
@@ -6828,3 +6829,79 @@ exports.testGeoCode = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 }
+
+exports.getOrderStatistics = async (req, res) => {
+  try {
+    const { filter } = req.query; // week or month
+
+    if (!filter || !["week", "month"].includes(filter)) {
+      return res.status(400).json({ message: "filter must be 'week' or 'month'" });
+    }
+
+    const now = moment().tz("Asia/Kolkata");
+
+    let startDate, endDate;
+
+    if (filter === "week") {
+      startDate = now.clone().subtract(6, "days").startOf("day"); // last 7 days
+      endDate = now.clone().endOf("day");
+    } else {
+      startDate = now.clone().startOf("month");
+      endDate = now.clone().endOf("month");
+    }
+
+    // Fetch orders EXCEPT Cancelled
+    const orders = await Order.find({
+      createdAt: { $gte: startDate.toDate(), $lte: endDate.toDate() },
+      status: { $ne: "Cancelled" }
+    }).lean();
+
+    const numberOfDays = filter === "week" ? 7 : endDate.date();
+
+    const stats = [];
+
+    for (let i = 0; i < numberOfDays; i++) {
+      const day = filter === "week"
+        ? startDate.clone().add(i, "days")
+        : startDate.clone().date(i + 1);
+
+      const dayStart = day.clone().startOf("day");
+      const dayEnd = day.clone().endOf("day");
+
+      const dayOrders = orders.filter(order =>
+        moment(order.createdAt).isBetween(dayStart, dayEnd, null, "[]")
+      );
+
+      const totalOrders = dayOrders.length;
+
+      const revenue = dayOrders.reduce((sum, o) => sum + (o.order_Amount || 0), 0);
+
+      // Push final data
+      const entry = {
+        date: day.format("YYYY-MM-DD"),
+        totalOrders,
+        revenue
+      };
+
+      // 👉 Add Sunday/Monday… only for week filter
+      if (filter === "week") {
+        entry.dayName = day.format("dddd"); // Sunday, Monday, etc.
+      }
+
+      stats.push(entry);
+    }
+
+    return res.json({
+      filter,
+      startDate: startDate.format(),
+      endDate: endDate.format(),
+      data: stats,
+      totalOrders: stats.reduce((sum, day) => sum + day.totalOrders, 0),
+      totalRevenue: stats.reduce((sum, day) => sum + day.revenue, 0)
+    });
+
+  } catch (err) {
+    console.error("Error in getOrderStatistics:", err);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};

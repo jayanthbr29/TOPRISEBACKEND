@@ -833,4 +833,7 @@ router.put(
 
 router.post("/borzo/webhook/modified", orderController.borzoWebhookUpdated);
 router.get("/test/order-geocode/:orderId", orderController.testGeoCode);
+
+
+router.get("/order-summury/monthy/weekly", orderController.getOrderStatistics);
 module.exports = router;
