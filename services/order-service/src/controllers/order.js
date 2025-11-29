@@ -5666,6 +5666,12 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
 
     await order.save();
 
+    // logic for  delaer last fulfillment update
+    const response = await axios.put(
+      `http://user-service:5001/api/users/dealer/update/lastfullfillmentSync/${dealerId}`,
+      { timeout: 5000, headers }
+    );
+
 
 
     let borzoOrderResponse = null;

@@ -15,7 +15,7 @@ exports.getAllFulfillmentStaff = async (req, res) => {
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
         const { search, is_active, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
-
+        console.log("sortBy, sortOrder", );
         // Build user filter for Fulfillment-Staff role
         const userFilter = {
             role: { $in: ['Fulfillment-Staff', 'Fulfillment-Admin'] }
