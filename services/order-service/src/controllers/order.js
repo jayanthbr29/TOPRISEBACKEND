@@ -822,52 +822,59 @@ exports.getOrders = async (req, res) => {
     const sortField = req.query.sortBy || "createdAt";
     const sortOrder = req.query.order === "asc" ? 1 : -1;
 
-    // Count total for pagination metadata
-    const totalOrders = await Order.countDocuments();
+    // -----------------------------
+    // FILTERS
+    // -----------------------------
+    let filter = {};
 
-    // Fetch paginated orders
-    const orders = await Order.find()
+    // Payment type filter
+    if (req.query.paymentType) {
+      let types = req.query.paymentType.split(",").map(v => v.trim());
+      filter.paymentType = { $in: types };
+    }
+
+    // Total count with filter
+    const totalOrders = await Order.countDocuments(filter);
+
+    // Fetch orders with filter + pagination
+    const orders = await Order.find(filter)
       .sort({ [sortField]: sortOrder })
       .skip(skip)
       .limit(limit)
       .lean();
 
-    // Add user info and dealer info
+    // Add user & dealer info
     for (let order of orders) {
-      // Attach user profile
+      // attach user info
       order.customerDetails.userInfo = await fetchUser(
         order.customerDetails.userId
       );
 
-      // Attach dealer profile for each dealer
+      // attach dealer info
       order.dealerMapping = await Promise.all(
-        order.dealerMapping.map(async (m) => ({
+        order.dealerMapping.map(async m => ({
           ...m,
           dealerInfo: await fetchDealer(m.dealerId),
         }))
       );
     }
 
-    // Pagination response
+    // Pagination details
     const totalPages = Math.ceil(totalOrders / limit);
 
-    return sendSuccess(res, {
-      // page,
-      // limit,
-      // totalOrders,
-      // totalPages,
-      // hasNextPage: page < totalPages,
-      // hasPrevPage: page > 1,
-      orders,
-      pagination: {
-        totalItems: totalOrders,
-        totalPages,
-        currentPage: page,
-        itemsPerPage: limit,
-        hasNextPage: page < totalPages,
-        hasPreviousPage: page > 1,
-      }
-    },
+    return sendSuccess(
+      res,
+      {
+        orders,
+        pagination: {
+          totalItems: totalOrders,
+          totalPages,
+          currentPage: page,
+          itemsPerPage: limit,
+          hasNextPage: page < totalPages,
+          hasPreviousPage: page > 1,
+        },
+      },
       "Orders fetched"
     );
 
@@ -876,6 +883,7 @@ exports.getOrders = async (req, res) => {
     return sendError(res, "Failed to get orders", 500);
   }
 };
+
 
 
 exports.getOrderById = async (req, res) => {
