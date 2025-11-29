@@ -177,7 +177,7 @@ exports.updateBrand = async (req, res) => {
     }
     
     if(status === 'inactive') {
-      await Product.updateMany({ brand: id }, { live_status: 'Rejected' });
+      await Product.updateMany({ brand: id }, { live_status: 'Rejected' ,Qc_status: 'Rejected' });
     } 
 
     const updateData = {
@@ -546,7 +546,7 @@ exports.activateOrDeactivateBrand = async (req, res) => {
     brand.status = status;
     const updatedBrand = await brand.save();
     if(status === 'inactive') {
-      await Product.updateMany({ brand: id }, { live_status: 'Rejected' });
+      await Product.updateMany({ brand: id }, { live_status: 'Rejected' ,Qc_status: 'Rejected' });
     } 
     sendSuccess(res, updatedBrand, "Brand status updated successfully");
   } catch (error) {
