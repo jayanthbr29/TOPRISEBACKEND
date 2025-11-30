@@ -600,7 +600,8 @@ exports.getReturnRequests = async (req, res) => {
       limit = 10,
       startDate,
       endDate,
-      refundMethod
+      refundMethod,
+      dealerId,
     } = req.query;
 
     const filter = {};
@@ -608,6 +609,7 @@ exports.getReturnRequests = async (req, res) => {
     if (customerId) filter.customerId = customerId;
     if (status) filter.returnStatus = status;
     if (orderId) filter.orderId = orderId;
+    if (dealerId) filter.dealerId = dealerId;
 
     if (startDate && endDate) {
       filter["timestamps.requestedAt"] = {
