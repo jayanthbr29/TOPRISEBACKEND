@@ -600,6 +600,7 @@ exports.getReturnRequests = async (req, res) => {
       limit = 10,
       startDate,
       endDate,
+      refundMethod
     } = req.query;
 
     const filter = {};
@@ -614,6 +615,7 @@ exports.getReturnRequests = async (req, res) => {
         $lte: new Date(endDate),
       };
     }
+    if(refundMethod) filter['refund.refundMethod']=refundMethod;
 
     const skip = (page - 1) * limit;
 
