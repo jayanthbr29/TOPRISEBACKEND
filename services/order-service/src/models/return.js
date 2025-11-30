@@ -182,7 +182,7 @@ const ReturnSchema = new mongoose.Schema({
     },
     refundMethod: {
       type: String,
-      enum: ["Original_Payment_Method", "Manual",],
+      enum: ["Original_Payment_Method", "Manual_Refund",],
       default: "Original_Payment_Method",
     },
     refundStatus: {
