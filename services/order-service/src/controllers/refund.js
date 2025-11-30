@@ -371,6 +371,7 @@ exports.createManualRefund = async (req, res) => {
     returnData.timestamps.refundInitiatedAt=  new Date();
     returnData.timestamps.refundCompletedAt=  new Date();
     returnData.refund.processedAt=new Date();
+    returnData.refund.refundMethod="Manual_Refund";
     returnData.refund.processCompletedAt=new Date();
     returnData.refund.refundStatus="Processed";
     returnData.refund.refund_id = savedRefund._id;

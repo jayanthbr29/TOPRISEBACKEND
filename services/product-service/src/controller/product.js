@@ -5265,18 +5265,22 @@ exports.getProductStats = async (req, res) => {
  */
 exports.getPendingProducts = async (req, res) => {
   try {
-    const { page = 1, limit = 10, created_by_role } = req.query;
+    const { page = 1, limit = 10, created_by_role ,status} = req.query;
     const pageNumber = parseInt(page);
     const limitNumber = parseInt(limit);
     const skip = (pageNumber - 1) * limitNumber;
 
-    const filter = {
-      $or: [
-        { live_status: "Pending" },
-        { Qc_status: "Pending" }
-      ]
-    };
+    // const filter = {
+    //   $or: [
+    //     // { live_status: status },
+    //     { Qc_status: status }
+    //   ]
+    // };
 
+    const filter = {};
+    if (status) {
+      filter.Qc_status = status;
+    }
     // Filter by creator role if specified
     if (created_by_role) {
       filter.created_by_role = created_by_role;
