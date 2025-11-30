@@ -4768,7 +4768,7 @@ exports.updateDealerLastfullfillmentTime= async (req, res) => {
 exports.getAllfullfillmentStafsAndAdmins = async (req, res) => {
   try {
     const users = await Employee.find({
-      role: { $in: ["Fulfillment-Staff", "Fulfillment-Admin"] },
+      role: "Fulfillment-Staff",
       active: true,
     })
     logger.info(
