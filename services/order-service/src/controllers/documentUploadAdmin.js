@@ -469,13 +469,14 @@ exports.rejectDocument = async (req, res) => {
     try {
         const { id } = req.params;
         const { rejected_by, rejection_reason } = req.body;
+       console.log("req.body",id);
 
         if (!rejected_by || !rejection_reason) {
             return sendError(res, "rejected_by and rejection_reason are required", 400);
         }
 
         const document = await DocumentUpload.findById(id);
-
+        console.log("document",document);
         if (!document) {
             return sendError(res, "Document not found", 404);
         }
