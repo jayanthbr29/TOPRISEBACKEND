@@ -441,7 +441,7 @@ exports.createOrder = async (req, res) => {
       razorpay_order_id: null,
       amount:savedOrder.order_Amount,
       created_at: new Date(),
-      payment_status: "Paid",
+      payment_status: "Created",
     })
     await payment.save();
     // console.log("payment",payment);
@@ -5696,6 +5696,7 @@ const headers = { "Content-Type": "application/json" };
         let pickupDealerId = dealerId || null;
         const dealerInfo = pickupDealerId ? await fetchDealerInfo(pickupDealerId, authHeader) : null;
         console.log("[BORZO] Dealer info:", dealerInfo);
+        const skuDetails = order.skus.find((item) => item.sku === sku); 
         const dealerAddressString =
           dealerInfo?.address?.full ||
           buildAddressString({
@@ -5722,6 +5723,7 @@ const headers = { "Content-Type": "application/json" };
             state: order.customerDetails?.state,
             pincode: order.customerDetails?.pincode,
             country: order.customerDetails?.country || "India",
+            taking_amount :order.paymentType === "COD" ? skuDetails.totalPrice : 0.00,
           }) ||
           "Delivery Address";
         const customerGeo = await geocodeAddress(customerAddressString);
@@ -5818,6 +5820,7 @@ const headers = { "Content-Type": "application/json" };
                           sku.tracking_info.borzo_weight = total_weight_kg;
                           sku.tracking_info.borzo_order_status = data.points[1].delivery.status;
                           sku.tracking_info.borzo_last_updated = new Date();
+                          sku.tracking_info.amount_collected = order.paymentType === "COD" ? false : true ;
                         }
                       });
                     }
@@ -6220,6 +6223,7 @@ exports.borzoWebhookUpdated = async (req, res) => {
             updateFields["skus.$.tracking_info.timestamps.deliveredAt"] = new Date();
             updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
             updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
+            updateFields["skus.$.amount_collected"]=true;
             break;
 
           case "canceled":
@@ -6227,6 +6231,7 @@ exports.borzoWebhookUpdated = async (req, res) => {
             updateFields["skus.$.tracking_info.timestamps.cancelledAt"] = new Date();
             updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
             updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
+            updateFields["skus.$.amount_collected"]=false;
             break;
 
           default:
@@ -6359,6 +6364,7 @@ exports.borzoWebhookUpdated = async (req, res) => {
             updateFields["skus.$.tracking_info.timestamps.deliveredAt"] = new Date();
             updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
             updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
+            updateFields["skus.$.amount_collected"]=true;
             break;
 
           case "canceled":
@@ -6366,6 +6372,7 @@ exports.borzoWebhookUpdated = async (req, res) => {
             updateFields["skus.$.tracking_info.timestamps.cancelledAt"] = new Date();
             updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
             updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
+            updateFields["skus.$.amount_collected"]=false;
             break;
 
           default:
@@ -6382,6 +6389,14 @@ exports.borzoWebhookUpdated = async (req, res) => {
         if (allDelivered) {
           checkOrder.status = "Delivered";
           await checkOrder.save();
+          const  order= await Order.findOne(
+            { orderId: orderId },
+          );
+          if(order.paymentType==="COD"){
+            const payment=  await Payment.findOne({orderId:order._id});
+            payment.status="Paid";
+            await payment.save();
+          }
         }
       } else if (orderType === "RTN") {
         const returnOrder = await Return.findOne({ _id: orderId });

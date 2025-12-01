@@ -90,6 +90,10 @@ const OrderSchema = new mongoose.Schema(
             ref: "Return",
             default: null
           }
+        },
+        amount_collected:{
+          type: Boolean,
+          default: true,
         }
 
       },
