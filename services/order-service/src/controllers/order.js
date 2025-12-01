@@ -444,6 +444,8 @@ exports.createOrder = async (req, res) => {
       payment_status: "Created",
     })
     await payment.save();
+    // add payment id to order
+    await Order.findByIdAndUpdate(savedOrder._id, { payment_id: payment._id });
     // console.log("payment",payment);
 
     // Log order creation audit
