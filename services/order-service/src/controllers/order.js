@@ -6396,7 +6396,7 @@ exports.borzoWebhookUpdated = async (req, res) => {
           );
           if(order.paymentType==="COD"){
             const payment=  await Payment.findOne({orderId:order._id});
-            payment.status="Paid";
+            payment.payment_status="Paid";
             await payment.save();
           }
         }
