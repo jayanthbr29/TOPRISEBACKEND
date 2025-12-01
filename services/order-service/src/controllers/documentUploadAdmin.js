@@ -3,10 +3,15 @@ const Order = require("../models/order");
 const { sendSuccess, sendError } = require("/packages/utils/responseHandler");
 const logger = require("/packages/utils/logger");
 const axios = require("axios");
+const Payment = require("../models/paymentModel");
 
 const USER_SERVICE_URL = process.env.USER_SERVICE_URL || "http://user-service:5001";
 const PRODUCT_SERVICE_URL = process.env.PRODUCT_SERVICE_URL || "http://product-service:5002";
-
+const { v4: uuidv4 } = require("uuid");
+const dealerAssignmentQueue = require("../queues/assignmentQueue");
+const Cart = require("../models/cart");
+const { generatePdfAndUploadInvoice } = require("../../../../packages/utils/generateInvoice");
+const { createUnicastOrMulticastNotificationUtilityFunction } = require("../../../../packages/utils/notificationService");
 /**
  * Get all document uploads (Admin side with filters)
  * @route GET /api/documents/admin/all
@@ -259,11 +264,7 @@ exports.createOrderFromDocument = async (req, res) => {
         }
 
         // Use the exact same logic as createOrder
-        const { v4: uuidv4 } = require("uuid");
-        const dealerAssignmentQueue = require("../queues/assignmentQueue");
-        const Cart = require("../models/cart");
-        const { generatePdfAndUploadInvoice } = require("../../../../packages/utils/generateInvoice");
-        const { createUnicastOrMulticastNotificationUtilityFunction } = require("../../../../packages/utils/notificationService");
+
 
         const formatDate = (date) => {
             const d = new Date(date);
@@ -646,6 +647,234 @@ exports.getDocumentStatistics = async (req, res) => {
         logger.error("Error fetching statistics:", error);
         return sendError(res, "Error fetching statistics", 500);
     }
+};
+
+
+exports.createOrderforPurchaseRequest = async (req, res) => {
+    try {
+        const orderId = `ORD-${Date.now()}-${uuidv4().slice(0, 8)}`;
+
+        const orderPayload = {
+            orderId,
+            ...req.body,
+            orderDate: new Date(),
+            type_of_delivery: req.body.type_of_delivery || "Express",
+            delivery_type:
+                req.body.delivery_type || req.body.type_of_delivery || "Express",
+            status: "Confirmed",
+            timestamps: { createdAt: new Date() },
+            // ensure skus have uppercase SKU and empty dealerMapping slots
+            skus: (req.body.skus || []).map((s) => ({
+                sku: String(s.sku).toUpperCase().trim(),
+                quantity: s.quantity,
+                productId: s.productId,
+                productName: s.productName,
+                selling_price: s.selling_price,
+                mrp: s.mrp,
+                mrp_gst_amount: s.mrp_gst_amount,
+                gst_percentage: s.gst_percentage,
+                gst_amount: s.gst_amount,
+                product_total: s.product_total,
+                totalPrice: s.totalPrice,
+                dealerMapped: [],
+            })),
+            dealerMapping: [],
+        };
+
+        const newOrder = await Order.create(orderPayload);
+        const documentUpload = await DocumentUpload.findOne({ _id: req.body.document_upload_id });
+        if (documentUpload) {
+            documentUpload.status = "Order-Created";
+            documentUpload.order_id = newOrder._id;
+            documentUpload.order_created_at = new Date();
+            documentUpload.order_created_by = req.body.created_by || "system";
+            await documentUpload.save();
+        }
+
+        const invoiceNumber = `INV-${Date.now()}`;
+        const customerDetails = newOrder.customerDetails;
+        const items = newOrder.skus.map((s) => ({
+            productName: s.productName,
+            sku: s.sku,
+            unitPrice: s.selling_price,
+            quantity: s.quantity,
+            taxRate: `${s.gst_percentage || 0}%`,
+            cgstPercent: (s.gst_percentage || 0) / 2,
+            cgstAmount: (s.gst_amount || 0) / 2,
+            sgstPercent: (s.gst_percentage || 0) / 2,
+            sgstAmount: (s.gst_amount || 0) / 2,
+            totalAmount: s.totalPrice,
+        }));
+        const shippingCharges = Number(req.body.deliveryCharges) || 0;
+        const totalOrderAmount = Number(req.body.order_Amount) || 0;
+
+        console.log("🧾 Generating invoice for order:", invoiceNumber, customerDetails, items, shippingCharges, totalOrderAmount);
+        const invoiceResult = await generatePdfAndUploadInvoice(
+            customerDetails,
+            newOrder.orderId,
+            formatDate(newOrder.orderDate),
+            "Delhi", // Place of supply
+            customerDetails.address, // Place of delivery
+            items,
+            shippingCharges,
+            totalOrderAmount,
+            invoiceNumber
+        );
+
+        newOrder.invoiceNumber = invoiceNumber;
+        newOrder.invoiceUrl = invoiceResult.Location;
+        const savedOrder = await newOrder.save();
+        const payment = new Payment({
+            order_id: savedOrder._id,
+            payment_method: "COD",
+            razorpay_order_id: null,
+            amount: savedOrder.order_Amount,
+            created_at: new Date(),
+            payment_status: "Created",
+        })
+        await payment.save();
+        // add payment id to order
+        await Order.findByIdAndUpdate(savedOrder._id, { payment_id: payment._id });
+        // console.log("payment",payment);
+
+        // Log order creation audit
+        // await logOrderAction({
+        //   orderId: newOrder._id,
+        //   action: "ORDER_CREATED",
+        //   performedBy: req.body.customerDetails?.userId || "system",
+        //   performedByRole: "customer",
+        //   details: {
+        //     orderId: newOrder.orderId,
+        //     customerId: req.body.customerDetails?.userId,
+        //     totalAmount: req.body.totalAmount,
+        //     skuCount: req.body.skus?.length || 0,
+        //     deliveryType: req.body.delivery_type || req.body.type_of_delivery,
+        //     paymentType: req.body.paymentType,
+        //     source: "mobile_app",
+        //   },
+        //   timestamp: new Date(),
+        // });
+
+        await dealerAssignmentQueue.add(
+            { orderId: newOrder._id.toString() },
+            {
+                attempts: 5,
+                backoff: { type: "exponential", delay: 1000 },
+                removeOnComplete: true,
+                removeOnFail: false,
+            }
+        );
+        if (req.body.paymentType === "COD") {
+            const cart = await Cart.findOne({
+                userId: req.body.customerDetails.userId,
+            });
+            if (!cart) {
+                logger.error(
+                    `❌ Cart not found for user: ${req.body.customerDetails.userId}`
+                );
+            } else {
+                cart.items = [];
+                cart.totalPrice = 0;
+                cart.itemTotal = 0;
+                cart.handlingCharge = 0;
+                cart.deliveryCharge = 0;
+                cart.gst_amount = 0;
+                cart.total_mrp = 0;
+                cart.total_mrp_gst_amount = 0;
+                cart.total_mrp_with_gst = 0;
+                cart.grandTotal = 0;
+                await cart.save();
+                logger.info(
+                    `✅ Cart cleared for user: ${req.body.customerDetails.userId}`
+                );
+                const successData =
+                    await createUnicastOrMulticastNotificationUtilityFunction(
+                        [req.body.customerDetails.userId],
+                        ["INAPP", "PUSH", "EMAIL"],
+                        "Order Placed",
+                        `Order Placed Successfully with order id ${orderId}`,
+                        "",
+                        "",
+                        "Order",
+                        {
+                            order_id: newOrder._id,
+                        },
+                        req.headers.authorization
+                    );
+                if (!successData.success) {
+                    logger.error("❌ Create notification error:", successData.message);
+                } else {
+                    logger.info(
+                        "✅ Notification created successfully",
+                        successData.message
+                    );
+                }
+
+                // Send order confirmation email
+                try {
+                    const emailResult = await sendOrderConfirmationEmail(
+                        req.body.customerDetails.email,
+                        newOrder,
+                        req.headers.authorization
+                    );
+                    if (emailResult.success) {
+                        logger.info("✅ Order confirmation email sent successfully");
+                    } else {
+                        logger.error("❌ Failed to send order confirmation email:", emailResult.message);
+                    }
+                } catch (emailError) {
+                    logger.error("❌ Error sending order confirmation email:", emailError);
+                }
+                // Get Super-admin users for notification (using internal endpoint)
+                let superAdminIds = [];
+                try {
+                    const userData = await axios.get(
+                        "http://user-service:5001/api/users/internal/super-admins"
+                    );
+                    if (userData.data.success) {
+                        superAdminIds = userData.data.data.map((u) => u._id);
+                    }
+                } catch (error) {
+                    logger.warn(
+                        "Failed to fetch Super-admin users for notification:",
+                        error.message
+                    );
+                }
+
+                const notify =
+                    await createUnicastOrMulticastNotificationUtilityFunction(
+                        superAdminIds,
+                        ["INAPP", "PUSH", "EMAIL"],
+                        "Order Created Alert",
+                        `Order Placed Successfully with order id ${orderId}`,
+                        "",
+                        "",
+                        "Order",
+                        {
+                            order_id: newOrder._id,
+                        },
+                        req.headers.authorization
+                    );
+                if (!notify.success)
+                    logger.error("❌ Create notification error:", notify.message);
+                else logger.info("✅ Notification created successfully");
+            }
+        }
+
+        return sendSuccess(res, newOrder, "Order created successfully");
+    } catch (error) {
+        console.error("Create Order failed:", error);
+        return sendError(res, error.message || "Failed to create order");
+    }
+};
+
+const formatDate = (date) => {
+  const d = new Date(date);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+  const year = d.getFullYear();
+
+  return `${day}-${month}-${year}`;
 };
 
 module.exports = exports;

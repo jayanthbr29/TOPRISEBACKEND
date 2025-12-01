@@ -209,5 +209,11 @@ router.get(
     documentUploadController.getDocumentUploadById
 );
 
+router.post(
+    "/create/orderby/admin",
+    documentUploadAdminController.createOrderforPurchaseRequest
+    
+);
+
 module.exports = router;
 
