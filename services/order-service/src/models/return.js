@@ -66,7 +66,7 @@ const ReturnSchema = new mongoose.Schema({
       "Shipment_Completed",
       "Inspection_Started",
       "Inspection_Completed",
-      "Intiated_Refund",
+      "Initiated_Refund",
       "Refund_Completed",
       "Refund_Failed"
     ],

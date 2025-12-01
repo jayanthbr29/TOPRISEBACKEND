@@ -269,7 +269,7 @@ exports.createPartialRefund = async (req, res) => {
     const savedRefund = await refundRecord.save();
     order.refund_id = savedRefund._id;
     await order.save();
-    returnData.returnStatus="Intiated_Refund";
+    returnData.returnStatus="Initiated_Refund";
     returnData.timestamps.refundInitiatedAt=  new Date();
     returnData.refund.processedAt=new Date();
     returnData.refund.refundStatus="Processing";
