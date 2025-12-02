@@ -6240,13 +6240,13 @@ exports.borzoWebhookUpdated = async (req, res) => {
             break;
         }
 
-        const checkOrder =await Order.updateOne(
+         await Order.updateOne(
           { orderId: orderId, "skus.sku": orderSku },
           { $set: updateFields }
         );
-        // const checkOrder = await Order.findOne(
-        //   { orderId: orderId },
-        // );
+        const checkOrder = await Order.findOne(
+          { orderId: orderId },
+        );
         // check all sku Delivered  then mark order as Delivered
         const allDelivered = checkOrder.skus.every(
           (sku) => sku.tracking_info.status === "Delivered"
@@ -6393,22 +6393,22 @@ exports.borzoWebhookUpdated = async (req, res) => {
             break;
         }
 
-        const checkOrder = await Order.updateOne(
+         await Order.updateOne(
           { orderId: orderId, "skus.sku": orderSku },
           { $set: updateFields }
         );
-        // const checkOrder = await Order.findOne(
-        //   { orderId: orderId },
-        // );
+        const checkOrder = await Order.findOne(
+          { orderId: orderId },
+        );
         const allDelivered = checkOrder.skus.every(
           (sku) => sku.tracking_info.status === "Delivered"
         );
         if (allDelivered) {
           checkOrder.status = "Delivered";
           await checkOrder.save();
-          const  order= await Order.findOne(
-            { orderId: orderId },
-          );
+          // const  orderSub= await Order.findOne(
+          //   { orderId: orderId },
+          // );
           if(checkOrder.paymentType==="COD"){
             const payment=  await Payment.findOne({orderId:checkOrder._id});
             payment.payment_status="Paid";
