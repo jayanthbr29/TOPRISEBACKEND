@@ -1169,4 +1169,12 @@ router.get(
   
   userController.getAllfullfillmentStafsAndAdmins
 );
+
+router.get(
+  "/get/dealer/byUserId/:userId",
+  
+  userController.getDealerByUserId
+);
+
+
 module.exports = router;
