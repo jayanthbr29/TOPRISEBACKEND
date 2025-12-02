@@ -6262,7 +6262,7 @@ exports.borzoWebhookUpdated = async (req, res) => {
             { orderId: orderId },
           );
           if(checkOrder.paymentType==="COD"){
-            const payment=  await Payment.findOne({orderId:checkOrder._id});
+            const payment=  await Payment.findOne({order_id:checkOrder._id});
             payment.payment_status="Paid";
             await payment.save();
           }
@@ -6410,7 +6410,8 @@ exports.borzoWebhookUpdated = async (req, res) => {
           //   { orderId: orderId },
           // );
           if(checkOrder.paymentType==="COD"){
-            const payment=  await Payment.findOne({orderId:checkOrder._id});
+
+            const payment=  await Payment.findOne({order_id:checkOrder._id});
             payment.payment_status="Paid";
             await payment.save();
           }
