@@ -3823,18 +3823,39 @@ exports.getProductsByFiltersWithPagination = async (req, res) => {
      * --------------------------
      */
     const total = await Product.countDocuments(filter);
-    let sorting;
-    if (sort_by == "A-Z") {
-      sorting = { product_name: 1 };
-    } else if (sort_by == "Z-A") {
-      sorting = { product_name: -1 };
-    } else {
-      sorting = { created_at: -1 };
+    // let sorting;
+    // if (sort_by == "A-Z") {
+    //   sorting = { product_name: 1 };
+    // } else if (sort_by == "Z-A") {
+    //   sorting = { product_name: -1 };
+    // } else {
+    //   sorting = { created_at: -1 };
+    // }
+      let sortOption = { created_at: -1}; // stable default
+    if (sort_by) {
+      sortOption = {};
+      switch (sort_by.trim()) {
+        case "A-Z":
+          sortOption.product_name = 1;
+          break;
+        case "Z-A":
+          sortOption.product_name = -1;
+          break;
+        case "L-H":
+          sortOption.selling_price = 1;
+          break;
+        case "H-L":
+          sortOption.selling_price = -1;
+          break;
+        default:
+          sortOption.created_at = -1;
+          sortOption._id = 1;
+      }
     }
 
     let productsQuery = Product.find(filter)
       .populate("brand category sub_category model variant year_range")
-      .sort(sorting)
+      .sort(sortOption)
       // .sort({ created_at: -1 })
       .skip(skip)
       .limit(limitNumber);
