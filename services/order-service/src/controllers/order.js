@@ -5628,9 +5628,9 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
 
 
     const responseProduct = await axios.get(
-            `http://product-service:5002/products/v1/get-ProductBySKU/${sku}`,
-            { timeout: 5000 }
-          );
+  `http://product-service:5001/products/v1/sku/${sku}`,
+  { timeout: 5000 }
+);
   const productDataFetched = responseProduct.data.data;
   const currentTime = new Date();
 
