@@ -89,7 +89,15 @@ const OrderSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Return",
             default: null
-          }
+          },
+          is_returnable: {
+            type: Boolean,
+            default: true
+          },
+          return_window_days: {
+            type: Number,
+            default: 7
+          },
         },
         amount_collected:{
           type: Boolean,
