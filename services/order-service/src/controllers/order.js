@@ -5615,7 +5615,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
     if (!order) {
       return res.status(404).json({ error: "Order not found" });
     }
-
+   
     let dealerFound = false;
 
     order.dealerMapping = order.dealerMapping.map((mapping) => {
@@ -5627,6 +5627,14 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
     });
 
 
+    const responseProduct = await axios.get(
+            `http://product-service:5002/products/v1/get-ProductBySKU/${sku}`,
+            { timeout: 5000 }
+          );
+  const productDataFetched = responseProduct.data.data;
+  const currentTime = new Date();
+
+  const  isProductReturnable= (productDataFetched )? productDataFetched.is_returnable : false;
 
     const allPacked = order.dealerMapping.every(
       (mapping) => mapping.status === "Packed"
@@ -5823,6 +5831,7 @@ const headers = { "Content-Type": "application/json" };
                           sku.tracking_info.borzo_order_status = data.points[1].delivery.status;
                           sku.tracking_info.borzo_last_updated = new Date();
                           sku.tracking_info.amount_collected = order.paymentType === "COD" ? false : true ;
+                          sku.return_info.is_returnable=isProductReturnable;
                         }
                       });
                     }

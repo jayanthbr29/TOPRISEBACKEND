@@ -107,7 +107,7 @@ exports.createReturnRequest = async (req, res) => {
     order.skus = order.skus.map((s) => {
       if (s.sku === sku) {
         s.return_info = {
-          is_return: true,
+          is_returned: true,
           return_id: returnRequest._id,
         };
       }
