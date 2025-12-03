@@ -285,8 +285,8 @@ router.get(
 );
 router.get(
   "/get-by-name",
-  requireAuth,
-  auditMiddleware("SLA_BY_NAME_ACCESSED", "SLA", "SLA_MANAGEMENT"),
+  // requireAuth,
+  // auditMiddleware("SLA_BY_NAME_ACCESSED", "SLA", "SLA_MANAGEMENT"),
   slaController.getSlaByName
 );
 router.post(

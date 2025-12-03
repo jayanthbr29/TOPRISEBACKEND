@@ -450,7 +450,7 @@ exports.getPaymentDetails = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-    const { payment_status, payment_method, startDate, endDate ,razorpay_payment_method} = req.query;
+    const { payment_status, payment_method, startDate, endDate ,razorpay_payment_method,sort} = req.query;
    console.log("query", req.query)
     // Build filter
     const filter = {};
@@ -472,8 +472,19 @@ exports.getPaymentDetails = async (req, res) => {
       }
     }
     console.log("filter", filter)
+    const sortOptions = {};
+    if(sort){
+    if(sort=="asc"){
+      sortOptions.amount = 1;
+    }else if(sort=="desc"){
+      sortOptions.amount = -1;
+    }
+  }else{
+    sortOptions.created_at = -1;
+  }
 
-    const totalPayments = await Payment.countDocuments(filter);
+    const totalPayments = await Payment.countDocuments(filter)
+    ;
 
     // Populate order with comprehensive details
     const paymentDetails = await Payment.find(filter)
@@ -486,7 +497,7 @@ exports.getPaymentDetails = async (req, res) => {
           model: "Dealer"
         }
       })
-      .sort({ created_at: -1 })
+      .sort(sortOptions)
       .skip(skip)
       .limit(limit);
 

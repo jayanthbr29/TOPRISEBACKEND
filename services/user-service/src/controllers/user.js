@@ -2358,6 +2358,7 @@ exports.createDealersBulk = async (req, res) => {
   try {
     const results = [];
     const stream = req.file.buffer.toString("utf8");
+    // console.log(`📝 Parsing CSV...`)  ;
 
     await new Promise((resolve, reject) => {
       streamifier
@@ -2374,6 +2375,7 @@ exports.createDealersBulk = async (req, res) => {
     const failedRows = [];
 
     for (const [index, row] of results.entries()) {
+      // console.log(`\n-----------------------------`,row.email);
       console.log(`\n📝 Processing row ${index + 1}:`, row);
 
       try {
@@ -2405,8 +2407,8 @@ exports.createDealersBulk = async (req, res) => {
         // Assigned employees mapping
         const assignedEmployees = [];
         if (row.assigned_user_ids) {
-          const empIds = row.assigned_user_ids.split(",").map((e) => e.trim());
-
+          const empIds = row.assigned_user_ids.split("|").map((e) => e.trim());
+          console.log(`🔄 Mapping assigned employees:`, empIds);
           for (const empId of empIds) {
             try {
               const userId = await getUserIdByEmployeeId(empId);
