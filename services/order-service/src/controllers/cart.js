@@ -15,7 +15,7 @@ const calculateCartTotals = async (items, existingDeliveryCharge = 0) => {
   let setting = await axios.get("http://user-service:5001/api/appSetting/");
 
   const totalPrice = items.reduce(
-    (acc, item) => acc + item.selling_price * item.quantity,
+    (acc, item) => acc + item.selling_price ,
     0
   );
   const handlingCharge = 0;
