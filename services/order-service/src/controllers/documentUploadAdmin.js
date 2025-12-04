@@ -878,5 +878,60 @@ const formatDate = (date) => {
   return `${day}-${month}-${year}`;
 };
 
+exports.getAllDocumentUploadsNoPagination = async (req, res) => {
+  try {
+    const {
+      status,
+      priority,
+      assigned_to,
+      startDate,
+      endDate,
+      search,
+    } = req.query;
+
+    // Build filter
+    const filter = {};
+
+    if (status) filter.status = status;
+    if (priority) filter.priority = priority;
+    if (assigned_to) filter.assigned_to = assigned_to;
+
+    // Search filter
+    if (search) {
+      filter.$or = [
+        { document_number: new RegExp(search, "i") },
+        { description: new RegExp(search, "i") },
+        { "customer_details.name": new RegExp(search, "i") },
+        { "customer_details.email": new RegExp(search, "i") },
+        { "customer_details.phone": new RegExp(search, "i") },
+      ];
+    }
+
+    // Date range filter
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) filter.createdAt.$gte = new Date(startDate);
+      if (endDate) filter.createdAt.$lte = new Date(endDate);
+    }
+
+    // Fetch all documents (NO pagination)
+    const documents = await DocumentUpload.find(filter)
+      .sort({ priority: -1, createdAt: -1 })
+      .populate("order_id", "orderId status order_Amount")
+      .lean();
+
+    logger.info(`Fetched ${documents.length} document uploads (no pagination)`);
+
+    return sendSuccess(res, {
+      data: documents,
+      filters: { status, priority, assigned_to, search, startDate, endDate },
+    });
+  } catch (error) {
+    logger.error("Error fetching documents (no pagination):", error);
+    return sendError(res, "Error fetching documents", 500);
+  }
+};
+
+
 module.exports = exports;
 
