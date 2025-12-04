@@ -1488,7 +1488,8 @@ exports.getOrderByUserId = async (req, res) => {
     })
       .populate("skus.return_info.return_id")
       .lean();
-    const userInfo = await fetchUser(userId);
+    const userInfo = await fetchUser(userId)
+    .sort({ createdAt: -1 });
 
     for (let order of orders) {
       order.customerDetails.userInfo = userInfo;
