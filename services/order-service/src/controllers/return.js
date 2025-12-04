@@ -109,6 +109,7 @@ exports.createReturnRequest = async (req, res) => {
         s.return_info = {
           is_returned: true,
           return_id: returnRequest._id,
+          ...s.return_info,
         };
       }
       return s;
