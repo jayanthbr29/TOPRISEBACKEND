@@ -214,6 +214,13 @@ router.post(
     documentUploadAdminController.createOrderforPurchaseRequest
     
 );
+router.get(
+    "/admin/all/exports",
+    authenticate,
+    authorizeRoles("Super-admin", "Fulfillment-Admin", "Customer-Support", "Inventory-Admin"),
+    AuditLogger.createMiddleware("DOCUMENTS_LIST_ACCESSED", "DocumentUpload", "DOCUMENT_MANAGEMENT"),
+    documentUploadAdminController.getAllDocumentUploadsNoPagination
+);
 
 module.exports = router;
 
