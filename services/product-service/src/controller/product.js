@@ -7404,3 +7404,139 @@ exports.updateLiveStatus = async (req, res) => {
     return sendError(res, err);
   }
 };
+
+exports.getProductsByFiltersForExport = async (req, res) => {
+  try {
+    const {
+      brand,
+      category,
+      sub_category,
+      product_type,
+      model,
+      variant,
+      make,
+      year_range,
+      is_universal,
+      is_consumable,
+      query,
+      status,
+      sort_by,
+    } = req.query;
+
+    const filter = {};
+    const statusConditions = [];
+    const searchConditions = [];
+
+    const csvToIn = (val) => val.split(",").map((v) => v.trim());
+
+    /**
+     * --------------------------
+     * STATUS FILTER
+     * --------------------------
+     */
+    if (status && status !== "all") {
+      if (status.includes(",")) {
+        const statusArray = csvToIn(status);
+        statusConditions.push({ Qc_status: { $in: statusArray } });
+      } else {
+        statusConditions.push({ Qc_status: status });
+      }
+    }
+
+    /**
+     * --------------------------
+     * SEARCH FILTER
+     * --------------------------
+     */
+    if (query && query.trim() !== "") {
+      const searchTerm = query.trim();
+      searchConditions.push(
+        { product_name: { $regex: searchTerm, $options: "i" } },
+        { manufacturer_part_name: { $regex: searchTerm, $options: "i" } },
+        { sku_code: { $regex: searchTerm, $options: "i" } }
+      );
+    }
+
+    /**
+     * --------------------------
+     * COMBINE STATUS + SEARCH
+     * --------------------------
+     */
+    if (statusConditions.length > 0 && searchConditions.length > 0) {
+      filter.$and = [
+        { $or: statusConditions },
+        { $or: searchConditions },
+      ];
+    } else if (statusConditions.length > 0) {
+      filter.$or = statusConditions;
+    } else if (searchConditions.length > 0) {
+      filter.$or = searchConditions;
+    }
+
+    /**
+     * --------------------------
+     * OTHER FILTERS
+     * --------------------------
+     */
+    if (brand) filter.brand = { $in: csvToIn(brand) };
+    if (category) filter.category = { $in: csvToIn(category) };
+    if (sub_category) filter.sub_category = { $in: csvToIn(sub_category) };
+    if (product_type) filter.product_type = { $in: csvToIn(product_type) };
+    if (model) filter.model = { $in: csvToIn(model) };
+    if (variant) filter.variant = { $in: csvToIn(variant) };
+    if (make) filter.make = { $in: csvToIn(make) };
+    if (year_range) filter.year_range = { $in: csvToIn(year_range) };
+    if (is_universal !== undefined)
+      filter.is_universal = is_universal === "true";
+    if (is_consumable !== undefined)
+      filter.is_consumable = is_consumable === "true";
+
+    logger.debug(`🔎 Product filter → ${JSON.stringify(filter)}`);
+
+    /**
+     * --------------------------
+     * SORTING LOGIC
+     * --------------------------
+     */
+    let sortOption = { created_at: -1 }; // Default sort
+
+    if (sort_by) {
+      sortOption = {};
+      switch (sort_by.trim()) {
+        case "A-Z":
+          sortOption.product_name = 1;
+          break;
+        case "Z-A":
+          sortOption.product_name = -1;
+          break;
+        case "L-H":
+          sortOption.selling_price = 1;
+          break;
+        case "H-L":
+          sortOption.selling_price = -1;
+          break;
+        default:
+          sortOption.created_at = -1;
+          sortOption._id = 1;
+      }
+    }
+
+    /**
+     * --------------------------
+     * FETCH ALL MATCHED PRODUCTS
+     * --------------------------
+     */
+    const products = await Product.find(filter)
+      .populate("brand category sub_category model variant year_range")
+      .sort(sortOption);
+
+    return sendSuccess(
+      res,
+      { products },
+      "Products fetched successfully"
+    );
+  } catch (err) {
+    logger.error(`❌ getProductsByFilters error: ${err.stack}`);
+    return sendError(res, err.message || "Internal server error");
+  }
+};
