@@ -840,6 +840,7 @@ exports.getOrders = async (req, res) => {
 
     // Fetch orders with filter + pagination
     const orders = await Order.find(filter)
+      .populate('payment_id')
       .sort({ [sortField]: sortOrder })
       .skip(skip)
       .limit(limit)
