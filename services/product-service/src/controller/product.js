@@ -2562,145 +2562,206 @@ exports.createProductSingle = async (req, res) => {
 };
 
 // 🔹 EDIT Single
-exports.editProductSingle = async (req, res) => {
-  try {
-    const { id } = req.params;
-    let updateData = req.body;
-    const user = req.user?.id || updateData.updated_by || "system";
+// exports.editProductSingle = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     let updateData = req.body;
+//     const user = req.user?.id || updateData.updated_by || "system";
 
-    const existingProduct = await Product.findById(id);
-    if (!existingProduct) return sendError(res, "Product not found", 404);
+//     const existingProduct = await Product.findById(id);
+//     if (!existingProduct) return sendError(res, "Product not found", 404);
 
-    const updatedFields = [];
-    const changedValues = [];
+//     const updatedFields = [];
+//     const changedValues = [];
 
-    // Upload new images if present
-    if (req.files && req.files.length > 0) {
-      const newImages = [];
-      for (const file of req.files) {
-        const uploaded = await uploadFile(
-          file.buffer,
-          file.originalname,
-          file.mimetype,
-          "products"
-        );
-        newImages.push(uploaded.Location);
-      }
-      updateData.images = newImages;
-    }
+//     // Upload new images if present
+//     if (req.files && req.files.length > 0) {
+//       const newImages = [];
+//       for (const file of req.files) {
+//         const uploaded = await uploadFile(
+//           file.buffer,
+//           file.originalname,
+//           file.mimetype,
+//           "products"
+//         );
+//         newImages.push(uploaded.Location);
+//       }
+//       updateData.images = newImages;
+//     }
 
-    // Detect changes
-    for (const key in updateData) {
-      const newValue = updateData[key];
-      const oldValue = existingProduct[key];
+//     // Detect changes
+//     for (const key in updateData) {
+//       const newValue = updateData[key];
+//       const oldValue = existingProduct[key];
 
-      // For objects/arrays, compare stringified versions
-      const hasChanged =
-        typeof newValue === "object"
-          ? JSON.stringify(oldValue) !== JSON.stringify(newValue)
-          : oldValue != newValue;
+//       // For objects/arrays, compare stringified versions
+//       const hasChanged =
+//         typeof newValue === "object"
+//           ? JSON.stringify(oldValue) !== JSON.stringify(newValue)
+//           : oldValue != newValue;
 
-      if (hasChanged) {
-        updatedFields.push(key);
-        changedValues.push({
-          field: key,
-          old_value: oldValue,
-          new_value: newValue,
-        });
-      }
-    }
+//       if (hasChanged) {
+//         updatedFields.push(key);
+//         changedValues.push({
+//           field: key,
+//           old_value: oldValue,
+//           new_value: newValue,
+//         });
+//       }
+//     }
 
-    if (!updatedFields.length) {
-      return sendSuccess(res, existingProduct, "No changes detected");
-    }
-    if (updateData.available_dealers) {
-      updateData.available_dealers = updateData.available_dealers.map((dealer) => ({
-        dealer_id: dealer.dealer_id,
-        quantity_per_dealer: dealer.quantity_per_dealer,
-        inStock: dealer.quantity_per_dealer > 0 ? true : false
-      }));
-    }
-    if (updateData.out_of_stock) {
-      updateData.out_of_stock = updateData.available_dealers.some(dealer => dealer.inStock === true) ? false : true;
-    }
-    // Perform update
-    const updatedProduct = await Product.findByIdAndUpdate(id, updateData, {
-      new: true,
-    });
+//     if (!updatedFields.length) {
+//       return sendSuccess(res, existingProduct, "No changes detected");
+//     }
+//     if (updateData.available_dealers) {
+//       updateData.available_dealers = updateData.available_dealers.map((dealer) => ({
+//         dealer_id: dealer.dealer_id,
+//         quantity_per_dealer: dealer.quantity_per_dealer,
+//         inStock: dealer.quantity_per_dealer > 0 ? true : false
+//       }));
+//     }
+//     if (updateData.out_of_stock) {
+//       updateData.out_of_stock = updateData.available_dealers.some(dealer => dealer.inStock === true) ? false : true;
+//     }
+//     // Perform update
+//     const updatedProduct = await Product.findByIdAndUpdate(id, updateData, {
+//       new: true,
+//     });
 
-    // Create changelog entries per changed field
-    const currentIteration = (updatedProduct.iteration_number || 0) + 1;
+//     // Create changelog entries per changed field
+//     const currentIteration = (updatedProduct.iteration_number || 0) + 1;
 
-    for (const change of changedValues) {
-      updatedProduct.change_logs.push({
-        iteration_number: currentIteration,
-        old_value: String(change.old_value ?? ""),
-        new_value: String(change.new_value ?? ""),
-        changes: change.field,
-        modified_by: user,
-      });
-    }
+//     for (const change of changedValues) {
+//       updatedProduct.change_logs.push({
+//         iteration_number: currentIteration,
+//         old_value: String(change.old_value ?? ""),
+//         new_value: String(change.new_value ?? ""),
+//         changes: change.field,
+//         modified_by: user,
+//       });
+//     }
 
-    updatedProduct.iteration_number = currentIteration;
-    await updatedProduct.save();
+//     updatedProduct.iteration_number = currentIteration;
+//     await updatedProduct.save();
 
-    // Save log to ProductLogs
-    const userData = await axios.get(`http://user-service:5001/api/users/`, {
-      headers: {
-        Authorization: req.headers.authorization,
-      },
-    });
+//     // Save log to ProductLogs
+//     const userData = await axios.get(`http://user-service:5001/api/users/`, {
+//       headers: {
+//         Authorization: req.headers.authorization,
+//       },
+//     });
 
-    let filteredUsers = userData.data.data.filter(
-      (user) =>
-        user.role === "Super-admin" ||
-        user.role === "Inventory-Admin" ||
-        user.role === "Inventory-Staff"
-    );
-    let users = filteredUsers.map((user) => user._id);
-    const successData =
-      await createUnicastOrMulticastNotificationUtilityFunction(
-        users,
-        ["INAPP", "PUSH"],
-        "Product Update ALERT",
-        ` Product has been updated  - ${updatedProduct.product_name}`,
-        "",
-        "",
-        "Product",
-        {
-          model_id: updatedProduct._id,
-        },
-        req.headers.authorization
-      );
-    if (!successData.success) {
-      logger.error("❌ Create notification error:", successData.message);
-    } else {
-      logger.info("✅ Notification created successfully");
-    }
-    logger.info(`✅ Edited product: ${updatedProduct.sku_code}`);
-    return sendSuccess(res, updatedProduct, "Product updated successfully");
-  } catch (err) {
-    logger.error(`❌ Edit product error: ${err.message}`);
-    return sendError(res, err);
-  }
-};
+//     let filteredUsers = userData.data.data.filter(
+//       (user) =>
+//         user.role === "Super-admin" ||
+//         user.role === "Inventory-Admin" ||
+//         user.role === "Inventory-Staff"
+//     );
+//     let users = filteredUsers.map((user) => user._id);
+//     const successData =
+//       await createUnicastOrMulticastNotificationUtilityFunction(
+//         users,
+//         ["INAPP", "PUSH"],
+//         "Product Update ALERT",
+//         ` Product has been updated  - ${updatedProduct.product_name}`,
+//         "",
+//         "",
+//         "Product",
+//         {
+//           model_id: updatedProduct._id,
+//         },
+//         req.headers.authorization
+//       );
+//     if (!successData.success) {
+//       logger.error("❌ Create notification error:", successData.message);
+//     } else {
+//       logger.info("✅ Notification created successfully");
+//     }
+//     logger.info(`✅ Edited product: ${updatedProduct.sku_code}`);
+//     return sendSuccess(res, updatedProduct, "Product updated successfully");
+//   } catch (err) {
+//     logger.error(`❌ Edit product error: ${err.message}`);
+//     return sendError(res, err);
+//   }
+// };
 // src/controller/product.js
 // ---------------------------------------------------------------
 // 🔹 EDIT – single product (with change-logs)
 // ---------------------------------------------------------------
+
+
+function normalizeValueEditProduct(existing, incoming) {
+  if (incoming === undefined || incoming === null) return incoming;
+
+  // Handle ObjectId
+  if (existing instanceof mongoose.Types.ObjectId) {
+    return String(incoming); // always convert to string
+  }
+
+  // Normalize boolean
+  if (typeof existing === "boolean") {
+    return incoming === "true" || incoming === true;
+  }
+
+  // Normalize number
+  if (typeof existing === "number") {
+    const num = Number(incoming);
+    return isNaN(num) ? existing : num;
+  }
+
+  // Normalize arrays
+  if (Array.isArray(existing)) {
+    if (typeof incoming === "string") return [incoming];
+
+    if (Array.isArray(incoming)) return incoming;
+
+    try {
+      const parsed = JSON.parse(incoming);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (_) {}
+
+    return incoming;
+  }
+
+  // Normalize plain objects (dimensions)
+  if (
+    typeof existing === "object" && 
+    existing !== null && 
+    !Array.isArray(existing)
+  ) {
+    const normalized = {};
+    for (const key in existing) {
+      normalized[key] = normalizeValueEditProduct(
+        existing[key],
+        incoming[key]
+      );
+    }
+    return normalized;
+  }
+
+  return incoming;
+}
+
+
+
 exports.editProductSingle = async (req, res) => {
   try {
     const { id } = req.params;
-    const patch = req.body; // fields we want to change
+    const patch = req.body;
     const userId = req.user?.id || patch.updated_by || "system";
 
-    /* ─────── 1. Fetch current document ─────── */
+    // IMPORTANT: DO NOT USE .lean()
     const product = await Product.findById(id);
     if (!product) return sendError(res, "Product not found", 404);
 
-    /* ─────── 2. Handle image uploads (optional) ─────── */
+    let updateSet = {};
+    let oldValues = {};
+    let newValues = {};
+    let changedFields = [];
+
+    // Handle image uploads
     if (req.files?.length) {
-      const uploads = [];
+      const images = [];
       for (const file of req.files) {
         const { Location } = await uploadFile(
           file.buffer,
@@ -2708,101 +2769,64 @@ exports.editProductSingle = async (req, res) => {
           file.mimetype,
           "products"
         );
-        uploads.push(Location);
+        images.push(Location);
       }
-
-      patch.images = uploads;
+      patch.images = images;
     }
 
-    /* ─────── 3. Detect changes ─────── */
-    const changedFields = [];
-    const changeLogs = []; // array of { field, old_value, new_value }
+    console.log("Patch data:", patch);
+    console.log("Existing product data:", product);
 
-    Object.keys(patch).forEach((key) => {
-      const newVal = patch[key];
-      const oldVal = product[key];
+    // Detect changes
+    Object.keys(patch).forEach((field) => {
+      const oldVal = product[field];
+      const normalizedNewVal = normalizeValueEditProduct(oldVal, patch[field]);
+     console.log("normalizedNewVal:", normalizedNewVal);
+      const changed =
+        JSON.stringify(oldVal) !== JSON.stringify(normalizedNewVal);
 
-      const hasChanged =
-        typeof newVal === "object"
-          ? JSON.stringify(oldVal) !== JSON.stringify(newVal)
-          : oldVal != newVal; // loose compare on purpose (null/"" etc.)
-
-      if (hasChanged) {
-        changedFields.push(key);
-
-        changeLogs.push({
-          field: key,
-          old_value: JSON.stringify(oldVal ?? ""),
-          new_value: JSON.stringify(newVal ?? ""),
-        });
-
-        // apply change onto the in-memory product instance
-        product[key] = newVal;
+      if (changed) {
+        changedFields.push(field);
+        oldValues[field] = oldVal;
+        newValues[field] = normalizedNewVal;
+        updateSet[field] = normalizedNewVal;
       }
     });
 
-    if (!changedFields.length)
+    if (changedFields.length === 0) {
       return sendSuccess(res, product, "No changes detected");
-
-    /* ─────── 4. Build & push change-log(s) ─────── */
-    const nextIter = (product.iteration_number || 0) + 1;
-
-    changeLogs.forEach((c) =>
-      product.change_logs.push({
-        iteration_number: nextIter,
-        old_value: c.old_value,
-        new_value: c.new_value,
-        changes: c.field,
-        modified_by: userId,
-      })
-    );
-
-    product.iteration_number = nextIter;
-    product.updated_at = new Date();
-
-    /* ─────── 5. Persist & respond ─────── */
-    await product.save();
-    const userData = await axios.get(`http://user-service:5001/api/users/`, {
-      headers: {
-        Authorization: req.headers.authorization,
-      },
-    });
-    const user = userData.data.data.find((user) => user._id === userId);
-    let filteredUsers = userData.data.data.filter(
-      (user) =>
-        user.role === "Super-admin" ||
-        user.role === "Inventory-Admin" ||
-        user.role === "Inventory-Staff"
-    );
-    let users = filteredUsers.map((user) => user._id);
-    const successData =
-      await createUnicastOrMulticastNotificationUtilityFunction(
-        users,
-        ["INAPP", "PUSH"],
-        "Product Update ALERT",
-        ` Product has been updated by ${user ? user.user_name || user.username : "system"} - ${product.product_name
-        }`,
-        "",
-        "",
-        "Product",
-        {
-          model_id: product._id,
-        },
-        req.headers.authorization
-      );
-    if (!successData.success) {
-      logger.error("❌ Create notification error:", successData.message);
-    } else {
-      logger.info("✅ Notification created successfully");
     }
 
-    logger.info(`✅ Product edited (sku: ${product.sku_code}) by ${userId}`);
-    return sendSuccess(res, product, "Product updated successfully");
+    const iteration_number = (product.iteration_number || 0) + 1;
+
+    const changeLogEntry = {
+      iteration_number,
+      old_value: JSON.stringify(oldValues),
+      new_value: JSON.stringify(newValues),
+      changes: changedFields.join(", "),
+      modified_by: userId,
+      modified_At: new Date()
+    };
+
+    updateSet.iteration_number = iteration_number;
+    updateSet.updated_at = new Date();
+
+    const updatedProduct = await Product.findByIdAndUpdate(
+      id,
+      {
+        $set: updateSet,
+        $push: { change_logs: changeLogEntry }
+      },
+      { new: true }
+    );
+
+    return sendSuccess(res, updatedProduct, "Product updated successfully");
   } catch (err) {
-    logger.error(`❌ editProductSingle: ${err.message}`);
-    return sendError(res, err);
+    console.error("editProductSingle error:", err);
+    return sendError(res, err.message);
   }
 };
+
 
 exports.searchProductsForDashboard = async (req, res) => { };
 
@@ -3831,7 +3855,7 @@ exports.getProductsByFiltersWithPagination = async (req, res) => {
     // } else {
     //   sorting = { created_at: -1 };
     // }
-      let sortOption = { created_at: -1}; // stable default
+    let sortOption = { created_at: -1 }; // stable default
     if (sort_by) {
       sortOption = {};
       switch (sort_by.trim()) {
@@ -5238,9 +5262,9 @@ exports.getProductDealerDetails = async (req, res) => {
 
 exports.getProductStats = async (req, res) => {
   try {
-    const createdProducts = await Product.countDocuments({
-      live_status: "Created",
-    });
+    // const createdProducts = await Product.countDocuments({
+    //   live_status: "Created",
+    // });
     const pendingProducts = await Product.countDocuments({
       $or: [
         { live_status: "Pending" },
@@ -5248,20 +5272,20 @@ exports.getProductStats = async (req, res) => {
       ],
     });
     const rejectedProducts = await Product.countDocuments({
-      live_status: "Rejected",
+      Qc_status: "Rejected",
     });
     const liveProducts = await Product.countDocuments({ live_status: "Live" });
     const approvedProducts = await Product.countDocuments({
-      live_status: "Approved",
+      Qc_status: "Approved",
     });
     const totalProducts = await Product.countDocuments();
 
     const response = {
       total: totalProducts,
-      created: createdProducts,
+      // created: createdProducts,
       pending: pendingProducts,
       rejected: rejectedProducts,
-      live: liveProducts,
+      // live: liveProducts,
       approved: approvedProducts,
     };
 
@@ -5286,7 +5310,7 @@ exports.getProductStats = async (req, res) => {
  */
 exports.getPendingProducts = async (req, res) => {
   try {
-    const { page = 1, limit = 10, created_by_role ,status} = req.query;
+    const { page = 1, limit = 10, created_by_role, status } = req.query;
     const pageNumber = parseInt(page);
     const limitNumber = parseInt(limit);
     const skip = (pageNumber - 1) * limitNumber;
@@ -7364,7 +7388,7 @@ exports.updateLiveStatus = async (req, res) => {
           return sendError(res, "Product not found", 404);
         }
         product.live_status = status;
-        product.Qc_status = status; 
+        product.Qc_status = status;
         await product.save();
         result.push({ id, message: "Live status updated successfully", status: status });
 
