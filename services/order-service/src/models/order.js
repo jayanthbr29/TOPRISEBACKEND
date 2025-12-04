@@ -92,7 +92,7 @@ const OrderSchema = new mongoose.Schema(
           },
           is_returnable: {
             type: Boolean,
-            default: true
+            default: false
           },
           return_window_days: {
             type: Number,
