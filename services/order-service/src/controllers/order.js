@@ -1486,11 +1486,10 @@ exports.getOrderByUserId = async (req, res) => {
     const { userId } = req.params;
     const orders = await Order.find({
       "customerDetails.userId": userId,
-    })
+    }).sort({ createdAt: -1 })
       .populate("skus.return_info.return_id")
       .lean();
     const userInfo = await fetchUser(userId)
-    .sort({ createdAt: -1 });
 
     for (let order of orders) {
       order.customerDetails.userInfo = userInfo;
@@ -1504,6 +1503,7 @@ exports.getOrderByUserId = async (req, res) => {
 
     return sendSuccess(res, orders, "Orders for user fetched");
   } catch (err) {
+    console.log("Error in getOrderByUserId:", err); 
     return sendError(res, "Failed to get orders by user", 500);
   }
 };
