@@ -5374,15 +5374,7 @@ exports.getPendingProducts = async (req, res) => {
     //     { Qc_status: status }
     //   ]
     // };
-    if(startDate || endDate){
-      filter.created_at = {};
-      if(startDate){
-        filter.created_at.$gte = new Date(startDate);
-      }
-      if(endDate){
-        filter.created_at.$lte = new Date(endDate);
-      }
-    }
+    
 
     const filter = {};
     if (status) {
@@ -5391,6 +5383,15 @@ exports.getPendingProducts = async (req, res) => {
     // Filter by creator role if specified
     if (created_by_role) {
       filter.created_by_role = created_by_role;
+    }
+    if(startDate || endDate){
+      filter.created_at = {};
+      if(startDate){
+        filter.created_at.$gte = new Date(startDate);
+      }
+      if(endDate){
+        filter.created_at.$lte = new Date(endDate);
+      }
     }
 
     const pendingProducts = await Product.find(filter)
