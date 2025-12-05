@@ -105,7 +105,7 @@ exports.getVehicleDetails = async (req, res) => {
 // </Vehicle>`,
 //         }
         const parsedXml = await parseStringPromise(response.data);
-        console.log("Parsed XML:", parsedXml);
+        console.log("Parsed XML:", parsedXml);  
         const vehicleJson = parsedXml.Vehicle.vehicleJson[0];
 
         const vehicleData = JSON.parse(vehicleJson);
