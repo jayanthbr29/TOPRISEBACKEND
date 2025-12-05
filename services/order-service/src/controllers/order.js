@@ -669,6 +669,21 @@ exports.createPickup = async (req, res) => {
       updatedAt: new Date(),
     });
 
+    const  order = await Order.findById(orderId);
+    order.skus = order.skus.map((skuItem) => {
+      const inPicklist = skuList.find(
+        (pItem) => pItem.sku === skuItem.sku
+      );
+      if (inPicklist) {
+        return {
+          ...skuItem.toObject(),
+          picklistId: picklist._id,
+          piclistGenerated: true,
+        };
+      }
+      return skuItem;
+    });
+    await order.save();
     const successData =
       await createUnicastOrMulticastNotificationUtilityFunction(
         [dealerId],
