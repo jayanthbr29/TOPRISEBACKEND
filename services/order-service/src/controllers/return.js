@@ -174,9 +174,9 @@ exports.validateReturnRequest = async (req, res) => {
     returnRequest.eligibilityReason = eligibilityResult.reason;
     returnRequest.isWithinReturnWindow = eligibilityResult.isWithinReturnWindow;
     returnRequest.isProductReturnable = eligibilityResult.isProductReturnable;
-    returnRequest.returnStatus = eligibilityResult.isEligible
-      ? "Validated"
-      : "Requested";
+    returnRequest.returnStatus = "Requested"
+      // ? "Validated"
+      // : "Requested";
     returnRequest.timestamps.validatedAt = new Date();
 
     await returnRequest.save();
@@ -1853,3 +1853,96 @@ exports.completeReturnRequestInspection = async (req, res) => {
     return sendError(res, "Failed to complete return request inspection");
   }
 }
+
+exports.rejectReturnRequest = async (req, res) => {
+  try {
+    const { returnId } = req.params;
+    const {  rejectionReason } = req.body;
+
+    const returnRequest = await Return.findById(returnId);
+    if (!returnRequest) {
+      return sendError(res, "Return request not found");
+    }
+    // if(returnRequest.returnStatus !== "Inspection_Completed") {
+    //   return sendError(res, "Return request is not eligible for rejection");
+    // }
+
+    // Update return request status to Rejected
+    returnRequest.returnStatus = "Rejected";
+    returnRequest.timestamps.rejectedAt = new Date();
+    returnRequest.rejectReason = rejectionReason;
+
+    await returnRequest.save();
+
+    return sendSuccess(
+      res,
+      returnRequest,
+      "Return request rejected successfully"
+    );
+  } catch (error) {
+    logger.error("Reject return request error:", error);
+    return sendError(res, "Failed to reject return request");  
+  }
+}
+
+exports.getReturnStatusCounts = async (req, res) => {
+  try {
+    // List of statuses you want to track
+    const statuses = [
+      "Rejected",
+      "Validated",
+      "Requested",
+      "Shipment_Intiated",
+      "Shipment_Delivered",
+      "Shipment_Completed",
+      "Inspection_Started",
+      "Inspection_Completed",
+      "Initiated_Refund",
+      "Refund_Completed",
+      "Refund_Failed"
+    ];
+
+    // Use aggregation for fast grouped counts
+    const result = await Return.aggregate([
+      {
+        $match: {
+          returnStatus: { $in: statuses }
+        }
+      },
+      {
+        $group: {
+          _id: "$returnStatus",
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // Convert aggregation results to key:value mapping
+    const counts = {};
+    statuses.forEach((status) => {
+      counts[status] = 0;
+    });
+
+    result.forEach((item) => {
+      counts[item._id] = item.count;
+    });
+
+    // Add total count
+    const totalReturns = await Return.countDocuments();
+
+    return res.status(200).json({
+      success: true,
+      message: "Return status counts fetched successfully",
+      totalReturns,
+      statusCounts: counts
+    });
+
+  } catch (err) {
+    console.error("Error fetching return counts:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch return counts",
+      error: err.message
+    });
+  }
+};
