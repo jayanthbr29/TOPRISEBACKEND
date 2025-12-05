@@ -5387,10 +5387,10 @@ exports.getPendingProducts = async (req, res) => {
     if(startDate || endDate){
       filter.created_at = {};
       if(startDate){
-        filter.created_at.$gte = new Date(startDate);
+        filter.created_at.$gte = new Date(startDate).setHours(0,0,0,0)  ;
       }
       if(endDate){
-        filter.created_at.$lte = new Date(endDate);
+        filter.created_at.$lte = new Date(endDate).setHours(23,59,59,999);
       }
     }
 
