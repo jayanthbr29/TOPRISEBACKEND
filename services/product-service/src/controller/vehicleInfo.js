@@ -48,10 +48,11 @@ exports.getVehicleDetails = async (req, res) => {
     try {
         const { registrationNumber } = req.params;
         // const username = 'Sushanth'; // Replace with your API username
-         const username = 'Navenbabu';
+         const username = 'TechdevToprise';
         const response = await axios.get(
             `http://www.carregistrationapi.com/api/reg.asmx/CheckIndia?RegistrationNumber=${registrationNumber}&username=${username}`
         );
+        console.log("API Response:", response.data);
 
 
 //         const response = {
@@ -104,6 +105,7 @@ exports.getVehicleDetails = async (req, res) => {
 // </Vehicle>`,
 //         }
         const parsedXml = await parseStringPromise(response.data);
+        console.log("Parsed XML:", parsedXml);
         const vehicleJson = parsedXml.Vehicle.vehicleJson[0];
 
         const vehicleData = JSON.parse(vehicleJson);
