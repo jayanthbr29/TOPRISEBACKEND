@@ -2689,6 +2689,36 @@ exports.createProductSingle = async (req, res) => {
 // 🔹 EDIT – single product (with change-logs)
 // ---------------------------------------------------------------
 
+async function resolveDisplayValue(field, value) {
+  if (!value) return value;
+
+  const map = {
+    brand: { model: "brand", display: "brand_name" },
+    category: { model: "category", display: "category_name" },
+    sub_category: { model: "subCategory", display: "subcategory_name" },
+    model: { model: "model", display: "model_name" },
+    variant: { model: "variantModel", display: "variant_name", isArray: true },
+    year_range: { model: "year", display: "year_name", isArray: true },
+  };
+
+  if (!map[field]) return value;
+
+  const { model, display, isArray } = map[field];
+  console.log("Resolving", field, "with value:", value,"model",model);
+
+  const M = require(`../models/${model}`);
+
+  // Handle arrays of ObjectIds
+  if (isArray && Array.isArray(value)) {
+    const docs = await M.find({ _id: { $in: value } });
+    return docs.map(d => d[display]);
+  }
+
+  // Single ObjectId
+  const doc = await M.findById(value);
+  return doc ? doc[display] : value;
+}
+
 
 function normalizeValueEditProduct(existing, incoming) {
   if (incoming === undefined || incoming === null) return incoming;
@@ -2778,20 +2808,28 @@ exports.editProductSingle = async (req, res) => {
     console.log("Existing product data:", product);
 
     // Detect changes
-    Object.keys(patch).forEach((field) => {
-      const oldVal = product[field];
-      const normalizedNewVal = normalizeValueEditProduct(oldVal, patch[field]);
-     console.log("normalizedNewVal:", normalizedNewVal);
-      const changed =
-        JSON.stringify(oldVal) !== JSON.stringify(normalizedNewVal);
+    for (const field of Object.keys(patch)) {
+  const oldVal = product[field];
+  const normalizedNewVal = normalizeValueEditProduct(oldVal, patch[field]);
 
-      if (changed) {
-        changedFields.push(field);
-        oldValues[field] = oldVal;
-        newValues[field] = normalizedNewVal;
-        updateSet[field] = normalizedNewVal;
-      }
-    });
+  const changed =
+    JSON.stringify(oldVal) !== JSON.stringify(normalizedNewVal);
+
+  if (changed) {
+    // RESOLVE readable values for logging
+    const readableOld = await resolveDisplayValue(field, oldVal);
+    const readableNew = await resolveDisplayValue(field, normalizedNewVal);
+
+    changedFields.push(field);
+
+    oldValues[field] = readableOld;
+    newValues[field] = readableNew;
+
+    // For DB update still use normalized value
+    updateSet[field] = normalizedNewVal;
+  }
+}
+
 
     if (changedFields.length === 0) {
       return sendSuccess(res, product, "No changes detected");
