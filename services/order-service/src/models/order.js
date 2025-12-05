@@ -102,7 +102,16 @@ const OrderSchema = new mongoose.Schema(
         amount_collected:{
           type: Boolean,
           default: true,
-        }
+        },
+        picklistId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Picklist",
+          default: null,
+        },
+        piclistGenerated:{
+          type: Boolean,
+          default: false,
+        },
 
       },
     ],
