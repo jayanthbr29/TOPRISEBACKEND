@@ -1574,6 +1574,8 @@ exports.getProductsByFilters = async (req, res) => {
       sort_by,
       min_price,
       max_price,
+      startDate,
+      endDate,
     } = req.query;
 
     let { page = "0", limit = "10" } = req.query; // default page = 0
@@ -1625,6 +1627,13 @@ exports.getProductsByFilters = async (req, res) => {
       filter.selling_price = {};
       if (min_price) filter.selling_price.$gte = Number(min_price);
       if (max_price) filter.selling_price.$lte = Number(max_price);
+    }
+
+    
+if (startDate || endDate) {
+      filter.created_at = {};
+      if (startDate) filter.created_at.$gte = new Date(startDate);
+      if (endDate) filter.created_at.$lte = new Date(endDate);
     }
 
     // Sorting
@@ -7465,6 +7474,8 @@ exports.getProductsByFiltersForExport = async (req, res) => {
       query,
       status,
       sort_by,
+      startDate,
+      endDate
     } = req.query;
 
     const filter = {};
@@ -7534,6 +7545,17 @@ exports.getProductsByFiltersForExport = async (req, res) => {
       filter.is_universal = is_universal === "true";
     if (is_consumable !== undefined)
       filter.is_consumable = is_consumable === "true";
+    if(startDate || endDate) {
+      filter.created_at = {};
+      
+      if(startDate) {
+        filter.created_at.$gte = new Date(startDate);
+      }
+      if(endDate) {
+        filter.created_at.$lte = new Date(endDate);
+      }
+      
+    }
 
     logger.debug(`🔎 Product filter → ${JSON.stringify(filter)}`);
 
