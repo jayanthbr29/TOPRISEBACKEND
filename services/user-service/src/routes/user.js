@@ -1176,5 +1176,10 @@ router.get(
   userController.getDealerByUserId
 );
 
+router.get(
+  "/search/users/byNameOrEmail",
+  userController.searchUserByEmailOrName
+);
+
 
 module.exports = router;

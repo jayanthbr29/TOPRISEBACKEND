@@ -4806,3 +4806,30 @@ exports.getDealerByUserId = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 }
+
+exports.searchUserByEmailOrName = async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    if (!query) {
+      return sendError(res, "Search query is required", 400);
+    }
+
+    const users = await User.find({
+      $or: [
+        { email: { $regex: query, $options: "i" } },
+        { username: { $regex: query, $options: "i" } }
+      ]
+    }).select("email username role phone_Number");
+
+    logger.info(`Fetched ${users.length} users matching query: ${query}`);
+    return sendSuccess(
+      res,
+      { data: users },
+      "Users retrieved successfully"
+    );
+  } catch (error) {
+    logger.error(`Error searching users: ${error.message}`);
+    return sendError(res, error);
+  }
+}

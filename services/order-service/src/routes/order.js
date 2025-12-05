@@ -836,4 +836,5 @@ router.get("/test/order-geocode/:orderId", orderController.testGeoCode);
 
 
 router.get("/order-summury/monthy/weekly", orderController.getOrderStatistics);
+router.get("/order/all/exports", orderController.getOrdersNoPagination);
 module.exports = router;
