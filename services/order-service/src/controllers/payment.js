@@ -500,6 +500,7 @@ exports.getPaymentDetails = async (req, res) => {
       .sort(sortOptions)
       .skip(skip)
       .limit(limit);
+      console.log("paymentDetails", paymentDetails);
 
     // Enhance each payment with comprehensive order details
     const enhancedPayments = paymentDetails.map(payment => ({
@@ -945,5 +946,176 @@ exports.searchPaymentsWithOrderDetails = async (req, res) => {
   } catch (error) {
     logger.error("Error in enhanced payment search:", error.message);
     return sendError(res, error);
+  }
+};
+
+
+exports.getPaymentDetailsNoPagination = async (req, res) => {
+  try {
+    const {
+      payment_status,
+      payment_method,
+      startDate,
+      endDate,
+      razorpay_payment_method,
+      sort
+    } = req.query;
+
+    console.log("query", req.query);
+
+    // ---------------------------
+    // BUILD FILTER
+    // ---------------------------
+    const filter = {};
+
+    if (payment_status && payment_status !== "all")
+      filter.payment_status = payment_status;
+
+    if (payment_method && payment_method !== "all")
+      filter.payment_method = payment_method;
+
+    if (
+      payment_method === "Razorpay" &&
+      razorpay_payment_method &&
+      razorpay_payment_method !== "all"
+    ) {
+      filter.razorpay_payment_method = razorpay_payment_method;
+    }
+
+    // Date Filtering
+    if (startDate || endDate) {
+      filter.created_at = {};
+      if (startDate) filter.created_at.$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        filter.created_at.$lte = end;
+      }
+    }
+
+    console.log("filter", filter);
+
+    // Sorting
+    const sortOptions = {};
+    if (sort) {
+      if (sort === "asc") sortOptions.amount = 1;
+      else if (sort === "desc") sortOptions.amount = -1;
+    } else {
+      sortOptions.created_at = -1;
+    }
+
+    // ---------------------------
+    // FETCH ALL PAYMENTS (NO LIMITS)
+    // ---------------------------
+    const paymentDetails = await Payment.find(filter)
+      .populate({
+        path: "order_id",
+        select:
+          "orderId orderDate totalAmount orderType orderSource status customerDetails paymentType skus order_Amount GST deliveryCharges timestamps type_of_delivery trackingInfo invoiceNumber purchaseOrderId slaInfo order_track_info",
+        populate: {
+          path: "skus.dealerMapped.dealerId",
+          model: "Dealer",
+          select: "trade_name legal_name email phone_Number dealer_code"
+        }
+      })
+      .sort(sortOptions);
+
+    console.log("paymentDetails", paymentDetails);
+
+    // ---------------------------
+    // ENHANCE PAYMENT RESPONSE
+    // ---------------------------
+    const enhancedPayments = paymentDetails.map((payment) => ({
+      ...payment.toObject(),
+
+      orderDetails: payment.order_id
+        ? {
+            _id: payment.order_id._id,
+            orderId: payment.order_id.orderId,
+            orderDate: payment.order_id.orderDate,
+            totalAmount: payment.order_id.totalAmount,
+            orderType: payment.order_id.orderType,
+            orderSource: payment.order_id.orderSource,
+            status: payment.order_id.status,
+            customerDetails: payment.order_id.customerDetails,
+            paymentType: payment.order_id.paymentType,
+            skus: payment.order_id.skus,
+            order_Amount: payment.order_id.order_Amount,
+            GST: payment.order_id.GST,
+            deliveryCharges: payment.order_id.deliveryCharges,
+            timestamps: payment.order_id.timestamps,
+            type_of_delivery: payment.order_id.type_of_delivery,
+            trackingInfo: payment.order_id.trackingInfo,
+            invoiceNumber: payment.order_id.invoiceNumber,
+            purchaseOrderId: payment.order_id.purchaseOrderId,
+            slaInfo: payment.order_id.slaInfo,
+            order_track_info: payment.order_id.order_track_info,
+
+            // Computed fields
+            skuCount: payment.order_id.skus?.length || 0,
+            totalSKUs:
+              payment.order_id.skus?.reduce(
+                (t, sku) => t + sku.quantity,
+                0
+              ) || 0,
+
+            customerName: payment.order_id.customerDetails?.name || "N/A",
+            customerEmail: payment.order_id.customerDetails?.email || "N/A",
+            customerPhone: payment.order_id.customerDetails?.phone || "N/A",
+
+            // Dealer info
+            dealers:
+              payment.order_id.skus?.flatMap((sku) =>
+                sku.dealerMapped?.map((dealer) => ({
+                  dealerId: dealer.dealerId?._id,
+                  dealerName:
+                    dealer.dealerId?.trade_name ||
+                    dealer.dealerId?.legal_name,
+                  dealerCode: dealer.dealerId?.dealer_code,
+                  dealerEmail: dealer.dealerId?.email,
+                  dealerPhone: dealer.dealerId?.phone_Number
+                })) || []
+              ) || []
+          }
+        : null,
+
+      paymentSummary: {
+        paymentId: payment._id,
+        razorpayOrderId: payment.razorpay_order_id,
+        paymentMethod: payment.payment_method,
+        paymentStatus: payment.payment_status,
+        amount: payment.amount,
+        razorpayPaymentId: payment.payment_id,
+        createdAt: payment.created_at,
+        isRefund: payment.is_refund,
+        refundId: payment.refund_id,
+        refundStatus: payment.refund_status,
+        refundSuccessful: payment.refund_successful,
+        acquirerData: payment.acquirer_data
+      }
+    }));
+
+    // ---------------------------
+    // RETURN RESPONSE (NO PAGINATION)
+    // ---------------------------
+    return sendSuccess(
+      res,
+      {
+        data: enhancedPayments,
+        totalItems: enhancedPayments.length,
+        filters: {
+          payment_status,
+          payment_method,
+          razorpay_payment_method,
+          startDate,
+          endDate,
+          sort
+        }
+      },
+      "Payment details retrieved successfully (no pagination)"
+    );
+  } catch (error) {
+    console.error("Error fetching payment details:", error);
+    return sendError(res, error?.message || "Internal server error", 500);
   }
 };
