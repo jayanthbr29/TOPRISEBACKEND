@@ -5363,7 +5363,7 @@ exports.getProductStats = async (req, res) => {
  */
 exports.getPendingProducts = async (req, res) => {
   try {
-    const { page = 1, limit = 10, created_by_role, status } = req.query;
+    const { page = 1, limit = 10, created_by_role, status ,startDate,endDate} = req.query;
     const pageNumber = parseInt(page);
     const limitNumber = parseInt(limit);
     const skip = (pageNumber - 1) * limitNumber;
@@ -5374,6 +5374,15 @@ exports.getPendingProducts = async (req, res) => {
     //     { Qc_status: status }
     //   ]
     // };
+    if(startDate || endDate){
+      filter.created_at = {};
+      if(startDate){
+        filter.created_at.$gte = new Date(startDate);
+      }
+      if(endDate){
+        filter.created_at.$lte = new Date(endDate);
+      }
+    }
 
     const filter = {};
     if (status) {
