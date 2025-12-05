@@ -835,6 +835,34 @@ exports.getOrders = async (req, res) => {
       filter.paymentType = { $in: types };
     }
 
+    // Status filter
+    if (req.query.status) {
+      let statuses = req.query.status
+      filter.status = statuses;
+    }
+    if(req.query.searchTerm){
+      const searchTerm = req.query.searchTerm;
+      filter.$or = [
+        { orderId: { $regex: searchTerm, $options: "i" } },
+        { "customerDetails.name": { $regex: searchTerm, $options: "i" } },
+        { "customerDetails.email": { $regex: searchTerm, $options: "i" } },
+        { "customerDetails.phone": { $regex: searchTerm, $options: "i" } },
+      ];
+    }
+    if (req.query.startDate && req.query.endDate) {
+      const startDate = new Date(req.query.startDate);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(req.query.endDate);
+      endDate.setHours(23, 59, 59, 999); // Include the entire end date
+      filter.createdAt = { $gte: startDate, $lte: endDate };
+    }
+    if(req.query.orderSource){
+      filter.orderSource = req.query.orderSource;
+    }
+    if(req.query.dealerId){
+      filter["dealerMapping.dealerId"] = req.query.dealerId;
+    }
+
     // Total count with filter
     const totalOrders = await Order.countDocuments(filter);
 
@@ -6964,5 +6992,99 @@ exports.getOrderStatistics = async (req, res) => {
   } catch (err) {
     console.error("Error in getOrderStatistics:", err);
     res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+
+exports.getOrdersNoPagination = async (req, res) => {
+  try {
+    // Sorting (optional)
+    const sortField = req.query.sortBy || "createdAt";
+    const sortOrder = req.query.order === "asc" ? 1 : -1;
+
+    // -----------------------------
+    // FILTERS
+    // -----------------------------
+    let filter = {};
+
+    // Payment type filter
+    if (req.query.paymentType) {
+      let types = req.query.paymentType.split(",").map(v => v.trim());
+      filter.paymentType = { $in: types };
+    }
+
+    // Status filter
+    if (req.query.status) {
+      filter.status = req.query.status;
+    }
+
+    // Search filter
+    if (req.query.searchTerm) {
+      const searchTerm = req.query.searchTerm.trim();
+      filter.$or = [
+        { orderId: { $regex: searchTerm, $options: "i" } },
+        { "customerDetails.name": { $regex: searchTerm, $options: "i" } },
+        { "customerDetails.email": { $regex: searchTerm, $options: "i" } },
+        { "customerDetails.phone": { $regex: searchTerm, $options: "i" } },
+      ];
+    }
+
+    // Date range filter
+    if (req.query.startDate && req.query.endDate) {
+      const startDate = new Date(req.query.startDate);
+      startDate.setHours(0, 0, 0, 0);
+
+      const endDate = new Date(req.query.endDate);
+      endDate.setHours(23, 59, 59, 999);
+
+      filter.createdAt = { $gte: startDate, $lte: endDate };
+    }
+
+    // Order source filter
+    if (req.query.orderSource) {
+      filter.orderSource = req.query.orderSource;
+    }
+
+     if(req.query.dealerId){
+      filter["dealerMapping.dealerId"] = req.query.dealerId;
+    }
+
+    // Fetch ALL orders (NO pagination)
+    const orders = await Order.find(filter)
+      .populate("payment_id")
+      .sort({ [sortField]: sortOrder })
+      .lean();
+
+    // Attach user & dealer info
+    for (let order of orders) {
+      // User info
+      if (order.customerDetails?.userId) {
+        order.customerDetails.userInfo = await fetchUser(
+          order.customerDetails.userId
+        );
+      }
+
+      // Dealer info
+      order.dealerMapping = await Promise.all(
+        order.dealerMapping.map(async m => ({
+          ...m,
+          dealerInfo: await fetchDealer(m.dealerId),
+        }))
+      );
+    }
+
+    return sendSuccess(
+      res,
+      {
+        orders,
+        totalItems: orders.length, // simple metadata
+        appliedFilters: req.query,
+      },
+      "Orders fetched successfully (no pagination)"
+    );
+
+  } catch (err) {
+    console.error("Error fetching orders:", err);
+    return sendError(res, "Failed to get orders", 500);
   }
 };
