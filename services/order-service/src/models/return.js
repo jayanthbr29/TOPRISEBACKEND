@@ -161,6 +161,7 @@ const ReturnSchema = new mongoose.Schema({
       type: Date,
       default: Date.now,
     },
+    rejectedAt: Date,
     validatedAt: Date,
     pickupScheduledAt: Date,
     pickupCompletedAt: Date,
@@ -171,6 +172,10 @@ const ReturnSchema = new mongoose.Schema({
     refundInitiatedAt: Date,
     refundCompletedAt: Date,
     returnCompletedAt: Date,
+  },
+  rejectReason:{
+    type: String,
+    default: null,
   },
 
   refund: {

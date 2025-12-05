@@ -37,4 +37,6 @@ router.put("/validate-return/:returnId",returnController.validateReturnRequest);
 router.put("/Intiate-Borzo-Return/:returnId",returnController.intiateBorzoOrderForReturn);
 router.put("/start-Inspection/:returnId",returnController.startReturnRequestInspection);
 router.put("/complete-Inspection/:returnId",returnController.completeReturnRequestInspection); 
+router.put("/Reject-return/:returnId",returnController.rejectReturnRequest);
+router.get("/return/stats",returnController.getReturnStatusCounts);
 module.exports = router;
