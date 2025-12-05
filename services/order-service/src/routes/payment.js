@@ -41,5 +41,9 @@ router.get('/search',
     authorizeRoles('Super-admin', 'Fulfillment-Admin', 'User'),
     paymentController.searchPaymentsWithOrderDetails
 );
+router.get('/all/exports',
+   
+    paymentController.getPaymentDetailsNoPagination
+);
 
 module.exports = router;
