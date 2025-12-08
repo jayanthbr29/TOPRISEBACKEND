@@ -263,7 +263,7 @@ router.get(
 router.delete(
   "/:id",
   authenticate,
-  requireRole(["Super-admin"]),
+  requireRole(["Super-admin","User"]),
   auditMiddleware("USER_DELETED", "User", "USER_MANAGEMENT"),
   userController.deleteUser
 );
