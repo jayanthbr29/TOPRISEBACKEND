@@ -95,7 +95,7 @@ exports.createReturnRequest = async (req, res) => {
       originalDeliveryDate: order.skus.find((s) => s.sku === sku)?.tracking_info
         ?.timestamps?.deliveredAt,
       dealerId: order.dealerMapping.find((d) => d.sku === sku)?.dealerId,
-      returnStatus: eligibilityResult.isEligible ? "Requested" : "Rejected",
+      returnStatus: "Requested" ,
       refund: {
         refundAmount: orderSku.totalPrice,
       },
