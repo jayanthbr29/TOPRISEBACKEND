@@ -74,9 +74,9 @@ exports.createReturnRequest = async (req, res) => {
     // Validate return eligibility
     const eligibilityResult = await validateReturnEligibility(order, sku);
     // console.log("Eligibility Result:", eligibilityResult);
-    if (!eligibilityResult.isEligible) {
-      return sendError(res, "Return is not eligible");
-    }
+    // if (!eligibilityResult.isEligible) {
+    //   return sendError(res, "Return is not eligible");
+    // }
     // Create return request
     const returnRequest = await Return.create({
       orderId,
@@ -107,13 +107,16 @@ exports.createReturnRequest = async (req, res) => {
     order.skus = order.skus.map((s) => {
       if (s.sku === sku) {
         s.return_info = {
+          ...s.return_info,
           is_returned: true,
           return_id: returnRequest._id,
-          ...s.return_info,
+          
         };
       }
       return s;
     });
+    // console.log("Updated Order SKUs:", order.skus);
+    order.markModified("skus");
     await order.save();
     // Send notification to customer
     await createUnicastOrMulticastNotificationUtilityFunction(
