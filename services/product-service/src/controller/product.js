@@ -5946,8 +5946,8 @@ exports.getProductsByDealer = async (req, res) => {
     if (status) {
       filter.$or = filter.$or || [];
       filter.$or.push(
-        { status: status },
-        { live_status: status }
+        { Qc_status: status },
+        // { live_status: status }
       );
     }
 
@@ -6001,7 +6001,7 @@ exports.getProductsByDealer = async (req, res) => {
 
     // Let's also check what dealers exist in the system
     const sampleProducts = await Product.find({ "available_dealers": { $exists: true, $ne: [] } })
-      .select("sku_code available_dealers")
+      // .select("sku_code available_dealers")
       .limit(5)
       .lean();
 
@@ -6014,7 +6014,7 @@ exports.getProductsByDealer = async (req, res) => {
       .populate("sub_category", "subcategory_name")
       .populate("model", "model_name")
       .populate("variant", "variant_name")
-      .select("sku_code product_name description mrp_with_gst selling_price gst_percentage brand category sub_category model variant available_dealers status images created_at updated_at")
+      // .select("sku_code product_name description mrp_with_gst selling_price gst_percentage brand category sub_category model variant available_dealers status images created_at updated_at")
       .sort(sort)
       .skip(skip)
       .limit(limitNumber)
@@ -6097,6 +6097,7 @@ exports.getProductsByDealer = async (req, res) => {
         sub_category: product.sub_category,
         model: product.model,
         variant: product.variant,
+        rejection_state: product.rejection_state,
         dealer_info: {
           in_stock: dealerInfo?.inStock || false,
           quantity_available: dealerInfo?.quantity_per_dealer || 0,
@@ -6107,7 +6108,7 @@ exports.getProductsByDealer = async (req, res) => {
         status: product.status,
         created_at: product.created_at,
         updated_at: product.updated_at,
-        permission_matrix: permissionMatrix
+        // permission_matrix: permissionMatrix
       };
     });
 
