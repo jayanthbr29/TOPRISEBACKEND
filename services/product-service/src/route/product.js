@@ -226,8 +226,8 @@ router.get(
 router.post(
   "/createProductByDealer",
   upload.array("images"),
-  authenticate,
-  authorizeRoles("Dealer"),
+  // authenticate,
+  // authorizeRoles("Dealer"),
   productController.createProductSingleByDealer
 );
 
