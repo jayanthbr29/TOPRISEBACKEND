@@ -4031,9 +4031,9 @@ exports.createProductSingleByDealer = async (req, res) => {
       available_dealers: [
         {
           dealers_Ref: req.body.addedByDealerId,
-          quantity_per_dealer: 0,
-          inStock: false,
-          dealer_margin: 0,
+          quantity_per_dealer: req.body.quantity_per_dealer || 0  ,
+          inStock: req.body.quantity_per_dealer > 0 ? true : false,
+          dealer_margin:  0,
           dealer_priority_override: 0,
         },
       ],

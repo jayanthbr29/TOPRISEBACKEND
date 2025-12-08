@@ -1306,15 +1306,15 @@ exports.intiateBorzoOrderForReturn = async (req, res) => {
     const dealerInfo = pickupDealerId ? await fetchDealerInfo(pickupDealerId, authHeader) : null;
     console.log("[BORZO] Dealer info:", dealerInfo);
     const dealerAddressString =
-      dealerInfo?.address?.full ||
+      dealerInfo?.Address?.full ||
       buildAddressString({
-        building_no: dealerInfo?.address?.building_no,
-        street: dealerInfo?.address?.street,
-        area: dealerInfo?.address?.area,
-        city: dealerInfo?.address?.city,
-        state: dealerInfo?.address?.state,
-        pincode: dealerInfo?.address?.pincode,
-        country: dealerInfo?.address?.country || "India",
+        building_no: dealerInfo?.Address?.building_no,
+        street: dealerInfo?.Address?.street,
+        area: dealerInfo?.Address?.area,
+        city: dealerInfo?.Address?.city,
+        state: dealerInfo?.Address?.state,
+        pincode: dealerInfo?.Address?.pincode,
+        country: dealerInfo?.Address?.country || "India",
       }) ||
       dealerInfo?.business_address ||
       dealerInfo?.registered_address ||
