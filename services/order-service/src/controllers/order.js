@@ -5680,7 +5680,6 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
   const currentTime = new Date();
 
   const  isProductReturnable= (productDataFetched )? productDataFetched.is_returnable : false;
-
     const allPacked = order.dealerMapping.every(
       (mapping) => mapping.status === "Packed"
     );
@@ -5750,22 +5749,25 @@ const headers = { "Content-Type": "application/json" };
         const authHeader = req.headers.authorization;
         let pickupDealerId = dealerId || null;
         const dealerInfo = pickupDealerId ? await fetchDealerInfo(pickupDealerId, authHeader) : null;
-        console.log("[BORZO] Dealer info:", dealerInfo);
+        // console.log("[BORZO] Dealer info:", dealerInfo);
         const skuDetails = order.skus.find((item) => item.sku === sku); 
+        // console.log("dealer address build start",dealerInfo.Address);
         const dealerAddressString =
           dealerInfo?.address?.full ||
           buildAddressString({
-            building_no: dealerInfo?.address?.building_no,
-            street: dealerInfo?.address?.street,
-            area: dealerInfo?.address?.area,
-            city: dealerInfo?.address?.city,
-            state: dealerInfo?.address?.state,
-            pincode: dealerInfo?.address?.pincode,
-            country: dealerInfo?.address?.country || "India",
+            building_no: dealerInfo?.Address?.building_no,
+            street: dealerInfo?.Address?.street,
+            area: dealerInfo?.Address?.area,
+            city: dealerInfo?.Address?.city,
+            state: dealerInfo?.Address?.state,
+            pincode: dealerInfo?.Address?.pincode,
+            country: dealerInfo?.Address?.country || "India",
           }) ||
           dealerInfo?.business_address ||
           dealerInfo?.registered_address ||
           "Pickup Address";
+
+          // console.log("dealerAddressString", dealerAddressString);
         const dealerGeo = await geocodeAddress(dealerAddressString);
 
         const customerAddressString =
@@ -5806,10 +5808,10 @@ const headers = { "Content-Type": "application/json" };
             name: order.customerDetails?.name || "Customer",
             phone: order.customerDetails?.phone || "0000000000",
           },
-          latitude: customerGeo?.latitude || 28.583905,
-          longitude: customerGeo?.longitude || 77.322733,
-          // latitude: 28.583905,
-          // longitude: 77.322733,
+          // latitude: customerGeo?.latitude || 28.583905,
+          // longitude: customerGeo?.longitude || 77.322733,
+          latitude: 28.583905,
+          longitude: 77.322733,
           client_order_id: `ORD,${order.orderId},${sku}`,
         };
         borzoPointsUsed = [pickupPoint, dropPoint];
@@ -5880,6 +5882,7 @@ const headers = { "Content-Type": "application/json" };
                         }
                       });
                     }
+                    console.log("Saving borzo order id to order and sku tracking info",order.skus);
 
                     await order.save();
                     try {
