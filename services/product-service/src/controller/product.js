@@ -6097,6 +6097,7 @@ exports.getProductsByDealer = async (req, res) => {
         sub_category: product.sub_category,
         model: product.model,
         variant: product.variant,
+        Qc_status: product.Qc_status,
         rejection_state: product.rejection_state,
         dealer_info: {
           in_stock: dealerInfo?.inStock || false,
