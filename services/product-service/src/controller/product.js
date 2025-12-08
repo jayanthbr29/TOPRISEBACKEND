@@ -4040,6 +4040,7 @@ exports.createProductSingleByDealer = async (req, res) => {
       addedByDealerId: req.body.addedByDealerId,
       addedByDealer: true,
       images: imageUrls,
+      out_of_stock: (req.body.quantity_per_dealer && req.body.quantity_per_dealer > 0) ? false : true,
     };
     console.log(productPayload);
 
