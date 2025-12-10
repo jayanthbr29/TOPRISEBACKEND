@@ -81,6 +81,11 @@ const dealerSchema = new mongoose.Schema({
       type: String,
     },
   ],
+  brands_allowed: [
+    {
+      type: String,
+    },
+  ],
   upload_access_enabled: {
     type: Boolean,
     default: false,
