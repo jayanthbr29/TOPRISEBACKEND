@@ -360,9 +360,17 @@ exports.bulkUploadProducts = async (req, res) => {
         rows.map((r) => normalizeName(r.sub_category)).filter(Boolean)
       ),
     ];
-    const uniqModels = [
-      ...new Set(rows.map((r) => normalizeName(r.model)).filter(Boolean)),
-    ];
+   const uniqModels = [
+  ...new Set(
+    rows
+      .flatMap(r => String(r.model || "")
+        .split(",")
+        .map(x => normalizeName(x))
+        .filter(Boolean)
+      )
+  ),
+];
+
     const uniqVariants = [
       ...new Set(
         rows
@@ -378,8 +386,9 @@ exports.bulkUploadProducts = async (req, res) => {
     });
 
     const modelMap = new Map(
-      modelDocs.map((d) => [normalizeName(d.model_name), d._id])
-    );
+  modelDocs.map((d) => [normalizeName(d.model_name), d._id])
+);
+
     const variantMap = new Map(
       variantDocs.map((d) => [normalizeName(d.variant_name), d._id])
     );
@@ -529,16 +538,30 @@ exports.bulkUploadProducts = async (req, res) => {
       }
 
       /* 6.3¾  Model & Variant mapping  */
-      const modelId = modelMap.get(normalizeName(row.model));
-      if (!modelId) {
-        errors.push({
-          row: i + 2,
-          error: `Unknown model «${row.model}»`,
-          rowData: row,
-        });
-        failed++;
-        continue;
-      }
+     let modelIds = [];
+
+// Parse model names (comma-separated)
+if (row.model) {
+  const modelNames = String(row.model)
+    .split(",")
+    .map(m => normalizeName(m))
+    .filter(Boolean);
+
+  modelIds = modelNames
+    .map(n => modelMap.get(n))
+    .filter(Boolean);
+}
+
+if (!modelIds.length) {
+  errors.push({
+    row: i + 2,
+    error: `Unknown model(s): ${row.model}`,
+    rowData: row,
+  });
+  failed++;
+  continue;
+}
+
 
       const variantIds = (row.variant || "")
         .split(",")
@@ -594,7 +617,8 @@ exports.bulkUploadProducts = async (req, res) => {
         year_range: yearIds,
         created_by: userId,
         created_by_role: userRole,
-        model: modelId,
+       model: modelIds,
+
         qc_status: initialQcStatus,
         live_status: initialStatus,
         images: imageMap[part.toLowerCase()]
@@ -976,8 +1000,17 @@ exports.bulkEditProducts = async (req, res) => {
       ),
     ];
     const uniqModels = [
-      ...new Set(rows.map((r) => normalizeName(r.model)).filter(Boolean)),
-    ];
+  ...new Set(
+    rows
+      .flatMap(r =>
+        String(r.model || "")
+          .split(",")
+          .map(x => normalizeName(x))
+          .filter(Boolean)
+      )
+  ),
+];
+
     const uniqVariants = [
       ...new Set(
         rows
@@ -1192,13 +1225,24 @@ exports.bulkEditProducts = async (req, res) => {
         }
 
         // Model
-        if (row.model) {
-          const modelId = modelMap.get(normalizeName(row.model));
-          if (!modelId) {
-            throw new Error(`Unknown model «${row.model}»`);
-          }
-          update.model = modelId;
-        }
+        // Model (supports multi-select)
+if (row.model) {
+  const modelNames = String(row.model)
+    .split(",")
+    .map((m) => normalizeName(m))
+    .filter(Boolean);
+
+  const modelIds = modelNames
+    .map((name) => modelMap.get(name))
+    .filter(Boolean);
+
+  if (!modelIds.length) {
+    throw new Error(`Unknown model(s): «${row.model}»`);
+  }
+
+  update.model = modelIds; // Array of ObjectIds
+}
+
 
         // Variants
         if (row.variant) {
@@ -2499,6 +2543,23 @@ exports.createProductSingle = async (req, res) => {
         searchTagsArray = [data.search_tags]; // Convert single to array
       }
     }
+    let modelArray = [];
+
+if (data.model) {
+  if (Array.isArray(data.model)) {
+    modelArray = data.model; // Already array
+  } else {
+    modelArray = [data.model]; // Convert single to array
+  }
+}
+
+// Validate all model IDs
+for (const modelId of modelArray) {
+  const modelDoc = await Model.findById(modelId);
+  if (!modelDoc) {
+    return sendError(res, `Invalid model ID: ${modelId}`, 400);
+  }
+}
 
 
 
@@ -2511,6 +2572,7 @@ exports.createProductSingle = async (req, res) => {
       images: imageUrls,
       year_range: yearRangeArray,
       variant: variantArray,
+        model: modelArray, 
       search_tags: searchTagsArray,
       available_dealers: data.available_dealers && data.available_dealers.map((dealer) => ({
         dealer_id: dealer.dealer_id,
@@ -2705,7 +2767,7 @@ async function resolveDisplayValue(field, value) {
     brand: { model: "brand", display: "brand_name" },
     category: { model: "category", display: "category_name" },
     sub_category: { model: "subCategory", display: "subcategory_name" },
-    model: { model: "model", display: "model_name" },
+    model: { model: "model", display: "model_name", isArray: true },
     variant: { model: "variantModel", display: "variant_name", isArray: true },
     year_range: { model: "year", display: "year_name", isArray: true },
   };
@@ -2844,7 +2906,7 @@ exports.editProductSingle = async (req, res) => {
       return sendSuccess(res, product, "No changes detected");
     }
 
-    const iteration_number = (product.iteration_number || 0) + 1;
+    const iteration_number = (product.iteration_number || 0) +1;
 
     const changeLogEntry = {
       iteration_number,
@@ -4022,12 +4084,73 @@ exports.createProductSingleByDealer = async (req, res) => {
       return sendError(res, "Failed to generate SKU", 500);
     }
 
+      let yearRangeArray = [];
+
+    if (data.year_range) {
+      if (Array.isArray(data.year_range)) {
+        yearRangeArray = data.year_range; // Already array
+      } else {
+        yearRangeArray = [data.year_range]; // Convert single to array
+      }
+    }
+    for (const yearId of yearRangeArray) {
+      const yearDoc = await Year.findById(yearId);
+      if (!yearDoc) {
+        return sendError(res, `Invalid year ID: ${yearId}`, 400);
+      }
+    }
+    let variantArray = [];
+
+    if (data.variant) {
+      if (Array.isArray(data.variant)) {
+        variantArray = data.variant; // Already array
+      } else {
+        variantArray = [data.variant]; // Convert single to array
+      }
+    }
+    for (const variantId of variantArray) {
+      const variantDoc = await Variant.findById(variantId);
+      if (!variantDoc) {
+        return sendError(res, `Invalid variant ID: ${variantId}`, 400);
+      }
+    }
+    let searchTagsArray = [];
+
+    if (data.search_tags) {
+      if (Array.isArray(data.search_tags)) {
+        searchTagsArray = data.search_tags; // Already array
+      } else {
+        searchTagsArray = [data.search_tags]; // Convert single to array
+      }
+    }
+    let modelArray = [];
+
+if (data.model) {
+  if (Array.isArray(data.model)) {
+    modelArray = data.model; // Already array
+  } else {
+    modelArray = [data.model]; // Convert single to array
+  }
+}
+
+// Validate all model IDs
+for (const modelId of modelArray) {
+  const modelDoc = await Model.findById(modelId);
+  if (!modelDoc) {
+    return sendError(res, `Invalid model ID: ${modelId}`, 400);
+  }
+}
+
     // Remove SKU from request data if provided (since we're generating it automatically)
     const { sku_code, ...productDataWithoutSku } = data;
 
     const productPayload = {
       ...productDataWithoutSku,
       sku_code: generatedSku,
+      year_range: yearRangeArray,
+      variant: variantArray,
+        model: modelArray, 
+      search_tags: searchTagsArray,
       available_dealers: [
         {
           dealers_Ref: req.body.addedByDealerId,
