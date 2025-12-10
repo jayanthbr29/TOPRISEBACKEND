@@ -1494,7 +1494,7 @@ exports.bulkAssignDealersProducts = async (req, res) => {
         }
 
         const allowedCategories = dealer?.categories_allowed || [];
-
+        const allowedBrands = dealer?.brands_allowed || [];
         /* -------------------------------
             Get Product by sku_code
         --------------------------------*/
@@ -1506,13 +1506,23 @@ exports.bulkAssignDealersProducts = async (req, res) => {
 
         // Category Permission Check
         const productCategory = product.category?.toString();
+        const productBrand = product.brand?.toString(); 
+
+        // if (
+        //   allowedCategories.length &&
+        //   !allowedCategories.includes(productCategory)
+        // ) {
+        //   throw new Error(
+        //     `Dealer ${dealerId} NOT allowed to sell product category ${productCategory}`
+        //   );
+        // }
 
         if (
-          allowedCategories.length &&
-          !allowedCategories.includes(productCategory)
+          allowedBrands.length &&
+          !allowedBrands.includes(productBrand)
         ) {
           throw new Error(
-            `Dealer ${dealerId} NOT allowed to sell product category ${productCategory}`
+            `Dealer ${dealerId} NOT allowed to sell product brand ${productBrand}`
           );
         }
 

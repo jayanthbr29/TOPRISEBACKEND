@@ -1180,6 +1180,22 @@ router.get(
   "/search/users/byNameOrEmail",
   userController.searchUserByEmailOrName
 );
+router.patch(
+  "/dealler/add/allowedBrands/:dealerId",
+  authenticate,
+  userController.addAllowedBrandsToDealer
+);
 
+router.patch(
+  "/dealler/remove/allowedBrands/:dealerId",
+  authenticate,
+  userController.removeAllowedBrandsFromDealer
+);
+
+router.get(
+  "/get/dealerBy/brand/:brandId",
+  authenticate,
+  userController.getDealerByBrandId
+);
 
 module.exports = router;

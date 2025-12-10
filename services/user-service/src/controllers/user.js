@@ -475,6 +475,7 @@ exports.createDealer = async (req, res) => {
       Pan,
       Address,
       contact_person,
+      brands_allowed,
       categories_allowed,
       upload_access_enabled,
       default_margin,
@@ -509,6 +510,7 @@ exports.createDealer = async (req, res) => {
       categories_allowed,
       upload_access_enabled,
       default_margin,
+      brands_allowed,
       last_fulfillment_date,
       assigned_Toprise_employee,
       SLA_type,
@@ -2737,12 +2739,14 @@ exports.getDealersByAllowedCategory = async (req, res, next) => {
       }
     );
     const categoryId = product.data.data.category;
+    const brandId = product.data.data.brand;
     const excludeDealer = product.data.data.available_dealers.map(
       (d) => d.dealers_Ref
     );
     const dealers = await Dealer.find({
       _id: { $nin: excludeDealer },
-      categories_allowed: categoryId,
+      // categories_allowed: categoryId,
+      brands_allowed: brandId,
       is_active: true,
     })
       .populate("user_id")
@@ -4833,3 +4837,114 @@ exports.searchUserByEmailOrName = async (req, res) => {
     return sendError(res, error);
   }
 }
+
+
+exports.addAllowedBrandsToDealer = async (req, res) => {
+  try {
+    const { dealerId } = req.params;
+    const { brands } = req.body;
+
+    if (!brands || !Array.isArray(brands) || brands.length === 0) {
+      return sendError(res, "Brands array is required and cannot be empty", 400);
+    }
+
+    const dealer = await Dealer.findById(dealerId);
+    if (!dealer) {
+      return sendError(res, "Dealer not found", 404);
+    }
+
+    // Add new brands to the allowed_brands array, avoiding duplicates
+    dealer.brands_allowed = Array.from(new Set([...dealer.brands_allowed, ...brands]));
+    dealer.updated_at = new Date();
+    await dealer.save();
+
+    logger.info(`✅ Added allowed brands to dealer: ${dealerId}`);
+    return sendSuccess(
+      res,
+      {
+        dealerId: dealer._id,
+        legal_name: dealer.legal_name,
+        trade_name: dealer.trade_name,
+        brands_allowed: dealer.brands_allowed,
+      },
+      "Allowed brands added to dealer successfully"
+    );
+  } catch (error) {
+    logger.error(`❌ Add allowed brands to dealer error: ${error.message}`);
+    return sendError(res, error);
+  }
+}
+
+exports.removeAllowedBrandsFromDealer = async (req, res) => { 
+  try {
+    const { dealerId } = req.params;
+    const { brands } = req.body;  
+    if (!brands || !Array.isArray(brands) || brands.length === 0) {     
+      return sendError(res, "Brands array is required and cannot be empty", 400);   
+    }
+
+    const dealer = await Dealer.findById(dealerId);    
+    if (!dealer) {      
+      return sendError(res, "Dealer not found", 404);    
+    }
+
+    // Remove specified brands from the allowed_brands array
+    dealer.brands_allowed = dealer.brands_allowed.filter(
+      (brand) => !brands.includes(brand)
+    );
+    dealer.updated_at = new Date();
+    await dealer.save();
+
+    logger.info(`✅ Removed allowed brands from dealer: ${dealerId}`);
+    return sendSuccess(
+      res,
+      {
+        dealerId: dealer._id,
+        legal_name: dealer.legal_name,
+        trade_name: dealer.trade_name,
+        brands_allowed: dealer.brands_allowed,
+      },
+      "Allowed brands removed from dealer successfully"
+    );
+  } catch (error) {
+    logger.error(`❌ Remove allowed brands from dealer error: ${error.message}`);
+    return sendError(res, error);
+  }
+}
+
+exports.getDealerByBrandId = async (req, res) => {
+  try {
+    const { brandId } = req.params;
+
+    const dealers = await Dealer.find({
+      is_active: true,
+      brands_allowed: { $in: [brandId] },
+    })
+      .populate("user_id", "email phone_Number role")
+      .lean();
+
+    if (!dealers || dealers.length === 0) {
+      return sendSuccess(
+        res,
+        [],
+        "No dealers found for the specified brand"
+      );
+    }
+
+    logger.info(
+      `Fetched ${dealers.length} dealers for brand: ${brandId}`
+    );
+    sendSuccess(
+      res,
+      {
+        brand_id: brandId,
+        total_dealers: dealers.length,
+        dealers: dealers,
+      },
+      `Dealers for brand '${brandId}' retrieved successfully`
+    );
+  } catch (err) {
+    logger.error(`Get dealers by brand ID error: ${err.message}`);
+    sendError(res, err);
+  }
+};
