@@ -3,6 +3,11 @@ const { sendSuccess, sendError } = require("/packages/utils/responseHandler");
 const logger = require("/packages/utils/logger");
 const { uploadFile } = require("/packages/utils/s3Helper");
 const mongoose = require("mongoose");
+
+const XLSX = require("xlsx");
+const stream = require("stream");
+const path = require("path");
+const unzipper = require("unzipper");
 exports.createBanner = async (req, res, next) => {
   try {
     const { title, brand_id, vehicle_type, is_active } = req.body;
@@ -74,6 +79,8 @@ exports.createBanner = async (req, res, next) => {
     return sendError(res, error);
   }
 };
+const Brand = require("../models/brand");
+const Type = require("../models/type");
 
 // Get all banners
 exports.getAllBanners = async (req, res, next) => {
@@ -292,3 +299,151 @@ exports.getRandomBanners = async (req, res, next) => {
     return sendError(res, error);
   }
 };
+const streamToBuffer = async (entry) => {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    entry.on("data", (chunk) => chunks.push(chunk));
+    entry.on("end", () => resolve(Buffer.concat(chunks)));
+    entry.on("error", reject);
+  });
+};
+
+exports.bulkUploadBanners = async (req, res) => {
+  try {
+    const excelBuf = req.files?.dataFile?.[0]?.buffer;
+    const zipBuf = req.files?.imageZip?.[0]?.buffer;
+
+    if (!excelBuf || !zipBuf) {
+      return sendError(res, "Both dataFile and imageZip are required", 400);
+    }
+
+    // 1️⃣ Parse CSV
+    const wb = XLSX.read(excelBuf, { type: "buffer" });
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+    if (!rows.length) return sendError(res, "Empty CSV file", 400);
+
+    // 2️⃣ Load Brand + Type lookup
+    const brandDocs = await Brand.find({});
+    const typeDocs = await Type.find({});
+
+    const brandMap = new Map(
+      brandDocs.map(b => [String(b.brand_code).toLowerCase(), b._id])
+    );
+
+    const typeMap = new Map(
+      typeDocs.map(t => [String(t.type_name).toLowerCase(), t._id])
+    );
+
+    // 3️⃣ Extract images from ZIP
+    const imageMap = {}; // banner_key → { web, mobile, tablet }
+
+    const zipStream = stream.Readable.from(zipBuf).pipe(
+      unzipper.Parse({ forceStream: true })
+    );
+
+    for await (const entry of zipStream) {
+      // const filename = entry.path;
+      const filename = path.basename(entry.path);
+
+      console.log("Processing file:", filename);
+
+      // Expected: key_device.ext  → example: home_banner_web.jpg
+      const match = filename.match(/^(.+?)_(web|mobile|tablet)\.(jpg|jpeg|png|webp)$/i);
+      if (!match) {
+        entry.autodrain();
+        continue;
+      }
+
+      const key = match[1].toLowerCase();      // home_banner
+      const device = match[2].toLowerCase();   // web/mobile/tablet
+      const ext = match[3].toLowerCase();
+      const mime = `image/${ext === "jpg" ? "jpeg" : ext}`;
+
+      const buffer = await streamToBuffer(entry);
+
+      const { Location } = await uploadFile(buffer, filename, mime, "banners");
+
+      if (!imageMap[key]) imageMap[key] = {};
+      imageMap[key][device] = Location;
+    }
+    console.log("Extracted images:", imageMap);
+
+    // 4️⃣ Prepare docs
+    const docs = [];
+    const errors = [];
+
+    for (const row of rows) {
+      const bannerKey = String(row.image_key || "").trim().toLowerCase();
+      const brandKey = String(row.brand_code || "").trim().toLowerCase();
+      const typeKey = String(row.vehicle_type_name || "").trim().toLowerCase();
+
+      // Validate required image files
+      if (
+        !imageMap[bannerKey] ||
+        !imageMap[bannerKey].web ||
+        !imageMap[bannerKey].mobile ||
+        !imageMap[bannerKey].tablet
+      ) {
+        errors.push({
+          row,
+          error: `Missing images for key '${bannerKey}'. Required: ${bannerKey}_web.jpg, _mobile.jpg, _tablet.jpg`
+        });
+        continue;
+      }
+
+      // Validate brand
+      const brandId = brandMap.get(brandKey);
+      if (!brandId) {
+        errors.push({
+          row,
+          error: `Unknown brand_code '${row.brand_code}'`
+        });
+        continue;
+      }
+
+      // Validate vehicle type
+      const typeId = typeMap.get(typeKey);
+      if (!typeId) {
+        errors.push({
+          row,
+          error: `Unknown vehicle_type_name '${row.vehicle_type_name}'`
+        });
+        continue;
+      }
+
+      docs.push({
+        title: row.title,
+        brand_id: brandId,
+        vehicle_type: typeId,
+        is_active: String(row.is_active).toLowerCase() === "true",
+        image: {
+          web: imageMap[bannerKey].web,
+          mobile: imageMap[bannerKey].mobile,
+          tablet: imageMap[bannerKey].tablet
+        }
+      });
+    }
+
+    if (!docs.length) {
+      return sendError(res, "No valid banners to insert", 400);
+    }
+
+    await Banner.insertMany(docs, { ordered: false });
+
+    return sendSuccess(
+      res,
+      {
+        totalRows: rows.length,
+        inserted: docs.length,
+        errors
+      },
+      "Bulk banners uploaded successfully"
+    );
+
+  } catch (err) {
+    console.error("Bulk upload banner error:", err);
+    return sendError(res, err.message, 500);
+  }
+};
+
+

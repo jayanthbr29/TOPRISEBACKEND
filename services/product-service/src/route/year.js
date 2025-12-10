@@ -1,4 +1,7 @@
 const express = require("express");
+
+const multer = require("multer");
+const upload = multer();
 const router = express.Router();
 const yearController = require("../controller/year");
 const {
@@ -22,4 +25,5 @@ router.put(
 );
 router.delete("/:yearId", yearController.deleteYear);
 
+router.post("/bulk-upload", upload.single("dataFile"), yearController.bulkUploadYears);
 module.exports = router;
