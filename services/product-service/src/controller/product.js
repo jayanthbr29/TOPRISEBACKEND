@@ -365,7 +365,7 @@ exports.bulkUploadProducts = async (req, res) => {
     rows
       .flatMap(r => String(r.model || "")
         .split(",")
-        .map(x => normalizeName(x))
+        // .map(x => normalizeName(x))
         .filter(Boolean)
       )
   ),
@@ -375,7 +375,7 @@ exports.bulkUploadProducts = async (req, res) => {
       ...new Set(
         rows
           .flatMap((r) => (r.variant || "").split(","))
-          .map((v) => normalizeName(v))
+          // .map((v) => normalizeName(v))
           .filter(Boolean)
       ),
     ];
@@ -448,6 +448,7 @@ exports.bulkUploadProducts = async (req, res) => {
     // Process rows sequentially to handle async SKU generation
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
+      // console.log("Processing row:", row);
 
       /* 6.1  Skip if any REQUIRED field empty */
       const missing = REQUIRED.filter((k) => !safeTrim(row[k]));
@@ -581,7 +582,6 @@ if (!modelIds.length) {
         : [];
       /* 6.6 Year Range Mapping */
       let yearIds = [];
-
       if (row.year_range) {
         const years = String(row.year_range)
           .split(",")
@@ -602,6 +602,18 @@ if (!modelIds.length) {
         failed++;
         continue;
       }
+      //build search tags array
+    let searchTags = [];
+    if (row.search_tags) {
+      const tags = String(row.search_tags)
+        .split(",")
+        .map((t) => normalizeName(t))
+        .filter(Boolean);
+
+      searchTags = tags
+        
+    }
+
 
       /* 6.5  Build doc */
       docs.push({
@@ -621,6 +633,7 @@ if (!modelIds.length) {
 
         qc_status: initialQcStatus,
         live_status: initialStatus,
+        search_tags: searchTags,  
         images: imageMap[part.toLowerCase()]
           ? [imageMap[part.toLowerCase()]]
           : [],
@@ -1005,7 +1018,7 @@ exports.bulkEditProducts = async (req, res) => {
       .flatMap(r =>
         String(r.model || "")
           .split(",")
-          .map(x => normalizeName(x))
+          // .map(x => normalizeName(x))
           .filter(Boolean)
       )
   ),
@@ -1015,7 +1028,7 @@ exports.bulkEditProducts = async (req, res) => {
       ...new Set(
         rows
           .flatMap((r) => (r.variant || "").split(","))
-          .map((v) => normalizeName(v))
+          // .map((v) => normalizeName(v))
           .filter(Boolean)
       ),
     ];
@@ -1260,22 +1273,38 @@ if (row.model) {
         }
 
         // Year range
-        if (row.year_range) {
-          const years = String(row.year_range)
-            .split(",")
-            .map((y) => normalizeName(y))
-            .filter(Boolean);
+        // Year range
+if (row.year_range) {
 
-          const yearIds = years
-            .map((y) => yearMap.get(y))
-            .filter(Boolean);
+  let rawYear = row.year_range;
 
-          if (!yearIds.length) {
-            throw new Error(`Unknown year_range «${row.year_range}»`);
-          }
+  // FIX: Excel may convert "2023,2015" → 20232015
+  if (typeof rawYear === "number") {
+    const str = String(rawYear);
+    // If 8 digits → assume two joined years
+    if (/^\d{8}$/.test(str)) {
+      rawYear = `${str.substring(0, 4)},${str.substring(4, 8)}`;
+    }
+  }
 
-          update.year_range = yearIds;
-        }
+  // Normalize everything
+  const years = String(rawYear)
+    .replace(/[\.]/g, ",")  // support 2023.2015 also
+    .split(/[, \-\/]+/)      // split by comma / space / hyphen
+    .map(y => normalizeName(y))
+    .filter(Boolean);
+
+  const yearIds = years
+    .map((y) => yearMap.get(y))
+    .filter(Boolean);
+
+  if (!yearIds.length) {
+    throw new Error(`Unknown year_range «${row.year_range}»`);
+  }
+
+  update.year_range = yearIds;
+}
+
 
         // Search tags
         if (row.search_tags) {
@@ -4589,7 +4618,7 @@ exports.bulkUploadProductsByDealer = async (req, res) => {
     rows.flatMap(r =>
       String(r.model || "")
         .split(",")
-        .map(m => normalizeName(m))
+        // .map(m => normalizeName(m))
         .filter(Boolean)
     )
   ),
@@ -4599,7 +4628,7 @@ exports.bulkUploadProductsByDealer = async (req, res) => {
       ...new Set(
         rows
           .flatMap((r) => (r.variant || "").split(","))
-          .map((v) => normalizeName(v))
+          // .map((v) => normalizeName(v))
           .filter(Boolean)
       ),
     ];
@@ -4763,6 +4792,32 @@ if (row.model) {
         ? row.variants.split(",").map((v) => ({ name: safeTrim(v) }))
         : [];
 
+        /* 6.6 Year Range Mapping */
+      let yearIds = [];
+      if (row.year_range) {
+        const years = String(row.year_range)
+          .split(",")
+          .map((y) => normalizeName(y))
+          .filter(Boolean);
+
+        yearIds = years
+          .map((y) => yearMap.get(y))
+          .filter(Boolean);   // remove invalid ones
+      }
+
+          //build search tags array
+    let searchTags = [];
+    if (row.search_tags) {
+      const tags = String(row.search_tags)
+        .split(",")
+        .map((t) => normalizeName(t))
+        .filter(Boolean);
+
+      searchTags = tags
+        
+    }
+
+
       /* 6.5  Build doc */
       docs.push({
         ...row, // 1️⃣ keep raw cells *first*
@@ -4775,7 +4830,9 @@ if (row.model) {
         product_type: row.product_type,
         variant: variantIds,
         created_by: userId,
-        model: modelId,
+         model: modelIds,
+         year_range: yearIds,
+        search_tags: searchTags,  
         qc_status: "Pending",
         live_status: "Rejected",
         addedByDealer: true,
