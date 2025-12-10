@@ -65,10 +65,12 @@ const productSchema = new mongoose.Schema({
       type: String,
     },
   ],
-  model: {
+ model: [
+  {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Model",
-  },
+  }
+],
   year_range: [
     {
       type: mongoose.Schema.Types.ObjectId,
@@ -238,7 +240,7 @@ const productSchema = new mongoose.Schema({
   },
   iteration_number: {
     type: Number,
-    default: 1,
+    default: 0,
   },
 
   rejection_state: [
