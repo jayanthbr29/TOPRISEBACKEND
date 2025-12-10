@@ -2616,7 +2616,9 @@ for (const modelId of modelArray) {
       available_dealers: data.available_dealers && data.available_dealers.map((dealer) => ({
         dealer_id: dealer.dealer_id,
         quantity_per_dealer: dealer.quantity_per_dealer,
-        inStock: dealer.quantity_per_dealer > 0 ? true : false
+        inStock: dealer.quantity_per_dealer > 0 ? true : false,
+        dealer_priority_override: dealer.dealer_priority_override || null,
+        dealer_margin: dealer.dealer_margin || null,
       })),
       out_of_stock: data.available_dealers ? data.available_dealers.some(dealer => dealer.quantity_per_dealer > 0) ? false : true : true,
     };
