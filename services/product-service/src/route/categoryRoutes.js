@@ -105,4 +105,10 @@ router.get(
   categoryController.getCategoriesByDealerId
 );
 
+router.get(
+  "/get/categories/by/type/:vehicleType",
+  authenticate,
+  categoryController.getCategoriesByVehicleType
+);
+
 module.exports = router;
