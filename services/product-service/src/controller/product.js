@@ -4585,8 +4585,16 @@ exports.bulkUploadProductsByDealer = async (req, res) => {
       ),
     ];
     const uniqModels = [
-      ...new Set(rows.map((r) => normalizeName(r.model)).filter(Boolean)),
-    ];
+  ...new Set(
+    rows.flatMap(r =>
+      String(r.model || "")
+        .split(",")
+        .map(m => normalizeName(m))
+        .filter(Boolean)
+    )
+  ),
+];
+
     const uniqVariants = [
       ...new Set(
         rows
@@ -4713,16 +4721,30 @@ exports.bulkUploadProductsByDealer = async (req, res) => {
       }
 
       /* 6.3¾  Model & Variant mapping  */
-      const modelId = modelMap.get(normalizeName(row.model));
-      if (!modelId) {
-        errors.push({
-          row: i + 2,
-          error: `Unknown model «${row.model}»`,
-          rowData: row,
-        });
-        failed++;
-        continue;
-      }
+      // Models — supports multiple models
+let modelIds = [];
+
+if (row.model) {
+  const modelNames = String(row.model)
+    .split(",")
+    .map(m => normalizeName(m))
+    .filter(Boolean);
+
+  modelIds = modelNames
+    .map(name => modelMap.get(name))
+    .filter(Boolean);
+
+  if (!modelIds.length) {
+    errors.push({
+      row: i + 2,
+      error: `Unknown model(s): «${row.model}»`,
+      rowData: row,
+    });
+    failed++;
+    continue;
+  }
+}
+
 
       const variantIds = (row.variant || "")
         .split(",")
