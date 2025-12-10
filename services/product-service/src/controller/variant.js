@@ -590,3 +590,23 @@ exports.getVariantCount = async (req, res) => {
     sendError(res, "Failed to get variant count", 500);
   }
 };
+
+exports.getVarientsBymodelIds = async (req,res) => {
+  try {
+    const { modelIds } = req.body;
+    if (!modelIds || !Array.isArray(modelIds) || modelIds.length === 0) {
+      return sendError(res, "modelIds array is required in the request body", 400);
+    }
+
+    const variants = await Variant.find({ model: { $in: modelIds } })
+      .populate("model")
+      .populate("Year")
+      .sort({ created_at: -1 });
+
+    logger.info(`✅ Fetched variants for model IDs: ${modelIds.join(", ")}`);
+    return sendSuccess(res, variants, "Variants fetched successfully for given model IDs");
+  } catch (err) {
+    logger.error(`❌ Get variants by model IDs error: ${err.message}`);
+    return sendError(res, "Failed to fetch variants", 500);
+  }
+}

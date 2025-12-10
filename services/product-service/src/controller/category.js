@@ -994,3 +994,18 @@ exports.getCategoriesByDealerId = async (req, res) => {
     return sendError(res, "Failed to fetch categories", 500);
   }
 };
+
+exports.getCategoriesByVehicleType = async (req, res) => {
+  try {
+    console.log("Fetching categories by vehicle type");
+    const { vehicleType } = req.params;
+
+    const categories = await Category.find({
+      type: vehicleType,
+      category_Status: "Active",
+    });
+    return sendSuccess(res, categories, "Categories fetched successfully");
+  } catch (error) {
+    return sendError(res, "Failed to fetch categories", 500);
+  }
+}

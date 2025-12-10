@@ -72,5 +72,6 @@ router.post(
   ]),
   variantController.bulkUploadVariants
 );
+router.post("/get/variants/byModelIds", variantController.getVarientsBymodelIds);
 
 module.exports = router;
