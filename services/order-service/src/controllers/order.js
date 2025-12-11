@@ -32,7 +32,7 @@ const USER_SERVICE_URL =
 const DealerSLA = require("../models/dealerSla");
 const SlaTypes = require("../models/slaType");
 const SlaViolation = require("../models/slaViolation");
-const Payment =  require("../models/paymentModel");
+const Payment = require("../models/paymentModel");
 const moment = require("moment-timezone");
 // Geocode an address string to { latitude, longitude }
 async function geocodeAddress(address) {
@@ -434,12 +434,12 @@ exports.createOrder = async (req, res) => {
 
     newOrder.invoiceNumber = invoiceNumber;
     newOrder.invoiceUrl = invoiceResult.Location;
-    const savedOrder=await newOrder.save();
+    const savedOrder = await newOrder.save();
     const payment = new Payment({
       order_id: savedOrder._id,
       payment_method: "COD",
       razorpay_order_id: null,
-      amount:savedOrder.order_Amount,
+      amount: savedOrder.order_Amount,
       created_at: new Date(),
       payment_status: "Created",
     })
@@ -669,7 +669,7 @@ exports.createPickup = async (req, res) => {
       updatedAt: new Date(),
     });
 
-    const  order = await Order.findById(orderId);
+    const order = await Order.findById(orderId);
     order.skus = order.skus.map((skuItem) => {
       const inPicklist = skuList.find(
         (pItem) => pItem.sku === skuItem.sku
@@ -855,7 +855,7 @@ exports.getOrders = async (req, res) => {
       let statuses = req.query.status
       filter.status = statuses;
     }
-    if(req.query.searchTerm){
+    if (req.query.searchTerm) {
       const searchTerm = req.query.searchTerm;
       filter.$or = [
         { orderId: { $regex: searchTerm, $options: "i" } },
@@ -871,10 +871,10 @@ exports.getOrders = async (req, res) => {
       endDate.setHours(23, 59, 59, 999); // Include the entire end date
       filter.createdAt = { $gte: startDate, $lte: endDate };
     }
-    if(req.query.orderSource){
+    if (req.query.orderSource) {
       filter.orderSource = req.query.orderSource;
     }
-    if(req.query.dealerId){
+    if (req.query.dealerId) {
       filter["dealerMapping.dealerId"] = req.query.dealerId;
     }
 
@@ -1546,7 +1546,7 @@ exports.getOrderByUserId = async (req, res) => {
 
     return sendSuccess(res, orders, "Orders for user fetched");
   } catch (err) {
-    console.log("Error in getOrderByUserId:", err); 
+    console.log("Error in getOrderByUserId:", err);
     return sendError(res, "Failed to get orders by user", 500);
   }
 };
@@ -5566,15 +5566,21 @@ exports.getOrdersForFulfillmentStaff = async (req, res) => {
 
 exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
   try {
-    const { orderId, dealerId, total_weight_kg, sku, forcePacking = false } = req.body;
+    const { orderId, dealerId, total_weight_kg, sku, picklistId, forcePacking = false } = req.body;
     if (!forcePacking) {
 
-      const picklist = await PickList.findOne({
-        linkedOrderId: orderId,
-        skuList: {
-          $elemMatch: { sku: sku }
-        }
-      });
+      let picklist;
+      if (picklistId) {
+        picklist = await PickList.findOne({ _id: picklistId });
+      } else if (sku) {
+        picklist = await PickList.findOne({
+          linkedOrderId: orderId,
+          skuList: {
+            $elemMatch: { sku: sku }
+          }
+        });
+      }
+
       if (!picklist) {
         return res.status(404).json({ error: "Picklist not found" });
       }
@@ -5586,12 +5592,18 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
 
     } else {
 
-      const picklist = await PickList.findOne({
-        linkedOrderId: orderId,
-        skuList: {
-          $elemMatch: { sku: sku }
-        }
-      });
+      let picklist;
+      if (picklistId) {
+        picklist = await PickList.findOne({ _id: picklistId });
+      } else if (sku) {
+        picklist = await PickList.findOne({
+          linkedOrderId: orderId,
+          skuList: {
+            $elemMatch: { sku: sku }
+          }
+        });
+      }
+
       if (!picklist) {
         return res.status(404).json({ error: "Picklist not found" });
       }
@@ -5608,50 +5620,50 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
     }
 
     // logic for checking address is valid or not
-//      try{
-//        const authHeader = req.headers.authorization;
-// const dealerInfo = pickupDealerId ? await fetchDealerInfo(pickupDealerId, authHeader) : null;
-//         console.log("[BORZO] Dealer info:", dealerInfo);
-//         const dealerAddressString =
-//           dealerInfo?.address?.full ||
-//           buildAddressString({
-//             building_no: dealerInfo?.address?.building_no,
-//             street: dealerInfo?.address?.street,
-//             area: dealerInfo?.address?.area,
-//             city: dealerInfo?.address?.city,
-//             state: dealerInfo?.address?.state,
-//             pincode: dealerInfo?.address?.pincode,
-//             country: dealerInfo?.address?.country || "India",
-//           }) ||
-//           dealerInfo?.business_address ||
-//           dealerInfo?.registered_address ||
-//           "Pickup Address";
-//         const dealerGeo = await geocodeAddress(dealerAddressString);
-//         if(dealerGeo?.latitude === null || dealerGeo?.longitude === null){
-//           return res.status(400).json({ error: "Invalid address" });
-//         }
+    //      try{
+    //        const authHeader = req.headers.authorization;
+    // const dealerInfo = pickupDealerId ? await fetchDealerInfo(pickupDealerId, authHeader) : null;
+    //         console.log("[BORZO] Dealer info:", dealerInfo);
+    //         const dealerAddressString =
+    //           dealerInfo?.address?.full ||
+    //           buildAddressString({
+    //             building_no: dealerInfo?.address?.building_no,
+    //             street: dealerInfo?.address?.street,
+    //             area: dealerInfo?.address?.area,
+    //             city: dealerInfo?.address?.city,
+    //             state: dealerInfo?.address?.state,
+    //             pincode: dealerInfo?.address?.pincode,
+    //             country: dealerInfo?.address?.country || "India",
+    //           }) ||
+    //           dealerInfo?.business_address ||
+    //           dealerInfo?.registered_address ||
+    //           "Pickup Address";
+    //         const dealerGeo = await geocodeAddress(dealerAddressString);
+    //         if(dealerGeo?.latitude === null || dealerGeo?.longitude === null){
+    //           return res.status(400).json({ error: "Invalid address" });
+    //         }
 
-//         const customerAddressString =
-//           order.customerDetails?.address ||
-//           buildAddressString({
-//             building_no: order.customerDetails?.building_no,
-//             street: order.customerDetails?.street,
-//             area: order.customerDetails?.area,
-//             city: order.customerDetails?.city,
-//             state: order.customerDetails?.state,
-//             pincode: order.customerDetails?.pincode,
-//             country: order.customerDetails?.country || "India",
-//           }) ||
-//           "Delivery Address";
-//         const customerGeo = await geocodeAddress(customerAddressString);
-//         if(customerGeo?.latitude === null || customerGeo?.longitude === null){
-//           return res.status(400).json({ error: "Invalid address" });
-//         }
+    //         const customerAddressString =
+    //           order.customerDetails?.address ||
+    //           buildAddressString({
+    //             building_no: order.customerDetails?.building_no,
+    //             street: order.customerDetails?.street,
+    //             area: order.customerDetails?.area,
+    //             city: order.customerDetails?.city,
+    //             state: order.customerDetails?.state,
+    //             pincode: order.customerDetails?.pincode,
+    //             country: order.customerDetails?.country || "India",
+    //           }) ||
+    //           "Delivery Address";
+    //         const customerGeo = await geocodeAddress(customerAddressString);
+    //         if(customerGeo?.latitude === null || customerGeo?.longitude === null){
+    //           return res.status(400).json({ error: "Invalid address" });
+    //         }
 
 
-//      }catch(error){
-//       return res.status(400).json({ error: "Invalid address" });
-//      }
+    //      }catch(error){
+    //       return res.status(400).json({ error: "Invalid address" });
+    //      }
 
 
 
@@ -5660,7 +5672,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
     if (!order) {
       return res.status(404).json({ error: "Order not found" });
     }
-   
+
     let dealerFound = false;
 
     order.dealerMapping = order.dealerMapping.map((mapping) => {
@@ -5673,13 +5685,13 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
 
 
     const responseProduct = await axios.get(
-  `http://product-service:5001/products/v1/sku/${sku}`,
-  { timeout: 5000 }
-);
-  const productDataFetched = responseProduct.data.data;
-  const currentTime = new Date();
+      `http://product-service:5001/products/v1/sku/${sku}`,
+      { timeout: 5000 }
+    );
+    const productDataFetched = responseProduct.data.data;
+    const currentTime = new Date();
 
-  const  isProductReturnable= (productDataFetched )? productDataFetched.is_returnable : false;
+    const isProductReturnable = (productDataFetched) ? productDataFetched.is_returnable : false;
     const allPacked = order.dealerMapping.every(
       (mapping) => mapping.status === "Packed"
     );
@@ -5727,7 +5739,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKU = async (req, res) => {
     }
 
     await order.save();
-const headers = { "Content-Type": "application/json" };
+    const headers = { "Content-Type": "application/json" };
     if (req.headers.authorization) {
       headers.Authorization = req.headers.authorization;
     }
@@ -5750,7 +5762,7 @@ const headers = { "Content-Type": "application/json" };
         let pickupDealerId = dealerId || null;
         const dealerInfo = pickupDealerId ? await fetchDealerInfo(pickupDealerId, authHeader) : null;
         // console.log("[BORZO] Dealer info:", dealerInfo);
-        const skuDetails = order.skus.find((item) => item.sku === sku); 
+        const skuDetails = order.skus.find((item) => item.sku === sku);
         // console.log("dealer address build start",dealerInfo.Address);
         const dealerAddressString =
           dealerInfo?.address?.full ||
@@ -5767,7 +5779,7 @@ const headers = { "Content-Type": "application/json" };
           dealerInfo?.registered_address ||
           "Pickup Address";
 
-          // console.log("dealerAddressString", dealerAddressString);
+        // console.log("dealerAddressString", dealerAddressString);
         const dealerGeo = await geocodeAddress(dealerAddressString);
 
         const customerAddressString =
@@ -5780,7 +5792,7 @@ const headers = { "Content-Type": "application/json" };
             state: order.customerDetails?.state,
             pincode: order.customerDetails?.pincode,
             country: order.customerDetails?.country || "India",
-            taking_amount :order.paymentType === "COD" ? skuDetails.totalPrice : 0.00,
+            taking_amount: order.paymentType === "COD" ? skuDetails.totalPrice : 0.00,
           }) ||
           "Delivery Address";
         const customerGeo = await geocodeAddress(customerAddressString);
@@ -5835,8 +5847,8 @@ const headers = { "Content-Type": "application/json" };
             status: (code) => ({
               json: async (Data) => {
                 console.log("borzo instant response", Data, code);
-                      console.log("details Error ",Data?.borzo_error?.parameter_errors.points[0])
-                      console.log("details Error ",Data?.borzo_error?.parameter_errors.points[1])
+                console.log("details Error ", Data?.borzo_error?.parameter_errors.points[0])
+                console.log("details Error ", Data?.borzo_error?.parameter_errors.points[1])
 
                 if (code === 200) {
                   const data = Data.borzo_order.order;
@@ -5877,12 +5889,12 @@ const headers = { "Content-Type": "application/json" };
                           sku.tracking_info.borzo_weight = total_weight_kg;
                           sku.tracking_info.borzo_order_status = data.points[1].delivery.status;
                           sku.tracking_info.borzo_last_updated = new Date();
-                          sku.tracking_info.amount_collected = order.paymentType === "COD" ? false : true ;
-                          sku.return_info.is_returnable=isProductReturnable;
+                          sku.tracking_info.amount_collected = order.paymentType === "COD" ? false : true;
+                          sku.return_info.is_returnable = isProductReturnable;
                         }
                       });
                     }
-                    console.log("Saving borzo order id to order and sku tracking info",order.skus);
+                    console.log("Saving borzo order id to order and sku tracking info", order.skus);
 
                     await order.save();
                     try {
@@ -6282,7 +6294,7 @@ exports.borzoWebhookUpdated = async (req, res) => {
             updateFields["skus.$.tracking_info.timestamps.deliveredAt"] = new Date();
             updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
             updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
-            updateFields["skus.$.amount_collected"]=true;
+            updateFields["skus.$.amount_collected"] = true;
             break;
 
           case "canceled":
@@ -6290,14 +6302,14 @@ exports.borzoWebhookUpdated = async (req, res) => {
             updateFields["skus.$.tracking_info.timestamps.cancelledAt"] = new Date();
             updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
             updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
-            updateFields["skus.$.amount_collected"]=false;
+            updateFields["skus.$.amount_collected"] = false;
             break;
 
           default:
             break;
         }
 
-         await Order.updateOne(
+        await Order.updateOne(
           { orderId: orderId, "skus.sku": orderSku },
           { $set: updateFields }
         );
@@ -6315,12 +6327,12 @@ exports.borzoWebhookUpdated = async (req, res) => {
         if (allDelivered) {
           checkOrder.status = "Delivered";
           await checkOrder.save();
-          const  order= await Order.findOne(
+          const order = await Order.findOne(
             { orderId: orderId },
           );
-          if(checkOrder.paymentType==="COD"){
-            const payment=  await Payment.findOne({order_id:checkOrder._id});
-            payment.payment_status="Paid";
+          if (checkOrder.paymentType === "COD") {
+            const payment = await Payment.findOne({ order_id: checkOrder._id });
+            payment.payment_status = "Paid";
             await payment.save();
           }
         }
@@ -6435,7 +6447,7 @@ exports.borzoWebhookUpdated = async (req, res) => {
             updateFields["skus.$.tracking_info.timestamps.deliveredAt"] = new Date();
             updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
             updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
-            updateFields["skus.$.amount_collected"]=true;
+            updateFields["skus.$.amount_collected"] = true;
             break;
 
           case "canceled":
@@ -6443,14 +6455,14 @@ exports.borzoWebhookUpdated = async (req, res) => {
             updateFields["skus.$.tracking_info.timestamps.cancelledAt"] = new Date();
             updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
             updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
-            updateFields["skus.$.amount_collected"]=false;
+            updateFields["skus.$.amount_collected"] = false;
             break;
 
           default:
             break;
         }
 
-         await Order.updateOne(
+        await Order.updateOne(
           { orderId: orderId, "skus.sku": orderSku },
           { $set: updateFields }
         );
@@ -6466,10 +6478,10 @@ exports.borzoWebhookUpdated = async (req, res) => {
           // const  orderSub= await Order.findOne(
           //   { orderId: orderId },
           // );
-          if(checkOrder.paymentType==="COD"){
+          if (checkOrder.paymentType === "COD") {
 
-            const payment=  await Payment.findOne({order_id:checkOrder._id});
-            payment.payment_status="Paid";
+            const payment = await Payment.findOne({ order_id: checkOrder._id });
+            payment.payment_status = "Paid";
             await payment.save();
           }
         }
@@ -6884,7 +6896,7 @@ async function checkSLAViolationOnPackingForDealer(orderId, delaerId, packedAt, 
 
 exports.testGeoCode = async (req, res) => {
   try {
-     const authHeader = req.headers.authorization;
+    const authHeader = req.headers.authorization;
     const orderId = req.params.orderId;
     const order = await Order.findById(orderId);
 
@@ -6901,7 +6913,7 @@ exports.testGeoCode = async (req, res) => {
         pincode: order.customerDetails?.pincode,
         country: order.customerDetails?.country || "India",
       });
-      console.log("customerAddressString", customerAddressString);  
+    console.log("customerAddressString", customerAddressString);
 
     const customerGeo = await geocodeAddress(customerAddressString);
 
@@ -7063,7 +7075,7 @@ exports.getOrdersNoPagination = async (req, res) => {
       filter.orderSource = req.query.orderSource;
     }
 
-     if(req.query.dealerId){
+    if (req.query.dealerId) {
       filter["dealerMapping.dealerId"] = req.query.dealerId;
     }
 

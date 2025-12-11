@@ -191,7 +191,7 @@ exports.updateSubCategory = async (req, res) => {
         req.file.mimetype,
         "subcategories"
       );
-      updateData.subcategory_image = uploaded;
+      updateData.subcategory_image = uploaded.Location;
     }
 
     const updated = await Subcategory.findByIdAndUpdate(id, updateData, {
