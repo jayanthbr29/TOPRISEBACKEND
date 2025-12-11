@@ -555,3 +555,18 @@ exports.activateOrDeactivateBrand = async (req, res) => {
   }
 };
 
+exports.getBrandByName = async (req, res) => {
+  try {
+    const { name } = req.params;
+    const brand = await Brand.findOne({ brand_name: name }).populate(
+      "type created_by updated_by"
+    );
+    if (!brand) return sendError(res, "Brand not found", 404);
+
+    logger.info(`✅ Fetched brand with Name: ${name}`);
+    sendSuccess(res, brand);
+  } catch (err) {
+    logger.error(`❌ Get brand by name error: ${err.message}`);
+    return sendError(res, err);
+  }
+};
