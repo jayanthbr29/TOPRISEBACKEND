@@ -4194,11 +4194,11 @@ for (const modelId of modelArray) {
       search_tags: searchTagsArray,
       available_dealers: [
         {
-          dealers_Ref: req.body.addedByDealerId,
+          dealers_Ref: new mongoose.Types.ObjectId( req.body.addedByDealerId),
           quantity_per_dealer: req.body.quantity_per_dealer || 0  ,
           inStock: req.body.quantity_per_dealer > 0 ? true : false,
-          dealer_margin:  0,
-          dealer_priority_override: 0,
+          // dealer_margin:  0,
+          // dealer_priority_override: 0,
         },
       ],
       addedByDealerId: req.body.addedByDealerId,
