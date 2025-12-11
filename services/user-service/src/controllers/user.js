@@ -2356,11 +2356,23 @@ async function getUserIdByEmployeeId(empId) {
 
   return employee.user_id;
 }
+async function getEmployeeIdByEmployeeId(empId) {
+  const employee = await Employee.findOne({ employee_id: empId.trim() });
+
+  if (!employee) {
+    throw new Error(`Employee with employee_id '${empId}' not found`);
+  }
+
+ if (!employee._id) {
+    throw new Error(`Employee '${empId}' does not have an associated _id`);
+  }
+
+  return employee._id;
+}
 exports.createDealersBulk = async (req, res) => {
   try {
     const results = [];
     const stream = req.file.buffer.toString("utf8");
-    // console.log(`📝 Parsing CSV...`)  ;
 
     await new Promise((resolve, reject) => {
       streamifier
@@ -2377,23 +2389,23 @@ exports.createDealersBulk = async (req, res) => {
     const failedRows = [];
 
     for (const [index, row] of results.entries()) {
-      // console.log(`\n-----------------------------`,row.email);
-      console.log(`\n📝 Processing row ${index + 1}:`, row);
+      console.log(`\n🔹 Processing row ${index + 1}:`, row);
 
       try {
+        /** -------------------------------  
+         *  STEP 1: CHECK USER EXIST  
+         -------------------------------- */
         const existingUser = await User.findOne({ email: row.email });
 
         if (existingUser) {
-          console.log(
-            `⚠️  Skipping row: User with email ${row.email} already exists`
-          );
+          console.log(`⚠️ Skipping row: User with email ${row.email} already exists`);
           continue;
         }
 
-        const hashedPassword = await bcrypt.hash(
-          row.password || "default123",
-          10
-        );
+        /** -------------------------------  
+         *  STEP 2: CREATE USER  
+         -------------------------------- */
+        const hashedPassword = await bcrypt.hash(row.password || "default123", 10);
 
         const newUser = new User({
           email: row.email,
@@ -2404,42 +2416,78 @@ exports.createDealersBulk = async (req, res) => {
         });
 
         await newUser.save();
-        console.log(`✅ Created user: ${newUser.email} (${newUser._id})`);
+        console.log(`✅ User Created: ${newUser.email}`);
 
-        // Assigned employees mapping
+        /** -------------------------------  
+         *  STEP 3: ASSIGNED EMPLOYEES  
+         -------------------------------- */
         const assignedEmployees = [];
+
         if (row.assigned_user_ids) {
-          const empIds = row.assigned_user_ids.split("|").map((e) => e.trim());
-          console.log(`🔄 Mapping assigned employees:`, empIds);
-          for (const empId of empIds) {
+          const ids = row.assigned_user_ids.split("|").map(e => e.trim());
+          console.log("Assigned employees:", ids);
+
+          for (const empId of ids) {
             try {
-              const userId = await getUserIdByEmployeeId(empId);
+              // const userId = await getUserIdByEmployeeId(empId);
+              const userId = await getEmployeeIdByEmployeeId(empId);
+
               assignedEmployees.push({
                 assigned_user: userId,
                 status: "Active",
               });
-              console.log(
-                `   ➕ Mapped employee_id ${empId} to user_id ${userId}`
-              );
             } catch (mapErr) {
-              console.warn(
-                `   ⚠️ Employee mapping failed for '${empId}':`,
-                mapErr.message
-              );
-              throw mapErr; // or optionally skip this employee
+              console.warn(`⚠️ Employee mapping failed for ${empId}:`, mapErr.message);
+              throw mapErr;
             }
           }
         }
 
-        // SLA type lookup
+        /** -------------------------------  
+         *  STEP 4: SLA TYPE  
+         -------------------------------- */
         const slaTypeId = row.SLA_type
           ? await getSLAIdByNameRemote(row.SLA_type)
           : null;
-        if (slaTypeId)
-          console.log(
-            `   ✅ SLA '${row.SLA_type}' resolved to ID ${slaTypeId}`
-          );
 
+        /** -------------------------------  
+         *  STEP 5: BRAND MAPPING  
+         *  Using product-service endpoint
+         -------------------------------- */
+        let mappedBrands = [];
+        console.log("Brands to map:", row.brands_allowed);
+
+        if (row.brands_allowed) {
+          const brandNames = row.brands_allowed.split("|").map(b => b.trim());
+
+          for (const brandName of brandNames) {
+            try {
+              const brandRes = await axios.get(
+                `http://product-service:5001/api/brands/get/brand/byName/${encodeURIComponent(brandName)}`,
+                {
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: req.headers.authorization || "",
+                  },
+                }
+              );
+
+              if (brandRes.data?.success && brandRes.data.data?._id) {
+                mappedBrands.push(brandRes.data.data._id);
+                console.log(`✔ Brand mapped: ${brandName} → ${brandRes.data.data._id}`);
+              } else {
+                throw new Error(`Brand not found: ${brandName}`);
+              }
+            } catch (err) {
+              console.log(`❌ Brand fetch failed for: ${brandName}`, err.message);
+              throw new Error(`Brand mapping failed for '${brandName}'`);
+            }
+          }
+        }
+
+        /** -------------------------------  
+         *  STEP 6: CREATE DEALER  
+         -------------------------------- */
         const newDealer = new Dealer({
           user_id: newUser._id,
           dealerId: `DLR-${uuidv4().slice(0, 8)}`,
@@ -2458,13 +2506,12 @@ exports.createDealersBulk = async (req, res) => {
             email: row.contact_email,
             phone_number: row.contact_phone,
           },
-          categories_allowed: (row.categories_allowed || "")
-            .split(",")
-            .map((c) => c.trim())
-            .filter(Boolean),
           is_active: row.is_active?.toLowerCase() !== "false",
-          upload_access_enabled:
-            row.upload_access_enabled?.toLowerCase() === "true",
+
+          /** ✔ Updated field */
+          brands_allowed: mappedBrands,
+
+          upload_access_enabled: row.upload_access_enabled?.toLowerCase() === "true",
           default_margin: parseFloat(row.default_margin) || 0,
           last_fulfillment_date: row.last_fulfillment_date
             ? new Date(row.last_fulfillment_date)
@@ -2476,29 +2523,19 @@ exports.createDealersBulk = async (req, res) => {
             end: parseInt(row.dispatch_end, 10) || 0,
           },
           SLA_max_dispatch_time: parseInt(row.SLA_max_dispatch_time, 10) || 0,
-          onboarding_date: row.onboarding_date
-            ? new Date(row.onboarding_date)
-            : undefined,
+          onboarding_date: row.onboarding_date ? new Date(row.onboarding_date) : undefined,
           remarks: row.remarks || "",
         });
 
         await newDealer.save();
-        console.log(
-          `✅ Dealer created: ${newDealer.legal_name} (${newDealer._id})`
-        );
+        console.log(`🎉 Dealer Created: ${newDealer.legal_name}`);
         createdDealers.push(newDealer);
+
       } catch (err) {
-        console.error(
-          `❌ Error in row ${index + 1} (${row.email}):`,
-          err.message
-        );
+        console.error(`❌ Error in row ${index + 1}:`, err.message);
         failedRows.push({ row: row.email || row.username, error: err.message });
       }
     }
-
-    console.log(`\n📦 Upload Summary:`);
-    console.log(`✅ Created dealers: ${createdDealers.length}`);
-    console.log(`❌ Failed rows: ${failedRows.length}`);
 
     res.status(201).json({
       message: `${createdDealers.length} dealers created successfully`,
@@ -2506,13 +2543,13 @@ exports.createDealersBulk = async (req, res) => {
       failedRows,
       dealers: createdDealers,
     });
+
   } catch (err) {
     console.error("🚨 Bulk dealer creation error:", err.message);
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: err.message });
+    res.status(500).json({ message: "Internal server error", error: err.message });
   }
 };
+
 
 exports;
 

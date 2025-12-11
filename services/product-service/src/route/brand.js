@@ -74,5 +74,10 @@ router.patch(
   authenticate,
   brandController.activateOrDeactivateBrand
 );
+router.get(
+  "/get/brand/byName/:name",
+  authenticate,
+  brandController.getBrandByName
+);
 
 module.exports = router;
