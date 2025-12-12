@@ -60,6 +60,7 @@ const OrderSchema = new mongoose.Schema(
           borzo_payment_amount: Number,
           borzo_delivery_fee_amount: Number,
           borzo_weight_fee_amount: Number,
+          borzo_required_finish_datetime: Date,
           borzo_weight:Number,
           // Individual SKU status
           status: {
