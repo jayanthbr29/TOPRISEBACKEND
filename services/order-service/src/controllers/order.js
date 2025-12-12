@@ -6056,6 +6056,7 @@ exports.createOrderBorzoInstantUpdated = async (req, res) => {
       insurance_amount = "500.00",
       is_client_notification_enabled = true,
       is_contact_person_notification_enabled = true,
+      vehicle_type_id,
       points = [],
     } = req.body;
 
@@ -6102,6 +6103,7 @@ exports.createOrderBorzoInstantUpdated = async (req, res) => {
       insurance_amount: insurance_amount.toString(),
       is_client_notification_enabled,
       is_contact_person_notification_enabled,
+      vehicle_type_id,
       // points: points.map((point) => ({
       //   address: point.address,
       //   contact_person: {
@@ -6232,123 +6234,132 @@ exports.borzoWebhookUpdated = async (req, res) => {
       const client_Id = webhookData.delivery.client_order_id;
 
       const borzoFormatData = client_Id.split(",");
-      // console.log("borzoFormatData", borzoFormatData);
+      console.log("borzoFormatData", borzoFormatData);
       const orderType = borzoFormatData[0];
       const orderId = borzoFormatData[1];
       const orderSku = borzoFormatData[2];
 
-      if (orderType === "ORDS"|| orderType === "ORDM") {
-        let updateFields = {
-          "skus.$.tracking_info.status": null,
-        };
-        let  skuList =[]
-        for(let i=2;i<borzoFormatData.length;i++){
+      if (orderType === "ORDS" || orderType === "ORDM") {
+
+        // Extract SKU list from Borzo client_order_id
+        let skuList = [];
+        for (let i = 2; i < borzoFormatData.length; i++) {
           skuList.push(borzoFormatData[i]);
         }
+        console.log("skuList", skuList);
+
+        // Base update object (values change based on status)
+        let updateFields = {
+          status: null,
+          timestamps: {},
+          borzo_last_updated: new Date(),
+          borzo_tracking_status: borzoOrderStatus.toLowerCase(),
+        };
 
         switch (borzoOrderStatus.toLowerCase()) {
           case "created":
           case "planned":
           case "reattempt_planned":
-            updateFields["skus.$.tracking_info.status"] = "Confirmed";
-            updateFields["skus.$.tracking_info.timestamps.confirmedAt"] = new Date();
-            updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
-            updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
+            updateFields.status = "Confirmed";
+            updateFields.timestamps.confirmedAt = new Date();
             break;
+
           case "active":
-            updateFields["skus.$.tracking_info.status"] = "On_The_Way_To_Next_Delivery_Point";
-            updateFields["skus.$.tracking_info.timestamps.onTheWayToNextDeliveryPointAt"] = new Date();
-            updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
-            updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
+            updateFields.status = "On_The_Way_To_Next_Delivery_Point";
+            updateFields.timestamps.onTheWayToNextDeliveryPointAt = new Date();
             break;
+
           case "assigned":
           case "courier_assigned":
           case "reattempt_courier_assigned":
-            updateFields["skus.$.tracking_info.status"] = "Assigned";
-            updateFields["skus.$.tracking_info.timestamps.assignedAt"] = new Date();
-            updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
-            updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
+            updateFields.status = "Assigned";
+            updateFields.timestamps.assignedAt = new Date();
             break;
-
 
           case "courier_departed":
           case "reattempt_courier_departed":
-            updateFields["skus.$.tracking_info.status"] = "Picked Up";
-            updateFields["skus.$.tracking_info.timestamps.pickedUpAt"] = new Date();
-            updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
-            updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
+            updateFields.status = "Picked Up";
+            updateFields.timestamps.pickedUpAt = new Date();
             break;
 
           case "courier_at_pickup":
           case "parcel_picked_up":
           case "reattempt_courier_picked_up":
-            updateFields["skus.$.tracking_info.status"] = "Shipped";
-            updateFields["skus.$.tracking_info.timestamps.shippedAt"] = new Date();
-            updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
-            updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
+            updateFields.status = "Shipped";
+            updateFields.timestamps.shippedAt = new Date();
             break;
 
           case "courier_arrived":
-            updateFields["skus.$.tracking_info.status"] = "OUT_FOR_DELIVERY";
-            updateFields["skus.$.tracking_info.timestamps.outForDeliveryAt"] = new Date();
-            updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
-            updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
+            updateFields.status = "OUT_FOR_DELIVERY";
+            updateFields.timestamps.outForDeliveryAt = new Date();
             break;
+
           case "finished":
           case "reattempt_finished":
-            updateFields["skus.$.tracking_info.status"] = "Delivered";
-            updateFields["skus.$.tracking_info.timestamps.deliveredAt"] = new Date();
-            updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
-            updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
-            updateFields["skus.$.amount_collected"] = true;
+            updateFields.status = "Delivered";
+            updateFields.timestamps.deliveredAt = new Date();
+            updateFields.amount_collected = true;
             break;
 
           case "canceled":
-            updateFields["skus.$.tracking_info.status"] = "Cancelled";
-            updateFields["skus.$.tracking_info.timestamps.cancelledAt"] = new Date();
-            updateFields["skus.$.tracking_info.borzo_last_updated"] = new Date();
-            updateFields["skus.$.tracking_info.borzo_tracking_status"] = borzoOrderStatus.toLowerCase();
-            updateFields["skus.$.amount_collected"] = false;
+            updateFields.status = "Cancelled";
+            updateFields.timestamps.cancelledAt = new Date();
+            updateFields.amount_collected = false;
             break;
 
           default:
             break;
         }
 
-        // await Order.updateOne(
-        //   { orderId: orderId, "skus.sku": orderSku },
-        //   { $set: updateFields }
-        // );
-        await Order.updateMany(
-          { orderId: orderId, "skus.sku": { $in: skuList } },
-          { $set: updateFields }
-        );
-        const checkOrder = await Order.findOne(
+        const updateQuery = {
+          $set: {
+            "skus.$[elem].tracking_info.status": updateFields.status,
+            "skus.$[elem].tracking_info.timestamps": updateFields.timestamps,
+            "skus.$[elem].tracking_info.borzo_last_updated": updateFields.borzo_last_updated,
+            "skus.$[elem].tracking_info.borzo_tracking_status": updateFields.borzo_tracking_status
+          }
+        };
+
+        if (updateFields.amount_collected !== undefined) {
+          updateQuery.$set["skus.$[elem].amount_collected"] = updateFields.amount_collected;
+        }
+
+        await Order.updateOne(
           { orderId: orderId },
+          updateQuery,
+          {
+            arrayFilters: [
+              { "elem.sku": { $in: skuList } }
+            ]
+          }
         );
-        // check all sku Delivered  then mark order as Delivered
+
+        // Re-fetch order to check if all delivered
+        const checkOrder = await Order.findOne({ orderId: orderId });
+
         const allDelivered = checkOrder.skus.every(
           (sku) => sku.tracking_info.status === "Delivered"
         );
-        // if (allDelivered) {
-        //   checkOrder.status = "Delivered";
-        //   await checkOrder.save();
-        // }
+
         if (allDelivered) {
           checkOrder.status = "Delivered";
           await checkOrder.save();
-          const order = await Order.findOne(
-            { orderId: orderId },
-          );
+
           if (checkOrder.paymentType === "COD") {
             const payment = await Payment.findOne({ order_id: checkOrder._id });
-            payment.payment_status = "Paid";
-            await payment.save();
+            if (payment) {
+              payment.payment_status = "Paid";
+              await payment.save();
+            }
           }
         }
 
-        //  console.log("checkOrder", checkOrder);  
-      } else if (orderType === "RTN") {
+        return res.status(200).json({
+          success: true,
+          message: "Webhook received successfully"
+        });
+      }
+      else if (orderType === "RTN") {
         const returnOrder = await Return.findOne({ _id: orderId });
         console.log("returnOrder before update", returnOrder);
         switch (borzoOrderStatus.toLowerCase()) {
@@ -6438,10 +6449,10 @@ exports.borzoWebhookUpdated = async (req, res) => {
       const orderId = borzoFormatData[1];
       const orderSku = borzoFormatData[2];
 
-      if (orderType === "ORDS"|| orderType === "ORDM") {
+      if (orderType === "ORDS" || orderType === "ORDM") {
         let updateFields = {};
-        let  skuList =[]
-        for(let i=2;i<borzoFormatData.length;i++){
+        let skuList = []
+        for (let i = 2; i < borzoFormatData.length; i++) {
           skuList.push(borzoFormatData[i]);
         }
 
@@ -6476,7 +6487,7 @@ exports.borzoWebhookUpdated = async (req, res) => {
             break;
         }
 
-         await Order.updateMany(
+        await Order.updateMany(
           { orderId: orderId, "skus.sku": { $in: skuList } },
           { $set: updateFields }
         );
@@ -7238,10 +7249,10 @@ exports.getPickListNoPagination = async (req, res) => {
   }
 };
 
-
+// http://193.203.161.146:3000
 exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
   try {
-    const { orderId, dealerId,weight_object, sku, picklistId, forcePacking = false ,securePackageAmount,delivery_completion_time} = req.body;
+    const { orderId, dealerId, weight_object, sku, picklistId, forcePacking = false, securePackageAmount, delivery_completion_time } = req.body;
     const total_weight_kg = weight_object ? Object.values(weight_object).reduce((sum, w) => sum + w, 0) : 0;
     // console.log("total_weight_kg",total_weight_kg);
     if (!forcePacking) {
@@ -7352,16 +7363,16 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
 
     let dealerFound = false;
 
-   
-    if(sku){
- order.dealerMapping = order.dealerMapping.map((mapping) => {
-      if (mapping.dealerId.toString() === dealerId && mapping.sku === sku) {
-        dealerFound = true;
-        return { ...mapping.toObject(), status: "Packed", packedAt: new Date() };
-      }
-      return mapping;
-    });
-    }else if(picklistId){
+
+    if (sku) {
+      order.dealerMapping = order.dealerMapping.map((mapping) => {
+        if (mapping.dealerId.toString() === dealerId && mapping.sku === sku) {
+          dealerFound = true;
+          return { ...mapping.toObject(), status: "Packed", packedAt: new Date() };
+        }
+        return mapping;
+      });
+    } else if (picklistId) {
       const picklist = await PickList.findById(picklistId);
       const skusInPicklist = picklist.skuList.map(item => item.sku);
       order.dealerMapping = order.dealerMapping.map((mapping) => {
@@ -7372,35 +7383,35 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
         return mapping;
       });
     }
-// let isProductReturnable;
-let isProductsReturnable;
+    // let isProductReturnable;
+    let isProductsReturnable;
 
-if(sku){
-  isProductsReturnable = {};
- const responseProduct = await axios.get(
-      `http://product-service:5001/products/v1/sku/${sku}`,
-      { timeout: 5000 }
-    );
-    const productDataFetched = responseProduct.data.data;
-    const currentTime = new Date();
-    isProductsReturnable[sku] = (productDataFetched) ? productDataFetched.is_returnable : false;
+    if (sku) {
+      isProductsReturnable = {};
+      const responseProduct = await axios.get(
+        `http://product-service:5001/products/v1/sku/${sku}`,
+        { timeout: 5000 }
+      );
+      const productDataFetched = responseProduct.data.data;
+      const currentTime = new Date();
+      isProductsReturnable[sku] = (productDataFetched) ? productDataFetched.is_returnable : false;
 
-    //  isProductReturnable = (productDataFetched) ? productDataFetched.is_returnable : false;
-}else if(picklistId){
-     const picklist = await PickList.findById(picklistId);
+      //  isProductReturnable = (productDataFetched) ? productDataFetched.is_returnable : false;
+    } else if (picklistId) {
+      const picklist = await PickList.findById(picklistId);
       const skuList = picklist.skuList.map(item => item.sku);
       isProductsReturnable = {};
-      for(const skuItem of skuList){
-         const responseProduct = await axios.get(
+      for (const skuItem of skuList) {
+        const responseProduct = await axios.get(
           `http://product-service:5001/products/v1/sku/${skuItem}`,
           { timeout: 5000 }
         );
         const productDataFetched = responseProduct.data.data;
         isProductsReturnable[skuItem] = (productDataFetched) ? productDataFetched.is_returnable : false;
       }
-}
+    }
 
-   
+
     const allPacked = order.dealerMapping.every(
       (mapping) => mapping.status === "Packed"
     );
@@ -7462,7 +7473,7 @@ if(sku){
 
     let borzoOrderResponse = null;
     let borzoPointsUsed = null;
-    if (order.delivery_type=="standard") {
+    if (order.delivery_type == "standard") {
       try {
         console.log(
           `[BORZO] Attempting Borzo order creation for ${order.orderId} with delivery_type=${order.delivery_type}`
@@ -7473,23 +7484,23 @@ if(sku){
         // console.log("[BORZO] Dealer info:", dealerInfo);
         const skuDetails = order.skus.find((item) => item.sku === sku);
         const picklistOne = await PickList.findById(picklistId);
-      const skuListOne = picklistOne.skuList.map(item => item.sku);
-      console.log("skuListOne", skuListOne,"paymentType", order.paymentType );
-      let total_Order_Amount=0;
-      if (sku){
-        const skuDetails = order.skus.find((item) => item.sku === sku);
-total_Order_Amount=skuDetails.totalPrice || 0;
-      }else if(picklistId){
-        total_Order_Amount= order.skus.reduce((total, item) => {
-        if(skuListOne.includes(item.sku)){
-          return total + (item.totalPrice || 0);
+        const skuListOne = picklistOne?.skuList?.map(item => item.sku);
+        // console.log("skuListOne", skuListOne, "paymentType", order.paymentType);
+        let total_Order_Amount = 0;
+        if (sku) {
+          const skuDetails = order.skus.find((item) => item.sku === sku);
+          total_Order_Amount = skuDetails.totalPrice || 0;
+        } else if (picklistId) {
+          total_Order_Amount = order.skus.reduce((total, item) => {
+            if (skuListOne.includes(item.sku)) {
+              return total + (item.totalPrice || 0);
+            }
+            return total;
+          }, 0);
         }
-        return total;
-      }, 0);
-      }
-      console.log("total_Order_Amount", total_Order_Amount);
-      console.log(" order.paymentType === COD ? sku?skuDetails.totalPrice :total_Order_Amount: 0.00",  order.paymentType === "COD" ? sku?skuDetails.totalPrice :total_Order_Amount: 0.00);
-      
+        console.log("total_Order_Amount", total_Order_Amount);
+        console.log(" order.paymentType === COD ? sku?skuDetails.totalPrice :total_Order_Amount: 0.00", order.paymentType === "COD" ? sku ? skuDetails.totalPrice : total_Order_Amount : 0.00);
+
         // console.log("dealer address build start",dealerInfo.Address);
         const dealerAddressString =
           dealerInfo?.address?.full ||
@@ -7519,12 +7530,12 @@ total_Order_Amount=skuDetails.totalPrice || 0;
             state: order.customerDetails?.state,
             pincode: order.customerDetails?.pincode,
             country: order.customerDetails?.country || "India",
-            
+
           }) ||
           "Delivery Address";
         const customerGeo = await geocodeAddress(order.customerDetails?.pincode,);
- const picklist = await PickList.findById(picklistId);
-      const skuList = picklist.skuList.map(item => item.sku);
+        const picklist = await PickList.findById(picklistId);
+        const skuList = picklist?.skuList.map(item => item.sku);
         const pickupPoint = {
           address: dealerAddressString,
           building_number: dealerInfo?.address?.building_no || "",
@@ -7540,9 +7551,9 @@ total_Order_Amount=skuDetails.totalPrice || 0;
           longitude: dealerGeo?.longitude || 77.31912,
           // latitude: 28.583905,
           // longitude: 77.322733,
-          client_order_id: sku?`ORDS,${order.orderId},${sku}`:`ORDM,${order.orderId},${skuList.join(",")}`,
+          client_order_id: sku ? `ORDS,${order.orderId},${sku}` : `ORDM,${order.orderId},${skuList.join(",")}`,
         };
-       
+
 
         const dropPoint = {
           address: customerAddressString,
@@ -7555,28 +7566,42 @@ total_Order_Amount=skuDetails.totalPrice || 0;
           longitude: customerGeo?.longitude || 77.322733,
           // latitude: 28.583905,
           // longitude: 77.322733,
-            is_order_payment_here: true,
-          client_order_id: sku?`ORDS,${order.orderId},${sku}`:`ORDM,${order.orderId},${skuList.join(",")}`,
+          is_order_payment_here: true,
+          client_order_id: sku ? `ORDS,${order.orderId},${sku}` : `ORDM,${order.orderId},${skuList.join(",")}`,
           // taking_amount: order.paymentType === "COD" ? sku?skuDetails.totalPrice.toFixed(2).toString() :total_Order_Amount.toFixed(2).toString(): 0.00,
-          required_finish_datetime:delivery_completion_time || null,
+          required_finish_datetime: delivery_completion_time || null,
         };
         borzoPointsUsed = [pickupPoint, dropPoint];
-        let vehicle_type=8;
-        if(total_weight_kg){
-          if(total_weight_kg<=20){
-            vehicle_type=8; // bike
-          }else if(total_weight_kg>20 && total_weight_kg<=100){
-            vehicle_type=1; // 3 wheeler
-          }else if(total_weight_kg>100 && total_weight_kg<=200){
-            vehicle_type=5 // tempo truc
-          }else if(total_weight_kg>200 && total_weight_kg<=750){
-            vehicle_type=3; //  tata ace  ft
-          }else if(total_weight_kg>750 && total_weight_kg<=1000){
-            vehicle_type=2; // tata ace 8 ft
-          }else{
-            vehicle_type=2; // tata ace 8 ft
+        let vehicle_type = 8;
+        // if (total_weight_kg) {
+        //   if (total_weight_kg < 20) {
+        //     vehicle_type = 8; // bike
+        //   } else if (total_weight_kg >= 20 && total_weight_kg < 100) {
+        //     vehicle_type = 1; // 3 wheeler
+        //   } else if (total_weight_kg >= 100 && total_weight_kg < 200) {
+        //     vehicle_type = 5 // tempo truc
+        //   } else if (total_weight_kg >= 200 && total_weight_kg < 750) {
+        //     vehicle_type = 3; //  tata ace  ft
+        //   } else if (total_weight_kg >= 750 && total_weight_kg < 1000) {
+        //     vehicle_type = 2; // tata ace 8 ft
+        //   } else {
+        //     vehicle_type = 2; // tata ace 8 ft
+        //   }
+        // }
+        if (total_weight_kg) {
+          if (total_weight_kg <= 20) {
+            vehicle_type = 8; // bike
+          } else if (total_weight_kg > 20 && total_weight_kg <= 500) {
+            vehicle_type = 10; // 3 wheeler
+          }  else if (total_weight_kg > 500 && total_weight_kg <= 750) {
+            vehicle_type = 3; //  tata ace  ft
+          } else if (total_weight_kg > 750 && total_weight_kg <= 1000) {
+            vehicle_type = 2; // tata ace 8 ft
+          } else {
+            vehicle_type = 2; // tata ace 8 ft
           }
         }
+         
         console.log("vehicle_type", vehicle_type);
         const orderData = {
           matter: "Automobile Parts Delivery",
@@ -7584,7 +7609,7 @@ total_Order_Amount=skuDetails.totalPrice || 0;
           insurance_amount: securePackageAmount, // Default insurance
           is_client_notification_enabled: true,
           is_contact_person_notification_enabled: true,
-          vehicle_type_id :vehicle_type,
+          vehicle_type_id: vehicle_type,
 
           points: borzoPointsUsed,
         };
@@ -7613,10 +7638,10 @@ total_Order_Amount=skuDetails.totalPrice || 0;
                     const splitedOrderId = data.points[0].client_order_id.split(",");
                     let skuLists = [];
                     // if(splitedOrderId[0]=="ORDS"){
-                       for(let i=2;i<splitedOrderId.length;i++){
-                        skuLists.push(splitedOrderId[i]);
-                       }
-                       console.log("skuLists", skuLists); 
+                    for (let i = 2; i < splitedOrderId.length; i++) {
+                      skuLists.push(splitedOrderId[i]);
+                    }
+                    console.log("skuLists", skuLists);
                     // }
                     const skuValue = splitedOrderId[2];
                     // console.log("skuValue", skuValue);
@@ -7630,7 +7655,7 @@ total_Order_Amount=skuDetails.totalPrice || 0;
                     if (order.skus && order.skus.length > 0) {
                       order.skus.forEach((sku, index) => {
 
-                        if (skuList.includes(sku.sku) ) {
+                        if (skuLists.includes(sku.sku)) {
 
 
                           if (!sku.tracking_info) {
@@ -7651,9 +7676,9 @@ total_Order_Amount=skuDetails.totalPrice || 0;
                           sku.tracking_info.borzo_order_status = data.points[1].delivery.status;
                           sku.tracking_info.borzo_last_updated = new Date();
                           sku.tracking_info.amount_collected = order.paymentType === "COD" ? false : true;
-                          sku.tracking_info.borzo_weight=weight_object[sku.sku] || 0.00;
-                           sku.return_info.is_returnable = isProductsReturnable[sku.sku];
-                           sku.tracking_info.borzo_required_finish_datetime=data.points[1].required_finish_datetime || null;
+                          sku.tracking_info.borzo_weight = weight_object[sku.sku] || 0.00;
+                          sku.return_info.is_returnable = isProductsReturnable[sku.sku];
+                          sku.tracking_info.borzo_required_finish_datetime = data.points[1].required_finish_datetime || null;
                           // sku.return_info.is_returnable = isProductsReturnable.;
                         }
                       });
@@ -7794,7 +7819,7 @@ total_Order_Amount=skuDetails.totalPrice || 0;
         } catch (_) { }
         // Don't fail the main request if Borzo order creation fails
       }
-    }else if(order.delivery_type=="endofday"  ){
+    } else if (order.delivery_type == "endofday") {
       try {
         console.log(
           `[BORZO] Attempting Borzo order creation for ${order.orderId} with delivery_type=${order.delivery_type}`
@@ -7833,7 +7858,7 @@ total_Order_Amount=skuDetails.totalPrice || 0;
             state: order.customerDetails?.state,
             pincode: order.customerDetails?.pincode,
             country: order.customerDetails?.country || "India",
-            
+
           }) ||
           "Delivery Address";
         const customerGeo = await geocodeAddress(order.customerDetails?.pincode,);
@@ -7856,7 +7881,7 @@ total_Order_Amount=skuDetails.totalPrice || 0;
           client_order_id: `ORD,${order.orderId},${sku}`,
         };
         const picklist = await PickList.findById(picklistId);
-      const skuList = picklist.skuList.map(item => item.sku);
+        const skuList = picklist.skuList.map(item => item.sku);
 
         const dropPoint = {
           address: customerAddressString,
@@ -7869,35 +7894,35 @@ total_Order_Amount=skuDetails.totalPrice || 0;
           longitude: customerGeo?.longitude || 77.322733,
           // latitude: 28.583905,
           // longitude: 77.322733,
-            is_order_payment_here: true,
-          client_order_id: sku?`ORDS,${order.orderId},${sku}`:`ORDM,${order.orderId},${skuList.join(",")}`,
+          is_order_payment_here: true,
+          client_order_id: sku ? `ORDS,${order.orderId},${sku}` : `ORDM,${order.orderId},${skuList.join(",")}`,
           // taking_amount: order.paymentType === "COD" ? skuDetails.totalPrice : 0.00,
           required_finish_datetime: null,
         };
         borzoPointsUsed = [pickupPoint, dropPoint];
-        let vehicle_type=8;
-        if(total_weight_kg){
-          if(total_weight_kg<=20){
-            vehicle_type=8; // bike
-          }else if(total_weight_kg>20 && total_weight_kg<=100){
-            vehicle_type=1; // 3 wheeler
-          }else if(total_weight_kg>100 && total_weight_kg<=200){
-            vehicle_type=5 // tempo truc
-          }else if(total_weight_kg>200 && total_weight_kg<=750){
-            vehicle_type=3; //  tata ace  ft
-          }else if(total_weight_kg>750 && total_weight_kg<=1000){
-            vehicle_type=2; // tata ace 8 ft
-          }else{
-            vehicle_type=2; // tata ace 8 ft
+        let vehicle_type = 8;
+        if (total_weight_kg) {
+          if (total_weight_kg <= 20) {
+            vehicle_type = 8; // bike
+          } else if (total_weight_kg > 20 && total_weight_kg <= 500) {
+            vehicle_type = 10; // 3 wheeler
+          }  else if (total_weight_kg > 500 && total_weight_kg <= 750) {
+            vehicle_type = 3; //  tata ace  ft
+          } else if (total_weight_kg > 750 && total_weight_kg <= 1000) {
+            vehicle_type = 2; // tata ace 8 ft
+          } else {
+            vehicle_type = 2; // tata ace 8 ft
           }
         }
+        
+         
         const orderData = {
           matter: "Automobile Parts Delivery",
           total_weight_kg: total_weight_kg || "3", // Dynamic weight from request body
           insurance_amount: securePackageAmount, // Default insurance
           is_client_notification_enabled: true,
           is_contact_person_notification_enabled: true,
-          vehicle_type_id :vehicle_type,
+          vehicle_type_id: vehicle_type,
 
           points: borzoPointsUsed,
         };
@@ -7926,9 +7951,9 @@ total_Order_Amount=skuDetails.totalPrice || 0;
                     const splitedOrderId = data.points[0].client_order_id.split(",");
                     let skuLists = [];
                     // if(splitedOrderId[0]=="ORDS"){
-                       for(let i=2;i<splitedOrderId.length;i++){
-                        skuLists.push(splitedOrderId[i]);
-                       }
+                    for (let i = 2; i < splitedOrderId.length; i++) {
+                      skuLists.push(splitedOrderId[i]);
+                    }
                     // }
                     const skuValue = splitedOrderId[2];
                     // console.log("skuValue", skuValue);
@@ -7941,7 +7966,7 @@ total_Order_Amount=skuDetails.totalPrice || 0;
 
                     if (order.skus && order.skus.length > 0) {
                       order.skus.forEach((sku, index) => {
-                        if (sku.sku === skuList.includes(sku.sku) ) {
+                        if (sku.sku === skuList.includes(sku.sku)) {
 
 
                           if (!sku.tracking_info) {
@@ -7962,8 +7987,8 @@ total_Order_Amount=skuDetails.totalPrice || 0;
                           sku.tracking_info.borzo_order_status = data.points[1].delivery.status;
                           sku.tracking_info.borzo_last_updated = new Date();
                           sku.tracking_info.amount_collected = order.paymentType === "COD" ? false : true;
-                          sku.tracking_info.borzo_weight=weight_object[sku.sku] || 0.00;
-                           sku.return_info.is_returnable = isProductsReturnable[sku.sku];
+                          sku.tracking_info.borzo_weight = weight_object[sku.sku] || 0.00;
+                          sku.return_info.is_returnable = isProductsReturnable[sku.sku];
                           //  sku.tracking_info.borzo_required_finish_datetime=data.points[1].required_finish_datetime || null;
                           // sku.return_info.is_returnable = isProductsReturnable.;
                         }
