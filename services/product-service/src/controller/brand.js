@@ -11,7 +11,7 @@ const path = require("path");
 const unzipper = require("unzipper");
 const Type = require("../models/type");
 const Product = require("../models/productModel");
-
+const mongoose = require("mongoose");
 // ✅ CREATE BRAND
 exports.createBrand = async (req, res) => {
   try {
@@ -569,6 +569,33 @@ exports.getBrandByName = async (req, res) => {
     sendSuccess(res, brand);
   } catch (err) {
     logger.error(`❌ Get brand by name error: ${err.message}`);
+    return sendError(res, err);
+  }
+};
+
+
+exports.getBrandsByDealerID = async (req, res) => {
+  try {
+    const { dealerId,type } = req.params;
+    //fetch dealer details from user service 
+     const userData = await axios.get(`http://user-service:5001/api/users/dealer/${dealerId}`, {
+      headers: {
+        Authorization: req.headers.authorization
+      }
+    })
+    if(!userData.data.data){
+      return sendError(res, "Dealer not found", 404);
+    }
+    const dealerBrandIds = userData.data.data.brands_allowed || [];
+    //convert string ids to ObjectIds
+    const dealerObjectIds = dealerBrandIds.map(id =>  new mongoose.Types.ObjectId(id));
+
+    const brands = await Brand.find({ _id: { $in: dealerObjectIds } , status: 'active',type}).populate("type").sort({ created_at: -1 });
+
+    logger.info(`✅ Fetched brands for Dealer ID: ${dealerId}`);
+    sendSuccess(res, brands);
+  } catch (err) {
+    logger.error(`❌ Get brands by dealer ID error: ${err.message}`);
     return sendError(res, err);
   }
 };

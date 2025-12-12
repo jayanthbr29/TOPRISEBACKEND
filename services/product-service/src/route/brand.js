@@ -79,5 +79,6 @@ router.get(
   authenticate,
   brandController.getBrandByName
 );
+router.get("/get/brands/by/delaer/:dealerId/:type", authenticate, brandController.getBrandsByDealerID);
 
 module.exports = router;
