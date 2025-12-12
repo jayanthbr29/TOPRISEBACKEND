@@ -1291,6 +1291,7 @@ exports.validateReturnRequest = async (req, res) => {
 exports.intiateBorzoOrderForReturn = async (req, res) => {
   try {
     const { returnId } = req.params;
+    const { securePackageAmount = 0.00 } = req.body;
 
     const returnRequest = await Return.findById(returnId);
     if (!returnRequest) {
@@ -1300,7 +1301,7 @@ exports.intiateBorzoOrderForReturn = async (req, res) => {
     if (!order) {
       return sendError(res, "Order not found");
     }
-    const total_weight_kg = order.skus.find(s => s.sku === returnRequest.sku)?.weight_kg || "3";
+    const total_weight_kg = order.skus.find(s => s.sku === returnRequest.sku)?.tracking_info?.borzo_weight || "3";
     const authHeader = req.headers.authorization;
     let pickupDealerId = returnRequest.dealerId || null;
     const dealerInfo = pickupDealerId ? await fetchDealerInfo(pickupDealerId, authHeader) : null;
@@ -1319,7 +1320,7 @@ exports.intiateBorzoOrderForReturn = async (req, res) => {
       dealerInfo?.business_address ||
       dealerInfo?.registered_address ||
       "Pickup Address";
-    const dealerGeo = await geocodeAddress(dealerAddressString);
+    const dealerGeo = await geocodeAddress(dealerInfo?.Address?.pincode);
     const customerAddressString =
       order.customerDetails?.address ||
       buildAddressString({
@@ -1332,7 +1333,21 @@ exports.intiateBorzoOrderForReturn = async (req, res) => {
         country: order.customerDetails?.country || "India",
       }) ||
       "Delivery Address";
-    const customerGeo = await geocodeAddress(customerAddressString);
+    const customerGeo = await geocodeAddress(order.customerDetails?.pincode);
+     let vehicle_type = 8;
+     if (total_weight_kg) {
+          if (total_weight_kg <= 20) {
+            vehicle_type = 8; // bike
+          } else if (total_weight_kg > 20 && total_weight_kg <= 500) {
+            vehicle_type = 10; // 3 wheeler
+          }  else if (total_weight_kg > 500 && total_weight_kg <= 750) {
+            vehicle_type = 3; //  tata ace  ft
+          } else if (total_weight_kg > 750 && total_weight_kg <= 1000) {
+            vehicle_type = 2; // tata ace 8 ft
+          } else {
+            vehicle_type = 2; // tata ace 8 ft
+          }
+        }
     const dropPoint = {
       address: dealerAddressString,
       contact_person: {
@@ -1343,10 +1358,11 @@ exports.intiateBorzoOrderForReturn = async (req, res) => {
           dealerInfo?.phone ||
           "0000000000",
       },
-      // latitude: dealerGeo?.latitude || 28.57908,
-      // longitude: dealerGeo?.longitude || 77.31912,
-      latitude: 28.583905,
-      longitude: 77.322733,
+      latitude: dealerGeo?.latitude || 28.57908,
+      longitude: dealerGeo?.longitude || 77.31912,
+      // latitude: 28.583905,
+      // longitude: 77.322733,
+      
       client_order_id: `RTN,${returnId},${returnRequest.sku}`,
     };
 
@@ -1356,19 +1372,21 @@ exports.intiateBorzoOrderForReturn = async (req, res) => {
         name: order.customerDetails?.name || "Customer",
         phone: order.customerDetails?.phone || "0000000000",
       },
-      // latitude: customerGeo?.latitude || 28.583905,
-      // longitude: customerGeo?.longitude || 77.322733,
-      latitude: 28.583905,
-      longitude: 77.322733,
+      latitude: customerGeo?.latitude || 28.583905,
+      longitude: customerGeo?.longitude || 77.322733,
+      // latitude: 28.583905,
+      // longitude: 77.322733,
       client_order_id: `RTN,${returnId},${returnRequest.sku}`,
     };
     borzoPointsUsed = [pickupPoint, dropPoint];
     const orderData = {
-      matter: "Food",
+      type: "endofday",
+      matter: "Automobile Parts Delivery",
       total_weight_kg: total_weight_kg || "3", // Dynamic weight from request body
-      insurance_amount: "000.00", // Default insurance
-      is_client_notification_enabled: true,
-      is_contact_person_notification_enabled: true,
+       insurance_amount: securePackageAmount,
+        vehicle_type_id: vehicle_type,
+       is_client_notification_enabled: true,
+          is_contact_person_notification_enabled: true,
       points: borzoPointsUsed,
     };
     const instantReq = { body: { ...orderData, type: "standard" } };
@@ -1472,6 +1490,7 @@ exports.createOrderBorzoInstantUpdated = async (req, res) => {
       insurance_amount = "500.00",
       is_client_notification_enabled = true,
       is_contact_person_notification_enabled = true,
+      vehicle_type_id,
       points = [],
     } = req.body;
 
@@ -1512,24 +1531,26 @@ exports.createOrderBorzoInstantUpdated = async (req, res) => {
 
     // Create Borzo order payload with dynamic total_weight_kg
     const borzoOrderPayload = {
-      type,
+       type,
       matter,
       total_weight_kg: total_weight_kg.toString(),
       insurance_amount: insurance_amount.toString(),
       is_client_notification_enabled,
       is_contact_person_notification_enabled,
-      points: points.map((point) => ({
-        address: point.address,
-        contact_person: {
-          name: point.contact_person.name,
-          phone: point.contact_person.phone,
-        },
-        latitude: point.latitude,
-        longitude: point.longitude,
-        client_order_id:
-          point.client_order_id ||
-          `BORZO_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      })),
+      vehicle_type_id,
+      // points: points.map((point) => ({
+      //   address: point.address,
+      //   contact_person: {
+      //     name: point.contact_person.name,
+      //     phone: point.contact_person.phone,
+      //   },
+      //   latitude: point.latitude,
+      //   longitude: point.longitude,
+      //   client_order_id:
+      //     point.client_order_id ||
+      //     `BORZO_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      // })),
+      points: points,
     };
     console.log("borzoOrderPayload", borzoOrderPayload);
     // Make the actual API call to Borzo
