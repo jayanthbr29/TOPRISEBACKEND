@@ -83,25 +83,31 @@ const updateCartItemsPrice = async (items, token) => {
             ];
       item.product_name = productData.product_name;
       item.selling_price = productData.selling_price * item.quantity ;
-      item.mrp = productData.mrp_with_gst * item.quantity;
+      item.mrp = ((productData.mrp_with_gst-((productData.mrp_with_gst)*(productData.gst_percentage/100))) * item.quantity).toFixed(2);
       item.mrp_gst_amount =
-        (productData.mrp_with_gst / 100) *
-        productData.gst_percentage *
-        item.quantity;
+        // (productData.mrp_with_gst / 100) *
+        // productData.gst_percentage *
+        // item.quantity;
+        productData.mrp_with_gst * item.quantity;
       item.total_mrp =
-        (productData.mrp_with_gst +
-          (productData.mrp_with_gst / 100) * productData.gst_percentage) *
-        item.quantity;
+      ((productData.mrp_with_gst)*item.quantity).toFixed(2);
+          // ((productData.mrp_with_gst
+          //   //  +
+          //   // (productData.mrp_with_gst ) * (productData.gst_percentage/ 100)
+          // ) *
+          // item.quantity).toFixed(2);
       item.sku = productData.sku_code;
       item.gst_amount =
-        (productData.selling_price / 100) *
-        productData.gst_percentage *
-        item.quantity;
+        // (productData.selling_price / 100) *
+        // productData.gst_percentage *
+        // item.quantity;
+        ((((productData.selling_price )*(productData.gst_percentage/100)))* item.quantity).toFixed(2);
       item.product_total = productData.selling_price * item.quantity;
       item.totalPrice =
-        (productData.selling_price +
-          (productData.selling_price / 100) * productData.gst_percentage) *
-        item.quantity;
+        // (productData.selling_price +
+        //   (productData.selling_price / 100) * productData.gst_percentage) *
+        // item.quantity;
+        (productData.selling_price ) * item.quantity;
       return item;
     })
   );
