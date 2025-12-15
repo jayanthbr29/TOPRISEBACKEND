@@ -36,7 +36,7 @@ const calculateCartTotals = async (items, existingDeliveryCharge = 0) => {
   //     ? setting.data.data.deliveryCharge
   //     : 0;
 
-  const grandTotal = (totalPrice + gst_amount + handlingCharge + existingDeliveryCharge).toFixed(2);
+  const grandTotal = (totalPrice +  handlingCharge + existingDeliveryCharge).toFixed(2);
 
   return {
     totalPrice: totalPrice.toFixed(2),

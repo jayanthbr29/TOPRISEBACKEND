@@ -1683,26 +1683,26 @@ exports.getProductsByFilters = async (req, res) => {
     filter.live_status = "Approved";
     filter.Qc_status = "Approved";
 
-    if (brand) filter.brand = { $in: csvToIn(brand) };
-    if (category) filter.category = { $in: csvToIn(category) };
-    if (sub_category) filter.sub_category = { $in: csvToIn(sub_category) };
-    if (product_type) filter.product_type = { $in: csvToIn(product_type) };
-    if (model) filter.model = { $in: csvToIn(model) };
-    if (variant) filter.variant = { $in: csvToIn(variant) };
-    if (make) filter.make = { $in: csvToIn(make) };
-    if (year_range) filter.year_range = { $in: csvToIn(year_range) };
+    if (brand&&(brand!='null')) filter.brand = { $in: csvToIn(brand) };
+    if (category&&(category!='null')) filter.category = { $in: csvToIn(category) };
+    if (sub_category&&(sub_category!='null')) filter.sub_category = { $in: csvToIn(sub_category) };
+    if (product_type&&(product_type!='null')) filter.product_type = { $in: csvToIn(product_type) };
+    if (model&&(model!='null')) filter.model = { $in: csvToIn(model) };
+    if (variant&&(variant!='null')) filter.variant = { $in: csvToIn(variant) };
+    if (make&&(make!='null')) filter.make = { $in: csvToIn(make) };
+    if ((year_range)&&(year_range!='null') )filter.year_range = { $in: csvToIn(year_range) };
 
-    if (is_universal !== undefined) filter.is_universal = is_universal === "true";
-    if (is_consumable !== undefined) filter.is_consumable = is_consumable === "true";
+    if (is_universal !== undefined&&(is_universal!='null')) filter.is_universal = is_universal === "true";
+    if (is_consumable !== undefined &&(is_consumable!='null')) filter.is_consumable = is_consumable === "true";
 
     // Text-based filters with regex for partial matching
-    if (product_name) {
+    if (product_name&&(product_name!='null')) {
       filter.product_name = { $regex: product_name, $options: 'i' };
     }
-    if (sku_code) {
+    if (sku_code&&(sku_code!='null')) {
       filter.sku_code = { $regex: sku_code, $options: 'i' };
     }
-    if (part_name) {
+  if (part_name&&(part_name!='null')) {
       filter.manufacturer_part_name = { $regex: part_name, $options: 'i' };
     }
 

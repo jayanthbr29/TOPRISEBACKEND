@@ -405,9 +405,41 @@ exports.createOrder = async (req, res) => {
 
     const invoiceNumber = `INV-${Date.now()}`;
     const customerDetails = newOrder.customerDetails;
-    const items = newOrder.skus.map((s) => ({
+    const items = await Promise.all(newOrder.skus.map(async (s) =>{ 
+      //call product service to get product name
+      const productResponse = await axios.get(`http://product-service:5001/products/v1/sku/${s.sku}`); 
+      const productData = productResponse.data.data;  
+
+      // if customer address is from delhi means it contains delhi in address then make scgst and cgst 0  and make igst= scgst+cgst
+      const scgst = (s.gst_percentage || 0) / 2;
+      const cgst = (s.gst_percentage || 0) / 2;
+      const igst = scgst + cgst;
+      const lowerCaseAddress = customerDetails?.address?.toLowerCase();
+      const containsDelhi = lowerCaseAddress.includes('delhi');
+      console.log("containsDelhi",containsDelhi);
+      if (containsDelhi) {
+         return ({
       productName: s.productName,
       sku: s.sku,
+      hsn: productData?.hsn_code || "N/A",
+      mpn: productData?.manufacturer_part_name || "N/A",
+      unitPrice: s.selling_price,
+      quantity: s.quantity,
+      taxRate: `${igst || 0}%`,
+      cgstPercent:  0 ,
+      cgstAmount:  0,
+      sgstPercent:  0,
+      sgstAmount: 0,
+      igstPercent: igst || 0,
+      igstAmount: s.gst_amount || 0,
+      totalAmount: s.totalPrice,
+    });
+  }else{
+return ({
+      productName: s.productName,
+      sku: s.sku,
+      hsn: productData?.hsn_code || "N/A",
+      mpn: productData?.manufacturer_part_name || "N/A",
       unitPrice: s.selling_price,
       quantity: s.quantity,
       taxRate: `${s.gst_percentage || 0}%`,
@@ -416,7 +448,13 @@ exports.createOrder = async (req, res) => {
       sgstPercent: (s.gst_percentage || 0) / 2,
       sgstAmount: (s.gst_amount || 0) / 2,
       totalAmount: s.totalPrice,
+      });
+  }
+      
     }));
+
+    
+
     const shippingCharges = Number(req.body.deliveryCharges) || 0;
     const totalOrderAmount = Number(req.body.order_Amount) || 0;
 
@@ -7261,7 +7299,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
       if (picklistId) {
         picklist = await PickList.findOne({ _id: picklistId });
       } else if (sku) {
-        picklist = await PickList.findOne({
+        picklist = await PickList.findOne({     
           linkedOrderId: orderId,
           skuList: {
             $elemMatch: { sku: sku }
@@ -7362,7 +7400,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
     }
 
     let dealerFound = false;
-
+ 
 
     if (sku) {
       order.dealerMapping = order.dealerMapping.map((mapping) => {
