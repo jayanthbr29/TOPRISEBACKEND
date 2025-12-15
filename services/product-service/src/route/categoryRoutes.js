@@ -107,7 +107,7 @@ router.get(
 
 router.get(
   "/get/categories/by/type/:vehicleType",
-  authenticate,
+  // authenticate,
   categoryController.getCategoriesByVehicleType
 );
 

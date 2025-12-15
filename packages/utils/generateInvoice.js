@@ -730,14 +730,28 @@ const generateInvoicePdfBuffer = async (
 const PAGE_BOTTOM = doc.page.height - 80;
 function redrawTableHeader() {
   doc.rect(tableX, tableY, totalW, rowH).stroke();
-  doc.font("DejaVu-Bold").fontSize(10);
+  doc.font("DejaVu-Bold").fontSize(7);
 
   doc.text("Sl No.", tableX + 5, tableY + 6, { width: col.serial });
   doc.text("Item Description", tableX + col.serial + 5, tableY + 6, { width: col.desc });
-  doc.text("Qty", tableX + col.serial + col.desc + 5, tableY + 6, { width: col.qty });
-  doc.text("Rate", tableX + col.serial + col.desc + col.qty + 5, tableY + 6, { width: col.rate });
-  doc.text("GST%", tableX + col.serial + col.desc + col.qty + col.rate + 5, tableY + 6, { width: col.gst });
-  doc.text("Amount", tableX + col.serial + col.desc + col.qty + col.rate + col.gst + 5, tableY + 6, { width: col.amount });
+
+doc.text(
+  "HSN",
+  tableX + col.serial + col.desc + 5,
+  tableY + 6,
+  { width: col.hsn, align: "center" }
+);
+
+doc.text(
+  "Qty",
+  tableX + col.serial + col.desc + col.hsn + 5,
+  tableY + 6,
+  { width: col.qty }
+);
+
+  doc.text("Rate", tableX + col.serial + col.desc + col.hsn+ col.qty + 5, tableY + 6, { width: col.rate });
+  doc.text("GST%", tableX + col.serial + col.desc + col.hsn + col.qty + col.rate + 5, tableY + 6, { width: col.gst });
+  doc.text("Amount", tableX + col.serial + col.desc + col.hsn + col.qty + col.rate + col.gst + 5, tableY + 6, { width: col.amount });
 
   tableY += rowH;
 }
@@ -869,29 +883,45 @@ doc.moveDown(3);
   const rowH = 22;
 
   const col = {
-    serial: 50,
-    desc: 180,
-    hsn: 60,
-    mpn: 60,
-    qty: 40,
-    rate: 70,
-    gst: 40,
-    amount: 100
-  };
+  serial: 50,
+  desc: 180,
+  hsn: 60,
+  mpn: 60,
+  qty: 40,
+  rate: 70,
+  gst: 40,
+  amount: 100
+};
+
 
   const totalW =
-    col.serial + col.desc + col.qty + col.rate + col.gst + col.amount+50;
+  col.serial + col.desc + col.hsn + col.qty + col.rate + col.gst + col.amount;
+
 
   // HEADER ROW
   doc.rect(tableX, tableY, totalW, rowH).stroke();
-  doc.font("DejaVu-Bold").fontSize(10);
+  doc.font("DejaVu-Bold").fontSize(7);
 
   doc.text("Sl No.", tableX + 5, tableY + 6, { width: col.serial });
 doc.text("Item Description", tableX + col.serial + 5, tableY + 6, { width: col.desc });
-doc.text("Qty", tableX + col.serial + col.desc + 5, tableY + 6, { width: col.qty });
-doc.text("Rate", tableX + col.serial + col.desc + col.qty + 5, tableY + 6, { width: col.rate });
-doc.text("GST%", tableX + col.serial + col.desc + col.qty + col.rate + 5, tableY + 6, { width: col.gst });
-doc.text("Amount", tableX + col.serial + col.desc + col.qty + col.rate + col.gst + 5, tableY + 6, { width: col.amount });
+
+doc.text(
+  "HSN",
+  tableX + col.serial + col.desc + 5,
+  tableY + 6,
+  { width: col.hsn, align: "center" }
+);
+
+doc.text(
+  "Qty",
+  tableX + col.serial + col.desc + col.hsn + 5,
+  tableY + 6,
+  { width: col.qty }
+);
+
+doc.text("Rate", tableX + col.serial + col.desc + col.hsn + col.qty + 5, tableY + 6, { width: col.rate });
+doc.text("GST%", tableX + col.serial + col.desc + col.hsn + col.qty + col.rate + 5, tableY + 6, { width: col.gst });
+doc.text("Amount", tableX + col.serial + col.desc + col.hsn + col.qty + col.rate + col.gst + 5, tableY + 6, { width: col.amount });
 
 
   tableY += rowH;
@@ -907,12 +937,14 @@ doc.text("Amount", tableX + col.serial + col.desc + col.qty + col.rate + col.gst
   let totalCGST = 0;
   let totalSGST = 0;
   let totalIGST = 0;
+  let taotalAmount = 0;
 
   items.forEach((item, i) => {
   console.log("Item:", item);
+    const taxPercentage=item.igstPercent>0 ? item.igstPercent : (Number(item.cgstPercent || 0) + Number(item.sgstPercent || 0));
 
   const qty = isNaN(parseFloat(item.quantity)) ? 0 : parseFloat(item.quantity);
-  const rate = isNaN(parseFloat(item.unitPrice)) ? 0 : parseFloat(item.unitPrice);
+  const rate = isNaN(parseFloat(item.unitPrice)) ? 0 : parseFloat((item.unitPrice-((item.unitPrice/100)*taxPercentage)).toFixed(2));
    const taxable = qty * rate;
 
     const cgstAmt = Number(item.cgstAmount) || 0;
@@ -924,7 +956,9 @@ doc.text("Amount", tableX + col.serial + col.desc + col.qty + col.rate + col.gst
     totalSGST += sgstAmt;
     totalIGST += igstAmt;
 
-    const amt = taxable.toFixed(2);
+
+    const amt =  isNaN(parseFloat(item.unitPrice)) ? 0 : (  (qty * item.unitPrice).toFixed(2));
+    taotalAmount += amt;
     let gstPercent;
     if(item.cgstPercent>0 && item.sgstPercent>0){
       gstPercent = Number(item.cgstPercent || 0) + Number(item.sgstPercent || 0);
@@ -944,7 +978,7 @@ if (tableY + rH > PAGE_BOTTOM) {
 
 
   doc.rect(tableX, tableY, totalW, rH).stroke();
-  doc.font("DejaVu").fontSize(10);
+  doc.font("DejaVu").fontSize(7);
 
   //-------------------------------
   // COLUMN 1: SERIAL NUMBER
@@ -957,7 +991,7 @@ if (tableY + rH > PAGE_BOTTOM) {
   const descText =
     `${item.productName || "N/A"}\n` +
     `SKU: ${item.sku || "N/A"}\n` +
-    `HSN: ${item.hsn || "—"}\n` +
+    // `HSN: ${item.hsn || "—"}\n` +
     `MPN: ${item.mpn || "—"}`;
 
   doc.text(
@@ -967,24 +1001,31 @@ if (tableY + rH > PAGE_BOTTOM) {
     { width: col.desc, lineGap: 2 }
   );
 
+  doc.text(
+  item.hsn || "-",
+  tableX + col.serial + col.desc + 5,
+  tableY + 5,
+  { width: col.hsn, align: "center" }
+);
+
   //-------------------------------
   // COLUMN 3: QTY
   //-------------------------------
   doc.text(
     String(qty),
-    tableX + col.serial + col.desc ,
+    tableX + col.serial + col.desc + col.hsn + 5,
     tableY + 5,
-    { width: col.qty, align: "center" }
+    { width: col.qty, align: "left" }
   );
 
   //-------------------------------
   // COLUMN 4: RATE
   //-------------------------------
   doc.text(
-    `₹${rate.toFixed(2)}`,
-    tableX + col.serial + col.desc + col.qty ,
+    `₹${(rate).toFixed(2)}`,
+    tableX + col.serial + col.desc + col.hsn + col.qty + 5,
     tableY + 5,
-    { width: col.rate, align: "right" }
+    { width: col.rate, align: "left" }
   );
 
   //-------------------------------
@@ -992,9 +1033,9 @@ if (tableY + rH > PAGE_BOTTOM) {
   //-------------------------------
   doc.text(
     String(gstPercent),
-    tableX + col.serial + col.desc + col.qty + col.rate -5,
+    tableX + col.serial + col.desc + col.hsn + col.qty + col.rate +5,
     tableY + 5,
-    { width: col.gst, align: "center" }
+    { width: col.gst, align: "left" }
   );
 
   //-------------------------------
@@ -1002,9 +1043,9 @@ if (tableY + rH > PAGE_BOTTOM) {
   //-------------------------------
   doc.text(
     `₹${amt}`,
-    tableX + col.serial + col.desc + col.qty + col.rate  ,
-    tableY + 5,
-    { width: col.amount, align: "right" }
+    tableX + col.serial + col.desc + col.hsn + col.qty + col.rate + col.gst+5   ,
+    tableY +5,
+    { width: col.amount, align: "left" }
   );
 
   tableY += rH;
@@ -1019,7 +1060,7 @@ if (tableY + 120 > PAGE_BOTTOM) {
 // 1️⃣ TOTAL ROW (part of same table)
 //---------------------------------------------------
 doc.rect(tableX, tableY, totalW, rowH).stroke();
-doc.font("DejaVu-Bold").fontSize(10)
+doc.font("DejaVu-Bold").fontSize(7)
   .text("Total", tableX + 5, tableY + 6);
 
 doc.text(`₹${totalOrderAmount.toFixed(2)}`,
@@ -1040,7 +1081,7 @@ if (tableY + 120 > PAGE_BOTTOM) {
 const words = numberToWordsIndian(Math.round(totalOrderAmount));
 
 doc.rect(tableX, tableY, totalW, rowH).stroke();
-doc.font("DejaVu-Bold").fontSize(10)
+doc.font("DejaVu-Bold").fontSize(7)
   .text("Amount in words (INR):", tableX + 5, tableY + 6);
 
 doc.font("DejaVu").fontSize(10)
@@ -1060,15 +1101,17 @@ if (tableY + 120 > PAGE_BOTTOM) {
 const taxRowH = 25;
 
 const tCol = {
+  hsn: 70,          // 👈 ADD THIS
   taxable: 100,
-  cgstRate: 60,
-  cgstAmt: 60,
-  sgstRate: 60,
-  sgstAmt: 60,
-  igstRate: 60,
-  igstAmt: 60,
+  cgstRate: 50,
+  cgstAmt: 50,
+  sgstRate: 50,
+  sgstAmt: 50,
+  igstRate: 50,
+  igstAmt: 50,
   total: 100
 };
+
 
 const taxWidth = Object.values(tCol).reduce((a, b) => a + b, 0)-30;
 let tx = tableX;
@@ -1076,11 +1119,16 @@ let taxY = tableY;
 
 // HEADER ROW
 doc.rect(tx, taxY, taxWidth, taxRowH).stroke();
-doc.font("DejaVu-Bold").fontSize(9);
+doc.font("DejaVu-Bold").fontSize(6);
 
 let cx = tx;
 
-doc.text("Taxable Value", cx + 5, taxY + 6, { width: tCol.taxable }); cx += tCol.taxable;
+doc.text("HSN", cx + 5, taxY + 6, { width: tCol.hsn }); 
+cx += tCol.hsn;
+
+doc.text("Taxable Value", cx + 5, taxY + 6, { width: tCol.taxable }); 
+cx += tCol.taxable;
+
 doc.text("CGST %", cx + 5, taxY + 6, { width: tCol.cgstRate }); cx += tCol.cgstRate;
 doc.text("CGST Amt", cx + 5, taxY + 6, { width: tCol.cgstAmt }); cx += tCol.cgstAmt;
 doc.text("SGST %", cx + 5, taxY + 6, { width: tCol.sgstRate }); cx += tCol.sgstRate;
@@ -1089,23 +1137,166 @@ doc.text("IGST %", cx + 5, taxY + 6, { width: tCol.igstRate }); cx += tCol.igstR
 doc.text("IGST Amt", cx + 5, taxY + 6, { width: tCol.igstAmt }); cx += tCol.igstAmt;
 doc.text("Total Tax", cx + 5, taxY + 6, { width: tCol.total });
 
+function redrawTaxTableHeader() {
+  // HEADER ROW
+doc.rect(tx, taxY, taxWidth, taxRowH).stroke();
+doc.font("DejaVu-Bold").fontSize(6);
+
+let cx = tx;
+
+doc.text("HSN", cx + 5, taxY + 6, { width: tCol.hsn }); 
+cx += tCol.hsn;
+
+doc.text("Taxable Value", cx + 5, taxY + 6, { width: tCol.taxable }); 
+cx += tCol.taxable;
+
+doc.text("CGST %", cx + 5, taxY + 6, { width: tCol.cgstRate }); cx += tCol.cgstRate;
+doc.text("CGST Amt", cx + 5, taxY + 6, { width: tCol.cgstAmt }); cx += tCol.cgstAmt;
+doc.text("SGST %", cx + 5, taxY + 6, { width: tCol.sgstRate }); cx += tCol.sgstRate;
+doc.text("SGST Amt", cx + 5, taxY + 6, { width: tCol.sgstAmt }); cx += tCol.sgstAmt;
+doc.text("IGST %", cx + 5, taxY + 6, { width: tCol.igstRate }); cx += tCol.igstRate;
+doc.text("IGST Amt", cx + 5, taxY + 6, { width: tCol.igstAmt }); cx += tCol.igstAmt;
+doc.text("Total Tax", cx + 5, taxY + 6, { width: tCol.total });
+  tableY += rowH;
+}
+// create a function to draw tax table header
+
 taxY += taxRowH;
 
-// BODY ROW
-doc.rect(tx, taxY, taxWidth, taxRowH).stroke();
-doc.font("DejaVu").fontSize(9);
+items.forEach(item => {
+  doc.rect(tx, taxY, taxWidth, taxRowH).stroke();
+  doc.font("DejaVu").fontSize(6);
+  if (tableY + rowH > PAGE_BOTTOM) {
+  doc.addPage();
+  tableY = PAGE_TOP;
+  redrawTaxTableHeader();
+}
+const taxPercentage=item.igstPercent>0 ? item.igstPercent : (Number(item.cgstPercent || 0) + Number(item.sgstPercent || 0));
 
-cx = tx;
-doc.text(totalTaxable.toFixed(2), cx + 5, taxY + 6, { width: tCol.taxable }); cx += tCol.taxable;
-doc.text((items[0].cgstPercent || 0) + "%", cx + 5, taxY + 6, { width: tCol.cgstRate }); cx += tCol.cgstRate;
-doc.text(totalCGST.toFixed(2), cx + 5, taxY + 6, { width: tCol.cgstAmt }); cx += tCol.cgstAmt;
-doc.text((items[0].sgstPercent || 0) + "%", cx + 5, taxY + 6, { width: tCol.sgstRate }); cx += tCol.sgstRate;
-doc.text(totalSGST.toFixed(2), cx + 5, taxY + 6, { width: tCol.sgstAmt }); cx += tCol.sgstAmt;
-doc.text((items[0].igstPercent || 0), cx + 5, taxY + 6, { width: tCol.igstRate }); cx += tCol.igstRate;
-doc.text(totalIGST.toFixed(2), cx + 5, taxY + 6, { width: tCol.igstAmt }); cx += tCol.igstAmt;
-doc.text((totalCGST + totalSGST + totalIGST).toFixed(2), cx + 5, taxY + 6, { width: tCol.total });
+  const taxable = (Number(item.unitPrice-((item.unitPrice/100)*taxPercentage)) || 0) * (Number(item.quantity) || 0);
+  const cgstPct = Number(item.cgstPercent) || 0;
+  const sgstPct = Number(item.sgstPercent) || 0;
+  const igstPct = Number(item.igstPercent) || 0;
+
+  const cgstAmt = Number(item.cgstAmount) || 0;
+  const sgstAmt = Number(item.sgstAmount) || 0;
+  const igstAmt = Number(item.igstAmount) || 0;
+ 
+
+  cx = tx;
+
+// HSN COLUMN
+doc.text(item.hsn || "-", cx + 5, taxY + 6, { width: tCol.hsn });
+cx += tCol.hsn;
+
+// TAXABLE VALUE
+doc.text(taxable.toFixed(2), cx + 5, taxY + 6, { width: tCol.taxable });
+cx += tCol.taxable;
+
+
+  doc.text(cgstPct ? `${cgstPct}%` : "-", cx + 5, taxY + 6, { width: tCol.cgstRate });
+  cx += tCol.cgstRate;
+
+  doc.text(cgstAmt ? cgstAmt.toFixed(2) : "-", cx + 5, taxY + 6, { width: tCol.cgstAmt });
+  cx += tCol.cgstAmt;
+
+  doc.text(sgstPct ? `${sgstPct}%` : "-", cx + 5, taxY + 6, { width: tCol.sgstRate });
+  cx += tCol.sgstRate;
+
+  doc.text(sgstAmt ? sgstAmt.toFixed(2) : "-", cx + 5, taxY + 6, { width: tCol.sgstAmt });
+  cx += tCol.sgstAmt;
+
+  doc.text(igstPct ? `${igstPct}%` : "-", cx + 5, taxY + 6, { width: tCol.igstRate });
+  cx += tCol.igstRate;
+
+  doc.text(igstAmt ? igstAmt.toFixed(2) : "-", cx + 5, taxY + 6, { width: tCol.igstAmt });
+  cx += tCol.igstAmt;
+
+  doc.text(
+    (cgstAmt + sgstAmt + igstAmt).toFixed(2),
+    cx + 5,
+    taxY + 6,
+    { width: tCol.total }
+  );
+
+  taxY += taxRowH;
+});
 
 tableY = taxY + taxRowH;
+if (tableY + 120 > PAGE_BOTTOM) {
+  doc.addPage();
+  tableY = PAGE_TOP;
+}
+// ================= TOTAL TAX ROW =================
+doc.rect(tx, taxY, taxWidth, taxRowH).stroke();
+doc.font("DejaVu-Bold").fontSize(6);
+
+let totalCx = tx;
+
+// HSN TOTAL LABEL
+doc.text("TOTAL", totalCx + 5, taxY + 6, { width: tCol.hsn });
+totalCx += tCol.hsn;
+
+// TAXABLE TOTAL
+doc.text(
+  (totalTaxable).toFixed(2),
+  totalCx + 5,
+  taxY + 6,
+  { width: tCol.taxable }
+);
+totalCx += tCol.taxable;
+
+// CGST %
+doc.text("-", totalCx + 5, taxY + 6, { width: tCol.cgstRate });
+totalCx += tCol.cgstRate;
+
+// CGST AMT
+doc.text(
+  totalCGST.toFixed(2),
+  totalCx + 5,
+  taxY + 6,
+  { width: tCol.cgstAmt }
+);
+totalCx += tCol.cgstAmt;
+
+// SGST %
+doc.text("-", totalCx + 5, taxY + 6, { width: tCol.sgstRate });
+totalCx += tCol.sgstRate;
+
+// SGST AMT
+doc.text(
+  totalSGST.toFixed(2),
+  totalCx + 5,
+  taxY + 6,
+  { width: tCol.sgstAmt }
+);
+totalCx += tCol.sgstAmt;
+
+// IGST %
+doc.text("-", totalCx + 5, taxY + 6, { width: tCol.igstRate });
+totalCx += tCol.igstRate;
+
+// IGST AMT
+doc.text(
+  totalIGST.toFixed(2),
+  totalCx + 5,
+  taxY + 6,
+  { width: tCol.igstAmt }
+);
+totalCx += tCol.igstAmt;
+
+// GRAND TAX TOTAL
+doc.text(
+  (totalCGST + totalSGST + totalIGST).toFixed(2),
+  totalCx + 5,
+  taxY + 6,
+  { width: tCol.total }
+);
+
+taxY += taxRowH;
+
+
+tableY = taxY ;
 if (tableY + 120 > PAGE_BOTTOM) {
   doc.addPage();
   tableY = PAGE_TOP;
@@ -1117,10 +1308,10 @@ if (tableY + 120 > PAGE_BOTTOM) {
 //---------------------------------------------------
 doc.rect(tableX, tableY, totalW, rowH).stroke();
 
-doc.font("DejaVu-Bold").fontSize(10)
+doc.font("DejaVu-Bold").fontSize(6)
   .text("Tax amount in words:", tableX + 5, tableY + 6);
 
-doc.font("DejaVu").fontSize(10)
+doc.font("DejaVu").fontSize(6)
   .text(numberToWordsIndian(Math.round(totalCGST + totalSGST + totalIGST)),
         tableX + 180, tableY + 6, { width: totalW - 200 });
 
@@ -1146,13 +1337,13 @@ doc.moveTo(splitX, tableY)
    .stroke();
 
 // LEFT: Terms
-doc.font("DejaVu-Bold").fontSize(11)
+doc.font("DejaVu-Bold").fontSize(9)
   .text("Terms & Conditions", 50, tableY + 10, {
     width: totalW * 0.6,
     align: "center"
   });
 
-doc.font("DejaVu").fontSize(9)
+doc.font("DejaVu").fontSize(7)
   .text(
     "1. For full Terms & Conditions, Shipping Policy & Privacy Policy, please visit our website.\n" +
     "2. Return Policy is valid for 14 days subject to inspection.\n" +
@@ -1163,7 +1354,7 @@ doc.font("DejaVu").fontSize(9)
   );
 
 // RIGHT: Authorised Signatory
-doc.font("DejaVu-Bold").fontSize(11)
+doc.font("DejaVu-Bold").fontSize(9)
   .text(
     "Authorised Signatory",
     splitX,
@@ -1171,7 +1362,7 @@ doc.font("DejaVu-Bold").fontSize(11)
     { width: totalW * 0.4, align: "center" }
   );
 
-doc.font("DejaVu").fontSize(9)
+doc.font("DejaVu").fontSize(7)
   .text(
     "This is a computer-generated invoice; signature not required.",
     splitX + 5,
