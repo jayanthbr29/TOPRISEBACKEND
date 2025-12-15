@@ -453,7 +453,6 @@ return ({
       
     }));
 
-    
 
     const shippingCharges = Number(req.body.deliveryCharges) || 0;
     const totalOrderAmount = Number(req.body.order_Amount) || 0;
