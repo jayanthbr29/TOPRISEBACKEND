@@ -2962,6 +2962,21 @@ exports.editProductSingle = async (req, res) => {
     updateSet.iteration_number = iteration_number;
     updateSet.updated_at = new Date();
 
+    if (patch.available_dealers) {
+  const normalizedDealers = patch.available_dealers.map((dealer) => ({
+    dealer_id: dealer.dealer_id,
+    quantity_per_dealer: Number(dealer.quantity_per_dealer) || 0,
+    inStock: Number(dealer.quantity_per_dealer) > 0,
+  }));
+
+  // ✅ Save dealers
+  updateSet.available_dealers = normalizedDealers;
+
+  // ✅ Derive out_of_stock from dealers
+  const hasStock = normalizedDealers.some(d => d.inStock === true);
+  updateSet.out_of_stock = !hasStock;
+}
+
     const updatedProduct = await Product.findByIdAndUpdate(
       id,
       {
@@ -2970,6 +2985,10 @@ exports.editProductSingle = async (req, res) => {
       },
       { new: true }
     );
+    //implement stock logic
+
+    // Perform update
+    
 
     return sendSuccess(res, updatedProduct, "Product updated successfully");
   } catch (err) {
