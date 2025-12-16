@@ -427,7 +427,6 @@ router.put(
   auditMiddleware("DEALER_UPDATED", "Dealer", "DEALER_MANAGEMENT"),
   userController.updateDealer
 );
-
 router.put(
   "/address/:userId",
   authenticate,
