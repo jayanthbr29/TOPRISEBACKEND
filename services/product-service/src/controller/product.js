@@ -7833,3 +7833,18 @@ exports.getProductsByFiltersForExport = async (req, res) => {
     return sendError(res, err.message || "Internal server error");
   }
 };
+
+
+exports.getProductStatsByDealerId = async (req, res) => {
+  try {
+    const { dealerId } = req.params;
+    const totalProducts=await Product.find({addedByDealerId:dealerId}).countDocuments();
+    const totaApprovedProducts=await Product.find({addedByDealerId:dealerId,Qc_status:"Approved"}).countDocuments();
+    const totalPendingProducts=await Product.find({addedByDealerId:dealerId,Qc_status:"Pending"}).countDocuments();
+    const totalRejectedProducts=await Product.find({addedByDealerId:dealerId,Qc_status:"Rejected"}).countDocuments();
+    return sendSuccess(res, {totalProducts,totaApprovedProducts,totalPendingProducts,totalRejectedProducts}, "Product stats fetched successfully");
+  } catch (error) {
+    console.log(error);
+    return sendError(res, "Failed to fetch product stats", 500);
+  }
+}

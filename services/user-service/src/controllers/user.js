@@ -2523,7 +2523,7 @@ exports.createDealersBulk = async (req, res) => {
             end: parseInt(row.dispatch_end, 10) || 0,
           },
           SLA_max_dispatch_time: parseInt(row.SLA_max_dispatch_time, 10) || 0,
-          onboarding_date: row.onboarding_date ? new Date(row.onboarding_date) : undefined,
+          onboarding_date: row.onboarding_date ? new Date(row.onboarding_date) : new Date(),
           remarks: row.remarks || "",
         });
 
@@ -2533,6 +2533,8 @@ exports.createDealersBulk = async (req, res) => {
 
       } catch (err) {
         console.error(`❌ Error in row ${index + 1}:`, err.message);
+        //delete created user
+        const deletedUser = await User.findOneAndDelete({ email: row.email });
         failedRows.push({ row: row.email || row.username, error: err.message });
       }
     }
