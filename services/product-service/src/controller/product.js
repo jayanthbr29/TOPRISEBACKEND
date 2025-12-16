@@ -1540,13 +1540,13 @@ exports.bulkAssignDealersProducts = async (req, res) => {
           (d) => d.dealers_Ref?.toString() === dealer._id
         );
 
-        if (existingDealer) {
+        if (existingDealer &&(dealer.is_active)) {
           // Update existing dealer block
           existingDealer.inStock = inStock;
           existingDealer.quantity_per_dealer = quantity;
           existingDealer.dealer_margin = margin;
           existingDealer.dealer_priority_override = priority;
-        } else if(allowedBrands.includes(productBrand)) {
+        } else if(allowedBrands.includes(productBrand)&&(dealer.is_active)) {
           // Add new dealer block
           product.available_dealers.push({
             dealers_Ref: dealer._id,
@@ -7846,5 +7846,17 @@ exports.getProductStatsByDealerId = async (req, res) => {
   } catch (error) {
     console.log(error);
     return sendError(res, "Failed to fetch product stats", 500);
+  }
+}
+
+exports.removeDealerFromProductBybrandId=async (req,res)=>{
+  try{
+    const { dealerId,brandIds}=req.body;
+    const result=await Product.updateMany({brand:{$in:brandIds}},{$pull:{available_dealers:{dealers_Ref:dealerId}}});
+    return sendSuccess(res,result,"Dealer removed from products successfully");
+
+  }catch(error){
+    console.log("error",error);
+    return sendError(res,"Failed to remove dealer from product",500);
   }
 }

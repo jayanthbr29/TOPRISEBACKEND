@@ -424,9 +424,9 @@ router.get("/smart-search", async (req, res) => {
         brand: selectedBrand,
         model: selectedModel,
         variant: selectedVariant,
-        category: selectedCategory,
-        sub_category: selectedSubCategory,
-        year: selectedYear,
+        // category: selectedCategory,
+        // sub_category: selectedSubCategory,
+        // year: selectedYears,
         products: paginatedProducts,
       },
 
