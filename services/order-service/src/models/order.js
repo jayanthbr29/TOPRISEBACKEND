@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { markAsPacked } = require("../controllers/order");
 
 const OrderSchema = new mongoose.Schema(
   {
@@ -110,6 +111,10 @@ const OrderSchema = new mongoose.Schema(
           default: null,
         },
         piclistGenerated:{
+          type: Boolean,
+          default: false,
+        },
+        markAsPacked: {
           type: Boolean,
           default: false,
         },
