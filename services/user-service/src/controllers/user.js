@@ -529,9 +529,24 @@ exports.createDealer = async (req, res) => {
 exports.updateDealer = async (req, res) => {
   try {
     const { id } = req.params;
+    const dealerData = await Dealer.findById(id);
     const updatedDealer = await Dealer.findByIdAndUpdate(id, req.body, {
       new: true,
     });
+    // check for brand change- removed brandids
+    const removedBrands = dealerData.brands_allowed.filter(
+      (brand) => !req.body.brands_allowed.includes(brand)
+    )
+    console.log("removedBrands", removedBrands);
+    // call the api in product service put api to reomove
+    if (removedBrands.length > 0) {
+      const result = await axios.put(`http://product-service:5001/products/v1/remove/delar/bybrandIds`, {
+        dealerId: id,
+        brandIds: removedBrands
+      });
+      console.log("result", result.data);
+    }
+
     if (!updatedDealer) return sendError(res, "Dealer not found", 404);
     logger.info(`Updated dealer: ${id}`);
     sendSuccess(res, updatedDealer, "Dealer updated successfully");

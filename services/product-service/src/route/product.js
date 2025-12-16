@@ -441,4 +441,6 @@ router.put("/update/liveStatus", productController.updateLiveStatus);
 router.get("/get/product/for-export", productController.getProductsByFiltersForExport);
 
 router.get("/get/product/stats/by-dealer/:dealerId", productController.getProductStatsByDealerId);
+router.put("/remove/delar/bybrandIds", productController.removeDealerFromProductBybrandId);
+
 module.exports = router;
