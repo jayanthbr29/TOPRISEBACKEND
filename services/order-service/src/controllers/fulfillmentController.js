@@ -926,6 +926,17 @@ exports.startPicklistInspection = async (req, res) => {
     picklist.updatedAt = new Date();
     picklist.scanStatus=picklist.skuList.every((item) => item.scanStatus === "Completed") ? "Completed" : "In Progress";
     await picklist.save();
+    const order = await Order.findById(picklist.linkedOrderId);
+    if (!order) {
+      return sendError(res, "Order not found", 404);
+    }
+    order.skus=order.skus.map((item) => {
+      if (item.sku === sku) {
+        item.inspectionStarted = true;
+      }
+      return item;
+    })
+    await order.save();
    
     return sendSuccess(res, picklist, "Picklist inspection started");
   } catch (error) {
@@ -960,6 +971,17 @@ exports.endPicklistInspection = async (req, res) => {
     picklist.updatedAt = new Date();
     picklist.scanStatus=picklist.skuList.every((item) => item.scanStatus === "Completed") ? "Completed" : "In Progress";
     await picklist.save();
+    const order = await Order.findById(picklist.linkedOrderId);
+    if (!order) {
+      return sendError(res, "Order not found", 404);
+    }
+    order.skus=order.skus.map((item) => {
+      if (item.sku === sku) {
+        item.inspectionStarted = true;
+      }
+      return item;
+    })
+    await order.save();
    
     return sendSuccess(res, picklist, "Picklist inspection ended", {
       averageProcessingTime: await calculateAverageProcessingTime({ linkedOrderId: picklist.linkedOrderId })

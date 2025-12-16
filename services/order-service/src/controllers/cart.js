@@ -83,7 +83,8 @@ const updateCartItemsPrice = async (items, token) => {
             ];
       item.product_name = productData.product_name;
       item.selling_price = productData.selling_price * item.quantity ;
-      item.mrp = ((productData.mrp_with_gst-((productData.mrp_with_gst)*(productData.gst_percentage/100))) * item.quantity).toFixed(2);
+      // item.mrp = ((productData.mrp_with_gst-((productData.mrp_with_gst)*(productData.gst_percentage/100))) * item.quantity).toFixed(2);
+      item.mrp = (  productData.mrp_with_gst * item.quantity).toFixed(2);
       item.mrp_gst_amount =
         // (productData.mrp_with_gst / 100) *
         // productData.gst_percentage *

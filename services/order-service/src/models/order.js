@@ -113,10 +113,18 @@ const OrderSchema = new mongoose.Schema(
           type: Boolean,
           default: false,
         },
-        // markAsPacked: {
-        //   type: Boolean,
-        //   default: false,
-        // },
+        markAsPacked: {
+          type: Boolean,
+          default: false,
+        },
+        inspectionStarted: {
+          type: Boolean,
+          default: false,
+        },
+        inspectionCompleted: {
+          type: Boolean,
+          default: false,
+        },
 
       },
     ],
