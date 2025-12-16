@@ -8182,3 +8182,39 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 };
+
+exports.getOrderStatsByDealer = async (req, res) => {
+  try {
+    const { dealerId } = req.params;
+    // const orderStats = await Order.aggregate([
+    //   { $match: { "dealerMapping.dealerId": dealerId } },
+    //   // {
+    //   //   $group: {
+    //   //     _id: "$status",
+    //   //     count: { $sum: 1 },
+    //   //   },
+    //   // },
+    // ]);
+    const orderStats = await Order.find({ "dealerMapping.dealerId": dealerId,  status: { $nin: ["Cancelled", "Confirmed","Assigned"] }  }).lean();
+    const totalOrders = orderStats.length;
+   let Revenue = 0;
+
+    orderStats.forEach(order => {
+      const dealerSkus = order.dealerMapping.filter(mapping => mapping.dealerId.toString() === dealerId);
+      const mappedSkus = dealerSkus.map(mapping => mapping.sku);
+      order.skus.forEach(sku => {
+        if (mappedSkus.includes(sku.sku)) {
+          Revenue += sku.totalPrice;
+        }
+      })
+    });
+    return res.json({
+      totalOrders,
+      Revenue,
+      orderStats
+    });
+  } catch (error) {
+    console.error("Error fetching order stats:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};

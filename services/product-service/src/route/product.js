@@ -439,4 +439,6 @@ router.get(
 router.get("/sku/:sku", productController.getProductBySku);
 router.put("/update/liveStatus", productController.updateLiveStatus);
 router.get("/get/product/for-export", productController.getProductsByFiltersForExport);
+
+router.get("/get/product/stats/by-dealer/:dealerId", productController.getProductStatsByDealerId);
 module.exports = router;
