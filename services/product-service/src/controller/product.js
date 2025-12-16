@@ -1480,10 +1480,10 @@ exports.bulkAssignDealersProducts = async (req, res) => {
         let delalerResp;
         try {
           delalerResp = await axios.get(
-            `http://user-service:5001/api/users/dealer/getDealer/bydelarId/${dealerId}`
+            `http://user-service:5001/api/users/dealer/${dealerId}`
           );
           // console.log(" delalerResp:", delalerResp);
-          dealer = delalerResp.data?.dealers[0];
+          dealer = delalerResp.data?.data || null;
         } catch (e) {
           console.log(e);
           throw new Error(`Dealer with ID ${dealerId} not found in Dealer Service`);
