@@ -1546,7 +1546,7 @@ exports.bulkAssignDealersProducts = async (req, res) => {
           existingDealer.quantity_per_dealer = quantity;
           existingDealer.dealer_margin = margin;
           existingDealer.dealer_priority_override = priority;
-        } else {
+        } else if(allowedBrands.includes(productBrand)) {
           // Add new dealer block
           product.available_dealers.push({
             dealers_Ref: dealer._id,
