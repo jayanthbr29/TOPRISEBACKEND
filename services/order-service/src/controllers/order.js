@@ -1,4 +1,4 @@
-const Order = require("../models/order");
+const Order = require("../models/order"); 
 const PickList = require("../models/pickList");
 const dealerAssignmentQueue = require("../queues/assignmentQueue");
 const { v4: uuidv4 } = require("uuid"); // npm install uuid
@@ -915,7 +915,7 @@ exports.getOrders = async (req, res) => {
     if (req.query.dealerId) {
       filter["dealerMapping.dealerId"] = req.query.dealerId;
     }
-
+    
     // Total count with filter
     const totalOrders = await Order.countDocuments(filter);
 

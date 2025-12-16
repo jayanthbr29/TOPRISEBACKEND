@@ -1712,7 +1712,6 @@ exports.getProductsByFilters = async (req, res) => {
       if (max_price) filter.selling_price.$lte = Number(max_price);
     }
 
-    
 if (startDate || endDate) {
       filter.created_at = {};
       if (startDate) filter.created_at.$gte = new Date(startDate);
@@ -1805,6 +1804,8 @@ if (startDate || endDate) {
 
     // Total count after all filters
     const totalCount = allProducts.length;
+
+   
 
     // Apply pagination now
     const products = allProducts.slice(skip, skip + limitNumber);
