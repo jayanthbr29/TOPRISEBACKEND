@@ -6,6 +6,8 @@ const Model = require("../models/model");
 const Variant = require("../models/variantModel");
 const Product = require("../models/productModel");
 const Category = require("../models/category");
+const SubCategory = require("../models/subCategory");
+const mongoose = require("mongoose");
 
 function stringSimilarity(str1, str2) {
   const len = Math.max(str1.length, str2.length);
@@ -36,6 +38,8 @@ router.get("/smart-search", async (req, res) => {
     query,
     type,
     category,
+    sub_category,
+    year,
     sort_by,
     min_price,
     max_price,
@@ -87,6 +91,73 @@ router.get("/smart-search", async (req, res) => {
         });
       }
     }
+    // ---------------- SUB CATEGORY FILTER ----------------
+    let selectedSubCategory = null;
+
+    if (sub_category) {
+      if (sub_category.match(/^[0-9a-fA-F]{24}$/)) {
+        selectedSubCategory = await SubCategory.findById(sub_category);
+      } else {
+        selectedSubCategory = await SubCategory.findOne({
+          subcategory_name: { $regex: new RegExp(sub_category, "i") },
+          subcategory_status: "Active",
+        });
+      }
+
+      if (!selectedSubCategory) {
+        return res.status(404).json({
+          success: false,
+          error: "Sub-category not found",
+          is_brand: false,
+          is_model: false,
+          is_variant: false,
+          is_product: false,
+        });
+      }
+      if (
+        selectedCategory &&
+        String(selectedSubCategory.category_ref) !== String(selectedCategory._id)
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: "Sub-category does not belong to selected category",
+        });
+      }
+    }
+
+    // ---------------- YEAR FILTER (MULTIPLE) ----------------
+    let years;
+
+    // Normalize to array
+    if (year && !Array.isArray(year)) {
+      years = year.split(",").map(y => y.trim());
+    }
+    let selectedYears = [];
+
+    if (years && years.length > 0) {
+      const yearQueries = years.map(y => {
+        if (y.match(/^[0-9a-fA-F]{24}$/)) {
+          return { _id: y };
+        }
+        return { year_name: y };
+      });
+
+      selectedYears = await mongoose
+        .model("Year")
+        .find({ $or: yearQueries });
+
+      if (selectedYears.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "No matching years found",
+          is_brand: false,
+          is_model: false,
+          is_variant: false,
+          is_product: false,
+        });
+      }
+    }
+
 
     const allBrands = await Brand.find(brandFilter);
     let selectedBrand = null;
@@ -233,7 +304,18 @@ router.get("/smart-search", async (req, res) => {
     if (selectedCategory) {
       productFilter.category = selectedCategory._id;
     }
+    // ADD SUB CATEGORY
+    if (selectedSubCategory) {
+      productFilter.sub_category = selectedSubCategory._id;
+    }
 
+
+    // YEAR FILTER
+    if (selectedYears.length > 0) {
+      productFilter.year_range = {
+        $in: selectedYears.map(y => y._id),
+      };
+    }
     if (min_price || max_price) {
       productFilter.selling_price = {};
       if (min_price) productFilter.selling_price.$gte = Number(min_price);
@@ -343,8 +425,11 @@ router.get("/smart-search", async (req, res) => {
         model: selectedModel,
         variant: selectedVariant,
         category: selectedCategory,
+        sub_category: selectedSubCategory,
+        year: selectedYear,
         products: paginatedProducts,
       },
+
       pagination: {
         currentPage: pageNumber,
         totalPages,
