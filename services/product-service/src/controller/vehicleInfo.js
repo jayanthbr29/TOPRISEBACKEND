@@ -144,7 +144,8 @@ exports.getVehicleDetails = async (req, res) => {
         }
         const model = await Model.findOne({
             brand_ref: brand._id,
-            model_name: { $regex: new RegExp(parsedData.Model, 'i') }
+            // model_name: { $regex: new RegExp(parsedData.Model, 'i') }
+            model_name: { $regex: new RegExp(vehicleData.CarModel.CurrentTextValue, 'i') }
         });
         if (!model) {
             return res.status(200).json({
@@ -162,7 +163,8 @@ exports.getVehicleDetails = async (req, res) => {
 
         const variant = await Variant.findOne({
             model: model._id,
-            variant_name: { $regex: new RegExp(parsedData.Variant, 'i') }
+            // variant_name: { $regex: new RegExp(parsedData.Variant, 'i') }
+            variant_name: { $regex: new RegExp(vehicleData.Variant, 'i') }
         });
 
         if (!variant) {
