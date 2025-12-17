@@ -7,7 +7,8 @@ const {
 } = require("/packages/utils/authMiddleware");
 const { optionalAuth } = require("../middleware/authMiddleware");
 const ProductAuditLogger = require("../utils/auditLogger");
-
+const multer = require("multer");
+const upload = multer();
 // ✅ CREATE PINCODE
 router.post(
     "/",
@@ -85,4 +86,18 @@ router.get(
     pincodeController.getPincodeStats
 );
 
+router.delete(
+    "/bulk/delete",
+
+    // ProductAuditLogger.createMiddleware("BULK_PINCODES_DELETED", "Pincode", "PINCODE_MANAGEMENT"),
+    authenticate,
+    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin"),
+    pincodeController.bulkDeletePincodes
+);
+
+router.post(
+  "/bulk-upload",
+  upload.single("file"),
+  pincodeController.bulkUploadPincodes
+);
 module.exports = router;
