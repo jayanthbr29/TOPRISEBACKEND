@@ -97,7 +97,7 @@ const OrderSchema = new mongoose.Schema(
           },
           return_window_days: {
             type: Number,
-            default: 7
+            default: 14
           },
         },
         amount_collected:{
