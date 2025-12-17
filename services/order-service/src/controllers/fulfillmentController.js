@@ -1070,3 +1070,18 @@ exports.assignPicklistToStaff = async (req, res) => {
     return sendError(res, "Failed to assign staff");
   }
 };
+
+exports.getOrderByPicklistId= async (req, res) => {
+  try {
+    const { picklistId } = req.params;
+    const picklist = await PickList.findById(picklistId);
+
+    const order = await Order.findById(picklist.linkedOrderId);
+    
+    return sendSuccess(res, {picklist, order,} ,"Picklist and Order found");
+   
+  } catch (error) {
+    logger.error("Error getting picklist by order ID:", error.message);
+    return sendError(res, error);
+  }
+};

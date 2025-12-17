@@ -132,4 +132,6 @@ router.put(
   // authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Fulfillment-Staff", "Inventory-Staff"),
   fulfillmentController.assignPicklistToStaff
 )
+
+router.get("/get/order/byPicklistId/:picklistId", requireAuth, fulfillmentController.getOrderByPicklistId);
 module.exports = router;
