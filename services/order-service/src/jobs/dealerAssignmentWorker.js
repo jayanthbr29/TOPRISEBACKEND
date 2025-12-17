@@ -11,7 +11,19 @@ const productApi = axios.create({
   baseURL: process.env.PRODUCT_SERVICE_URL || "http://product-service:5001",
   timeout: 5000,
 });
-
+if (mongoose.connection.readyState === 0) {
+  mongoose
+    .connect("mongodb+srv://techdev:H1E0bf2fvvPiKZ36@toprise-staging.nshaxai.mongodb.net/?retryWrites=true&w=majority&appName=Toprise-Staging"
+      , {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+      })
+    .then(() => logger.info("✅ Worker MongoDB connected"))
+    .catch(err => {
+      logger.error("❌ Worker MongoDB connection failed:", err.message);
+      process.exit(1);
+    });
+}
 // Note: MongoDB connection is already established in index.js, so we don't need to connect again here
 
 dealerAssignmentQueue.process(async (job) => {

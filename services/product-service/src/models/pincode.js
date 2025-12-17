@@ -33,6 +33,20 @@ const pincodeSchema = new mongoose.Schema({
         type: String,
         trim: true
     },
+    borzo_availability: {
+        standard: {
+            type: Boolean,
+            default: false,
+        },
+        endOfDay: {
+            type: Boolean,
+            default: false
+        }
+    },
+    shipRocket_availability: {
+        type: Boolean,
+        default: false
+    },
     delivery_available: {
         type: Boolean,
         default: true
@@ -58,11 +72,11 @@ const pincodeSchema = new mongoose.Schema({
     },
     created_by: {
         type: String,
-        required: true
+        required: false
     },
     updated_by: {
         type: String,
-        required: true
+        required: false
     },
     created_at: {
         type: Date,
