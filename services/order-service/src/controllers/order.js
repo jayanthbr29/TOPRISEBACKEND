@@ -7717,6 +7717,10 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
                           sku.return_info.is_returnable = isProductsReturnable[sku.sku];
                           sku.tracking_info.borzo_required_finish_datetime = data.points[1].required_finish_datetime || null;
                           sku.markAsPacked=true;
+                          if(forcePacking){
+                            sku.inspectionStarted=true;
+                            sku.inspectionCompleted=true;
+                          }
                           // sku.return_info.is_returnable = isProductsReturnable.;
                         }
                       });
@@ -8028,6 +8032,10 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
                           sku.tracking_info.borzo_weight = weight_object[sku.sku] || 0.00;
                           sku.return_info.is_returnable = isProductsReturnable[sku.sku];
                           sku.markAsPacked=true;
+                          if(forcePacking){
+                            sku.inspectionStarted=true;
+                            sku.inspectionCompleted=true;
+                          }
                           //  sku.tracking_info.borzo_required_finish_datetime=data.points[1].required_finish_datetime || null;
                           // sku.return_info.is_returnable = isProductsReturnable.;
                         }
