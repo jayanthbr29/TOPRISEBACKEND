@@ -7292,6 +7292,10 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
     const { orderId, dealerId, weight_object, sku, picklistId, forcePacking = false, securePackageAmount, delivery_completion_time } = req.body;
     const total_weight_kg = weight_object ? Object.values(weight_object).reduce((sum, w) => sum + w, 0) : 0;
     // console.log("total_weight_kg",total_weight_kg);
+     const appSettingResp = await axios.get(
+        "http://user-service:5001/api/appSetting"
+      );
+      const days = appSettingResp.data?.data?.returnPolicy || 14;
     if (!forcePacking) {
 
       let picklist;
@@ -7715,6 +7719,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
                           sku.tracking_info.amount_collected = order.paymentType === "COD" ? false : true;
                           sku.tracking_info.borzo_weight = weight_object[sku.sku] || 0.00;
                           sku.return_info.is_returnable = isProductsReturnable[sku.sku];
+                          sku.return_info.return_window_days=days;
                           sku.tracking_info.borzo_required_finish_datetime = data.points[1].required_finish_datetime || null;
                           sku.markAsPacked=true;
                           if(forcePacking){
@@ -8031,6 +8036,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
                           sku.tracking_info.amount_collected = order.paymentType === "COD" ? false : true;
                           sku.tracking_info.borzo_weight = weight_object[sku.sku] || 0.00;
                           sku.return_info.is_returnable = isProductsReturnable[sku.sku];
+                          sku.return_info.return_window_days=days;
                           sku.markAsPacked=true;
                           if(forcePacking){
                             sku.inspectionStarted=true;

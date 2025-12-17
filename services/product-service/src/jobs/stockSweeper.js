@@ -4,11 +4,11 @@ const mongoose = require("mongoose");
 const Product = require("../models/productModel"); // ↳ your schema
 const ProductLog = require("../models/productLogs"); // ↳ from earlier
 const logger = require("/packages/utils/logger");
-
+const  axios = require('axios');
 const MONGO_URI =
   "mongodb+srv://techdev:dLLlFqu0Wx103dzp@toprisedev.xoptvj9.mongodb.net/?retryWrites=true&w=majority&appName=toprisedev";
 const DEFAULT_EXPIRY_MIN = 60 * 24; // 24 h if stock_expiry_rule not set
- const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+ 
 /* ───────────────────────────── helpers ──────────────────────────── */
 const minsAgo = (m) => Date.now() - m * 60_000;
 
@@ -36,7 +36,11 @@ const minsAgo = (m) => Date.now() - m * 60_000;
 //   return !anyFreshInStock;
 // }
 
-function cleanAndComputeOOS(p, nowMs) {
+ async function  cleanAndComputeOOS(p, nowMs,days=60) {
+//call user service to get last stock update fro user service
+ 
+  const SEVEN_DAYS_MS = days * 24 * 60 * 60 * 1000;
+  // const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
   const sevenDayCutoff = nowMs - SEVEN_DAYS_MS;
 
   // First: remove dealers with stale stock > 7 days
@@ -74,7 +78,11 @@ async function sweep() {
 
   const started = Date.now();
   logger.info("🔄 Stock-sweeper tick…");
-
+  const appSettingResp = await axios.get(
+    "http://user-service:5001/api/appSetting"
+  );
+  const days = appSettingResp.data?.data?.lastStockCheck || 60;
+  
   const cursor = Product.find(
     {},
     {
@@ -128,7 +136,7 @@ async function sweep() {
   // }
   for await (const prod of cursor) {
     checked++;
-    const { outOfStock: shouldBeOOS, removedCount } = cleanAndComputeOOS(prod, started);
+    const { outOfStock: shouldBeOOS, removedCount } = cleanAndComputeOOS(prod, started,days);
 
     if (removedCount > 0 || shouldBeOOS !== prod.out_of_stock) {
       const updateDoc = {
@@ -200,7 +208,10 @@ async function startSweeper() {
   sweep().catch((e) => logger.error("sweep-error:", e));
 
   // “0 */1 * * * *” = every minute; change to 15 or 30 min in prod
-  cron.schedule("0 */15 * * * *", () => sweep().catch(logger.error));
+  // cron.schedule("0 */15 * * * *", () => sweep().catch(logger.error));
+  //every 5 minutes
+  cron.schedule("0 */5 * * * *", () => sweep().catch(logger.error));
+
 }
 
 /* If this file is run directly: `node jobs/stockSweeper.js` */

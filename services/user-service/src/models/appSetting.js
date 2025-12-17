@@ -27,6 +27,8 @@ const appSettingSchema = new mongoose.Schema(
         pass: { type: String, default: "" },
       },
     },
+    returnPolicy: { type: Number, default: 14 },
+    lastStockCheck: { type: Number, default: 60 },
     versioning: { type: versioningSchema, default: {} },
     servicableAreas: { type: [servicableAreaSchema], default: [] },
     supportEmail: { type: String, default: "" },
