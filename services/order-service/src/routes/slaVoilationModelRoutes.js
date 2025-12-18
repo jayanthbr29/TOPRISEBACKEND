@@ -20,4 +20,5 @@ router.patch("/:id/resolve", slaController.resolveSLAViolation);
 
 router.patch("/:id/close", slaController.closeSLAViolation);
 
+router.post("/checkVoilation", slaController.checkAndCreateSLAVoilation);
 module.exports = router;

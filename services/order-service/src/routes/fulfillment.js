@@ -134,4 +134,5 @@ router.put(
 )
 
 router.get("/get/order/byPicklistId/:picklistId", requireAuth, fulfillmentController.getOrderByPicklistId);
+router.get("/get/picklist/byOrderId/byEmployeeId/:orderId/:empId", requireAuth, fulfillmentController.getPicklistByOrderIdAndEmpId);
 module.exports = router;

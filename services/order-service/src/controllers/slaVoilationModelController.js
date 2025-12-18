@@ -1,7 +1,10 @@
 const SLAViolationModel = require("../models/slaViolationMdel");
+const Order = require("../models/order");
 const logger = require("/packages/utils/logger");
 const { sendSuccess, sendError } = require("/packages/utils/responseHandler");
 const mongoose = require("mongoose");
+const axios = require("axios");
+const SLAType = require("../models/slaType");
 exports.createSLAViolation = async (req, res) => {
     try {
         const violation = await SLAViolationModel.create({
@@ -246,3 +249,60 @@ exports.closeSLAViolation = async (req, res) => {
         return sendError(res, "Failed to close SLA violation");
     }
 };
+
+exports.checkAndCreateSLAVoilation = async (req,res) => {
+    try{
+       const{dealerId,orderId,sku}=req.body;
+       const order = await Order.findById(orderId);
+       if(!order) return sendError(res, "Order not found", 404);
+       //get dealer info from  user service
+        const dealerResponse=await fetchDealerInfo(dealerId,req.headers.authorization);
+        console.log(dealerResponse);
+        const assigendDate= order.dealerMapping.find((dm) => dm.dealerId.toString() === dealerId)?.assignedAt;
+        const slaId= dealerResponse.SLA_type;
+        if(!slaId){
+            return sendSuccess(res,null, "Dealer not assigned SLA");
+        }
+        const sla = await SLAType.findById(slaId);
+        const expectedFullfillmentMinutes = sla.expected_hours;
+
+        const now = new Date();
+        const assignedMinutes = (now - assigendDate) / 60000;
+        const exceededTime = assignedMinutes - expectedFullfillmentMinutes;
+        if (exceededTime > 0) {
+            await SLAViolationModel.create({
+                order_id: order._id,
+                dealer_id: dealerId,
+                sku,
+                violation_minutes: exceededTime.toFixed(2),
+                created_at: new Date(),
+                updated_at: new Date(),
+            });
+        }
+        sendSuccess(res, null, "SLA violation checked and created successfully");
+        //now caluculated the exceeded time
+
+    }catch(error){
+        logger.error("Check and create SLA violation failed:", error);
+        return sendSuccess(res, null, "Failed to check and create SLA violation");
+    }
+};
+
+async function fetchDealerInfo(dealerId, authorizationHeader) {
+  try {
+    const headers = { "Content-Type": "application/json" };
+    if (authorizationHeader) {
+      headers.Authorization = authorizationHeader;
+    }
+
+    const response = await axios.get(
+      `http://user-service:5001/api/users/dealer/${dealerId}`,
+      { timeout: 5000, headers }
+    );
+
+    return response.data?.data || null;
+  } catch (error) {
+    logger.warn(`Failed to fetch dealer info for ${dealerId}:`, error.message);
+    return null;
+  }
+}
