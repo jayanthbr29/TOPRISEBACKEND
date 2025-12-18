@@ -7314,11 +7314,22 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
       if (!picklist) {
         return res.status(404).json({ error: "Picklist not found" });
       }
-      const status = picklist.skuList.find((item) => item.sku === sku);
-
-      if (status.scanStatus !== "Completed") {
-        return res.status(400).json({ error: "Item Inspection not completed" });
+      if (sku) {
+        const status = picklist.skuList.find((item) => item.sku === sku);
+        console.log("status", status);
+        if (status.scanStatus !== "Completed") {
+          return res.status(400).json({ error: "Item Inspection not completed" });
+        }
       }
+      if (picklistId) {
+        const every = picklist.skuList.every((item) => item.scanStatus === "Completed");
+        if (!every) {
+          return res.status(400).json({ error: "Picklist not completed" });
+        }
+      }
+
+
+
 
     } else {
 
@@ -7741,7 +7752,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
                           {
                             order_id: order._id,
                             sku: sku,
-                           dealerId:dealerId,
+                            dealerId: dealerId,
                           },
                           {
                             headers: {
@@ -8075,7 +8086,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
                           {
                             order_id: order._id,
                             sku: sku,
-                           dealerId:dealerId,
+                            dealerId: dealerId,
                           },
                           {
                             headers: {
