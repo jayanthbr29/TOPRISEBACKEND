@@ -3,8 +3,7 @@ const mongoose = require("mongoose");
 
 const SLAViolationModelSchema = new mongoose.Schema({
   dealer_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Dealer",
+    type: String,
     required: true,
     index: true,
   },
