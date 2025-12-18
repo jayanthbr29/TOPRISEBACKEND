@@ -518,3 +518,104 @@ function getViolationSeverity(violationMinutes) {
   if (violationMinutes <= 480) return 'High'; // 8 hours or less
   return 'Critical'; // More than 8 hours
 }
+
+
+exports.updateSlaTypes = async (req, res) => {
+  try {
+    const {id}=req.params;
+    const{ name, description, expected_hours } = req.body;
+    const slaType = await SLAType.findById(id);
+
+    if (!slaType) {
+      return sendError(res, "SLA type not found", 404);
+    }
+    slaType.name = name;
+    slaType.description = description;
+    slaType.expected_hours = expected_hours;
+    const updatedSlaType = await slaType.save();
+    sendSuccess(res, updatedSlaType, "SLA types updated successfully");
+  } catch (error) {
+    logger.error(`❌ Error updating SLA types: ${error.message}`);
+    sendError(res, "Failed to update SLA types", 500);
+  }
+};
+
+exports.getSLATypeById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const slaType = await SLAType.findById(id);
+    if (!slaType) {
+      return sendError(res, "SLA type not found", 404);
+    }
+    sendSuccess(res, slaType, "SLA type fetched successfully");
+  } catch (error) {
+    logger.error(`❌ Error fetching SLA type: ${error.message}`);
+    sendError(res, "Failed to fetch SLA type", 500);
+  }
+};
+
+exports.getSLATypesWithPagination = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      search ,
+      sortBy = "created_at",
+      sortOrder = "desc",
+    } = req.query;
+
+    const currentPage = Math.max(parseInt(page), 1);
+    const pageSize = Math.max(parseInt(limit), 1);
+    const skip = (currentPage - 1) * pageSize;
+
+    // 🔍 Search filter
+    const filter = {};
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // 🔃 Sorting
+    const sort = {
+      [sortBy]: sortOrder === "asc" ? 1 : -1,
+    };
+
+    // 📦 Fetch data & count
+    const [slaTypes, totalItems] = await Promise.all([
+      SLAType.find(filter)
+        .sort(sort)
+        .skip(skip)
+        .limit(pageSize)
+        .lean(),
+      SLAType.countDocuments(filter),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / pageSize);
+
+    const hasNextPage = currentPage < totalPages;
+    const hasPreviousPage = currentPage > 1;
+
+    return sendSuccess(
+      res,
+      {
+        data: slaTypes,
+        pagination: {
+          totalItems,
+          totalPages,
+          currentPage,
+          pageSize,
+          hasNextPage,
+          hasPreviousPage,
+          nextPage: hasNextPage ? currentPage + 1 : null,
+          previousPage: hasPreviousPage ? currentPage - 1 : null,
+        },
+      },
+      "SLA Types fetched successfully"
+    );
+  } catch (error) {
+    logger.error("Get SLA Types with pagination failed:", error);
+    return sendError(res, "Failed to get SLA Types");
+  }
+};
