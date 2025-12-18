@@ -117,7 +117,7 @@ const dealerSchema = new mongoose.Schema({
   SLA_type: {
     type: String,
     // enum: ["Standard", "Priority", "Limited"],
-    default: "1",
+    default: "",
   },
   dispatch_hours: {
     start: {
