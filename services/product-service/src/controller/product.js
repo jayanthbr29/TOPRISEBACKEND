@@ -2964,7 +2964,7 @@ exports.editProductSingle = async (req, res) => {
 
     if (patch.available_dealers) {
   const normalizedDealers = patch.available_dealers.map((dealer) => ({
-    dealer_id: dealer.dealer_id,
+    dealers_Ref: dealer.dealers_Ref,
     quantity_per_dealer: Number(dealer.quantity_per_dealer) || 0,
     inStock: Number(dealer.quantity_per_dealer) > 0,
   }));
