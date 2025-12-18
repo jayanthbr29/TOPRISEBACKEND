@@ -38,10 +38,11 @@ const moment = require("moment-timezone");
 async function geocodeAddress(address) {
   try {
     if (!address || typeof address !== "string") return null;
+
     const resp = await axios.get(
       "https://nominatim.openstreetmap.org/search",
       {
-        params: { q: address, format: "json", limit: 1 },
+        params: { q: `India, ${address}`, format: address, format: "json", limit: 1 },
         headers: { "User-Agent": "toprise-order-service/1.0" },
         timeout: 10000,
       }
@@ -7876,7 +7877,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
         const dealerInfo = pickupDealerId ? await fetchDealerInfo(pickupDealerId, authHeader) : null;
         // console.log("[BORZO] Dealer info:", dealerInfo);
         const skuDetails = order.skus.find((item) => item.sku === sku);
-        // console.log("dealer address build start",dealerInfo.Address);
+        console.log("dealer address build start",dealerInfo.Address);
         const dealerAddressString =
           dealerInfo?.address?.full ||
           buildAddressString({
