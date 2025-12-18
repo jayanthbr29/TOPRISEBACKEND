@@ -100,4 +100,11 @@ router.post(
   upload.single("file"),
   pincodeController.bulkUploadPincodes
 );
+
+router.get(
+  "/get/pincode/metadata",
+  authenticate,
+  authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Analytics-Admin"),
+  pincodeController.getPincodeMetaData
+)
 module.exports = router;

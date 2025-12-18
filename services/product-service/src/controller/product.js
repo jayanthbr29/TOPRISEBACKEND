@@ -4472,8 +4472,8 @@ exports.assignDealersForProduct = async (req, res) => {
     }
 
     dealerData.forEach((dealer) => {
-      const existingDealer = product.available_dealers.find(
-        (d) => d.dealers_Ref.toString() === dealer.dealers_Ref.toString()
+      const existingDealer = product?.available_dealers?.find(
+        (d) => d?.dealers_Ref?.toString() === dealer?.dealers_Ref.toString()
       );
       if (existingDealer) {
         existingDealer.inStock = dealer.inStock;

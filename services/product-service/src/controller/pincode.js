@@ -783,3 +783,36 @@ exports.bulkUploadPincodes = async (req, res) => {
   }
 };
 
+exports.getPincodeMetaData = async (req, res) => {
+  try {
+    // const filter = {
+    //   status: "active", // remove this if you want all records
+    // };
+   const filter = {};
+    const [states, districts, cities, areas] = await Promise.all([
+      Pincode.distinct("state", filter),
+      Pincode.distinct("district", filter),
+      Pincode.distinct("city", filter),
+      Pincode.distinct("area", {
+        ...filter,
+        area: { $exists: true, $ne: "" },
+      }),
+    ]);
+
+    return sendSuccess(
+      res,
+      {
+        states: states.sort(),
+        districts: districts.sort(),
+        cities: cities.sort(),
+        areas: areas.sort(),
+      },
+      "Pincode metadata fetched successfully"
+    );
+  } catch (error) {
+    logger.error("Get pincode metadata failed:", error);
+    return sendError(res, "Failed to fetch pincode metadata");
+  }
+};
+
+
