@@ -977,7 +977,7 @@ exports.endPicklistInspection = async (req, res) => {
     }
     order.skus=order.skus.map((item) => {
       if (item.sku === sku) {
-        item.inspectionStarted = true;
+        item.inspectionCompleted = true;
       }
       return item;
     })
