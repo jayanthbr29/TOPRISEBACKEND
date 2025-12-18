@@ -1085,3 +1085,16 @@ exports.getOrderByPicklistId= async (req, res) => {
     return sendError(res, error);
   }
 };
+
+exports.getPicklistByOrderIdAndEmpId= async (req, res) => {
+  try {
+    const { orderId,empId} = req.params;
+    const picklists = await PickList.find({ linkedOrderId: orderId, fulfilmentStaff:empId });
+    
+    return sendSuccess(res, picklists, "Picklists found");
+   
+  } catch (error) {
+    logger.error("Error getting picklist by order ID:", error.message);
+    return sendError(res, error);
+  }
+};

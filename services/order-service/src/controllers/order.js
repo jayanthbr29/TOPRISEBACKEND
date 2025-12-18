@@ -1,4 +1,4 @@
-const Order = require("../models/order"); 
+const Order = require("../models/order");
 const PickList = require("../models/pickList");
 const dealerAssignmentQueue = require("../queues/assignmentQueue");
 const { v4: uuidv4 } = require("uuid"); // npm install uuid
@@ -406,10 +406,10 @@ exports.createOrder = async (req, res) => {
 
     const invoiceNumber = `INV-${Date.now()}`;
     const customerDetails = newOrder.customerDetails;
-    const items = await Promise.all(newOrder.skus.map(async (s) =>{ 
+    const items = await Promise.all(newOrder.skus.map(async (s) => {
       //call product service to get product name
-      const productResponse = await axios.get(`http://product-service:5001/products/v1/sku/${s.sku}`); 
-      const productData = productResponse.data.data;  
+      const productResponse = await axios.get(`http://product-service:5001/products/v1/sku/${s.sku}`);
+      const productData = productResponse.data.data;
 
       // if customer address is from delhi means it contains delhi in address then make scgst and cgst 0  and make igst= scgst+cgst
       const scgst = (s.gst_percentage || 0) / 2;
@@ -417,41 +417,41 @@ exports.createOrder = async (req, res) => {
       const igst = scgst + cgst;
       const lowerCaseAddress = customerDetails?.address?.toLowerCase();
       const containsDelhi = lowerCaseAddress.includes('delhi');
-      console.log("containsDelhi",containsDelhi);
+      console.log("containsDelhi", containsDelhi);
       if (containsDelhi) {
-         return ({
-      productName: s.productName,
-      sku: s.sku,
-      hsn: productData?.hsn_code || "N/A",
-      mpn: productData?.manufacturer_part_name || "N/A",
-      unitPrice: s.selling_price,
-      quantity: s.quantity,
-      taxRate: `${igst || 0}%`,
-      cgstPercent:  0 ,
-      cgstAmount:  0,
-      sgstPercent:  0,
-      sgstAmount: 0,
-      igstPercent: igst || 0,
-      igstAmount: s.gst_amount || 0,
-      totalAmount: s.totalPrice,
-    });
-  }else{
-return ({
-      productName: s.productName,
-      sku: s.sku,
-      hsn: productData?.hsn_code || "N/A",
-      mpn: productData?.manufacturer_part_name || "N/A",
-      unitPrice: s.selling_price,
-      quantity: s.quantity,
-      taxRate: `${s.gst_percentage || 0}%`,
-      cgstPercent: (s.gst_percentage || 0) / 2,
-      cgstAmount: (s.gst_amount || 0) / 2,
-      sgstPercent: (s.gst_percentage || 0) / 2,
-      sgstAmount: (s.gst_amount || 0) / 2,
-      totalAmount: s.totalPrice,
-      });
-  }
-      
+        return ({
+          productName: s.productName,
+          sku: s.sku,
+          hsn: productData?.hsn_code || "N/A",
+          mpn: productData?.manufacturer_part_name || "N/A",
+          unitPrice: s.selling_price,
+          quantity: s.quantity,
+          taxRate: `${igst || 0}%`,
+          cgstPercent: 0,
+          cgstAmount: 0,
+          sgstPercent: 0,
+          sgstAmount: 0,
+          igstPercent: igst || 0,
+          igstAmount: s.gst_amount || 0,
+          totalAmount: s.totalPrice,
+        });
+      } else {
+        return ({
+          productName: s.productName,
+          sku: s.sku,
+          hsn: productData?.hsn_code || "N/A",
+          mpn: productData?.manufacturer_part_name || "N/A",
+          unitPrice: s.selling_price,
+          quantity: s.quantity,
+          taxRate: `${s.gst_percentage || 0}%`,
+          cgstPercent: (s.gst_percentage || 0) / 2,
+          cgstAmount: (s.gst_amount || 0) / 2,
+          sgstPercent: (s.gst_percentage || 0) / 2,
+          sgstAmount: (s.gst_amount || 0) / 2,
+          totalAmount: s.totalPrice,
+        });
+      }
+
     }));
 
 
@@ -916,7 +916,7 @@ exports.getOrders = async (req, res) => {
     if (req.query.dealerId) {
       filter["dealerMapping.dealerId"] = req.query.dealerId;
     }
-    
+
     // Total count with filter
     const totalOrders = await Order.countDocuments(filter);
 
@@ -7293,17 +7293,17 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
     const { orderId, dealerId, weight_object, sku, picklistId, forcePacking = false, securePackageAmount, delivery_completion_time } = req.body;
     const total_weight_kg = weight_object ? Object.values(weight_object).reduce((sum, w) => sum + w, 0) : 0;
     // console.log("total_weight_kg",total_weight_kg);
-     const appSettingResp = await axios.get(
-        "http://user-service:5001/api/appSetting"
-      );
-      const days = appSettingResp.data?.data?.returnPolicy || 14;
+    const appSettingResp = await axios.get(
+      "http://user-service:5001/api/appSetting"
+    );
+    const days = appSettingResp.data?.data?.returnPolicy || 14;
     if (!forcePacking) {
 
       let picklist;
       if (picklistId) {
         picklist = await PickList.findOne({ _id: picklistId });
       } else if (sku) {
-        picklist = await PickList.findOne({     
+        picklist = await PickList.findOne({
           linkedOrderId: orderId,
           skuList: {
             $elemMatch: { sku: sku }
@@ -7404,7 +7404,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
     }
 
     let dealerFound = false;
- 
+
 
     if (sku) {
       order.dealerMapping = order.dealerMapping.map((mapping) => {
@@ -7635,7 +7635,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
             vehicle_type = 8; // bike
           } else if (total_weight_kg > 20 && total_weight_kg <= 500) {
             vehicle_type = 10; // 3 wheeler
-          }  else if (total_weight_kg > 500 && total_weight_kg <= 750) {
+          } else if (total_weight_kg > 500 && total_weight_kg <= 750) {
             vehicle_type = 3; //  tata ace  ft
           } else if (total_weight_kg > 750 && total_weight_kg <= 1000) {
             vehicle_type = 2; // tata ace 8 ft
@@ -7643,7 +7643,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
             vehicle_type = 2; // tata ace 8 ft
           }
         }
-         
+
         console.log("vehicle_type", vehicle_type);
         const orderData = {
           matter: "Automobile Parts Delivery",
@@ -7720,12 +7720,12 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
                           sku.tracking_info.amount_collected = order.paymentType === "COD" ? false : true;
                           sku.tracking_info.borzo_weight = weight_object[sku.sku] || 0.00;
                           sku.return_info.is_returnable = isProductsReturnable[sku.sku];
-                          sku.return_info.return_window_days=days;
+                          sku.return_info.return_window_days = days;
                           sku.tracking_info.borzo_required_finish_datetime = data.points[1].required_finish_datetime || null;
-                          sku.markAsPacked=true;
-                          if(forcePacking){
-                            sku.inspectionStarted=true;
-                            sku.inspectionCompleted=true;
+                          sku.markAsPacked = true;
+                          if (forcePacking) {
+                            sku.inspectionStarted = true;
+                            sku.inspectionCompleted = true;
                           }
                           // sku.return_info.is_returnable = isProductsReturnable.;
                         }
@@ -7734,6 +7734,23 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
                     console.log("Saving borzo order id to order and sku tracking info", order.skus);
 
                     await order.save();
+                    //check voilation
+                    await Promise.all(
+                      skuLists.map(async (sku) => {
+                        const response = await axios.post(`http://order-service:5001/api/sla-voilation-model/checkVoilation`,
+                          {
+                            order_id: order._id,
+                            sku: sku,
+                           dealerId:dealerId,
+                          },
+                          {
+                            headers: {
+                              Authorization: req.headers.authorization
+                            }
+                          }
+                        )
+                      })
+                    )
                     try {
                       await logOrderAction({
                         orderId: order._id,
@@ -7877,7 +7894,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
         const dealerInfo = pickupDealerId ? await fetchDealerInfo(pickupDealerId, authHeader) : null;
         // console.log("[BORZO] Dealer info:", dealerInfo);
         const skuDetails = order.skus.find((item) => item.sku === sku);
-        console.log("dealer address build start",dealerInfo.Address);
+        console.log("dealer address build start", dealerInfo.Address);
         const dealerAddressString =
           dealerInfo?.address?.full ||
           buildAddressString({
@@ -7954,7 +7971,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
             vehicle_type = 8; // bike
           } else if (total_weight_kg > 20 && total_weight_kg <= 500) {
             vehicle_type = 10; // 3 wheeler
-          }  else if (total_weight_kg > 500 && total_weight_kg <= 750) {
+          } else if (total_weight_kg > 500 && total_weight_kg <= 750) {
             vehicle_type = 3; //  tata ace  ft
           } else if (total_weight_kg > 750 && total_weight_kg <= 1000) {
             vehicle_type = 2; // tata ace 8 ft
@@ -7962,8 +7979,8 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
             vehicle_type = 2; // tata ace 8 ft
           }
         }
-        
-         
+
+
         const orderData = {
           matter: "Automobile Parts Delivery",
           total_weight_kg: total_weight_kg || "3", // Dynamic weight from request body
@@ -8037,11 +8054,11 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
                           sku.tracking_info.amount_collected = order.paymentType === "COD" ? false : true;
                           sku.tracking_info.borzo_weight = weight_object[sku.sku] || 0.00;
                           sku.return_info.is_returnable = isProductsReturnable[sku.sku];
-                          sku.return_info.return_window_days=days;
-                          sku.markAsPacked=true;
-                          if(forcePacking){
-                            sku.inspectionStarted=true;
-                            sku.inspectionCompleted=true;
+                          sku.return_info.return_window_days = days;
+                          sku.markAsPacked = true;
+                          if (forcePacking) {
+                            sku.inspectionStarted = true;
+                            sku.inspectionCompleted = true;
                           }
                           //  sku.tracking_info.borzo_required_finish_datetime=data.points[1].required_finish_datetime || null;
                           // sku.return_info.is_returnable = isProductsReturnable.;
@@ -8051,6 +8068,23 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
                     console.log("Saving borzo order id to order and sku tracking info", order.skus);
 
                     await order.save();
+                    //check voilation
+                    await Promise.all(
+                      skuLists.map(async (sku) => {
+                        const response = await axios.post(`http://order-service:5001/api/sla-voilation-model/checkVoilation`,
+                          {
+                            order_id: order._id,
+                            sku: sku,
+                           dealerId:dealerId,
+                          },
+                          {
+                            headers: {
+                              Authorization: req.headers.authorization
+                            }
+                          }
+                        )
+                      })
+                    )
                     try {
                       await logOrderAction({
                         orderId: order._id,
@@ -8212,9 +8246,9 @@ exports.getOrderStatsByDealer = async (req, res) => {
     //   //   },
     //   // },
     // ]);
-    const orderStats = await Order.find({ "dealerMapping.dealerId": dealerId,  status: { $nin: ["Cancelled", "Confirmed","Assigned"] }  }).lean();
+    const orderStats = await Order.find({ "dealerMapping.dealerId": dealerId, status: { $nin: ["Cancelled", "Confirmed", "Assigned"] } }).lean();
     const totalOrders = orderStats.length;
-   let Revenue = 0;
+    let Revenue = 0;
 
     orderStats.forEach(order => {
       const dealerSkus = order.dealerMapping.filter(mapping => mapping.dealerId.toString() === dealerId);
