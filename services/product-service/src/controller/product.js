@@ -2966,6 +2966,7 @@ exports.editProductSingle = async (req, res) => {
   const normalizedDealers = patch.available_dealers.map((dealer) => ({
     dealers_Ref: dealer.dealers_Ref,
     quantity_per_dealer: Number(dealer.quantity_per_dealer) || 0,
+    dealer_margin: Number(dealer.dealer_margin) || 0,
     inStock: Number(dealer.quantity_per_dealer) > 0,
   }));
 
