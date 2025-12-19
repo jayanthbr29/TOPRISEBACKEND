@@ -5,9 +5,11 @@ const {
   authenticate,
   authorizeRoles,
 } = require("/packages/utils/authMiddleware");
+const auditLogger = require("../.././../../packages/utils/auditLoggerMiddleware");
 
 router.post(
   "/createRefund-online",
+  auditLogger("Refund_Initiated_Prepaid", "PAYMENTS"),
   // authenticate,
   // authorizeRoles("Super-admin", "Inventory-Admin", "User"),
   refundController.createPartialRefund
@@ -15,6 +17,7 @@ router.post(
 router.post(
   "/createRefund-cod",
   authenticate,
+   auditLogger("Refund_Initiated_COD", "PAYMENTS"),
   authorizeRoles("Super-admin", "Inventory-Admin", "User"),
   refundController.createPayout
 );

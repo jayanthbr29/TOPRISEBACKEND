@@ -34,6 +34,7 @@ const SlaTypes = require("../models/slaType");
 const SlaViolation = require("../models/slaViolation");
 const Payment = require("../models/paymentModel");
 const moment = require("moment-timezone");
+const auditLogger = require("../.././../../packages/utils/auditLoggerMiddleware");
 // Geocode an address string to { latitude, longitude }
 async function geocodeAddress(address) {
   try {
@@ -623,10 +624,25 @@ exports.assignOrderItemsToDealers = async (req, res) => {
 
     const order = await Order.findById(orderId);
     if (!order) return sendError(res, "Order not found", 404);
-
-    order.dealerMapping = assignments;
+    let assignmentsWithDates = assignments.map((assignment) => {
+      return {
+        ...assignment,
+        assignedAt: new Date(),
+        status: "Pending"
+      }
+    })
+    order.dealerMapping = assignmentsWithDates;
     order.status = "Assigned";
     order.timestamps.assignedAt = new Date();
+    order.skus = order.skus.map((sku) => {
+      const skuData = assignments.find((a) => a.sku === sku.sku);
+      return {
+        ...sku,
+        dealerMapped: [{
+          dealerId: skuData.dealerId
+        }]
+      }
+    })
 
     await order.save();
 
@@ -6390,6 +6406,12 @@ exports.borzoWebhookUpdated = async (req, res) => {
               await payment.save();
             }
           }
+          //create Audit log
+          try {
+            auditLogger("Order_Delivered", "ORDER");
+          } catch (e) {
+            console.log(e)
+          }
         }
 
         return res.status(200).json({
@@ -6457,6 +6479,13 @@ exports.borzoWebhookUpdated = async (req, res) => {
             returnOrder.timestamps.borzoShipmentCompletedAt = new Date();
             returnOrder.tracking_info.borzo_last_updated = new Date();
             returnOrder.tracking_info.borzo_tracking_status = borzoOrderStatus.toLowerCase();
+
+            //create Audit log
+            try {
+              auditLogger("Return_Borzo_Delivered_At_Dealer", "RETURN");
+            } catch (e) {
+              console.log(e)
+            }
             break;
 
           case "canceled":
@@ -6547,6 +6576,13 @@ exports.borzoWebhookUpdated = async (req, res) => {
             payment.payment_status = "Paid";
             await payment.save();
           }
+          //create Audit log
+          try {
+            auditLogger("Order_Delivered", "ORDER");
+          } catch (e) {
+            console.log(e)
+          }
+
         }
       } else if (orderType === "RTN") {
         const returnOrder = await Return.findOne({ _id: orderId });
@@ -7762,6 +7798,12 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
                         )
                       })
                     )
+                    //create audit log
+                    try {
+                      auditLogger("PickList_Packed", "ORDER");
+                    } catch (e) {
+                      console.log(e)
+                    }
                     try {
                       await logOrderAction({
                         orderId: order._id,
@@ -8096,6 +8138,12 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
                         )
                       })
                     )
+                    //create audit log
+                    try {
+                      auditLogger("PickList_Packed", "ORDER");
+                    } catch (e) {
+                      console.log(e)
+                    }
                     try {
                       await logOrderAction({
                         orderId: order._id,

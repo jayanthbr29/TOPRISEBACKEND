@@ -8,6 +8,7 @@ const {
 } = require("/packages/utils/authMiddleware");
 const { optionalAuth } = require("../middleware/authMiddleware");
 const ProductAuditLogger = require("../utils/auditLogger");
+const auditLogger = require("../.././../../packages/utils/auditLoggerMiddleware");
 
 // Configure multer to store file in memory
 const storage = multer.memoryStorage();
@@ -17,10 +18,11 @@ const upload = multer({ storage });
 router.post(
   "/",
   optionalAuth,
-  ProductAuditLogger.createMiddleware("CATEGORY_CREATED", "Category", "CATEGORY_MANAGEMENT"),
+  // ProductAuditLogger.createMiddleware("CATEGORY_CREATED", "Category", "CATEGORY_MANAGEMENT"),
   upload.single("file"), // Image file should be sent with key: 'file'
   authenticate,
   authorizeRoles("Super-admin", "Fulfillment-Admin"),
+  auditLogger("Category_Created", "CONTENT_MANAGEMENT"),
   categoryController.createCategory
 );
 
@@ -45,6 +47,7 @@ router.post(
     { name: "file", maxCount: 1 },
     { name: "images", maxCount: 1 },
   ]),
+   auditLogger("Category_Bulk_Upload", "CONTENT_MANAGEMENT"),
   categoryController.createBulkCategories
 );
 
@@ -70,8 +73,9 @@ router.get("/:id", categoryController.getCategoryById);
 router.put(
   "/:id",
   optionalAuth,
-  ProductAuditLogger.createMiddleware("CATEGORY_UPDATED", "Category", "CATEGORY_MANAGEMENT"),
+  // ProductAuditLogger.createMiddleware("CATEGORY_UPDATED", "Category", "CATEGORY_MANAGEMENT"),
   authenticate,
+   auditLogger("Category_Edited", "CONTENT_MANAGEMENT"),
   authorizeRoles("Super-admin", "Fulfillment-Admin"),
   upload.single("file"), // Optional updated image
   categoryController.updateCategory
@@ -81,9 +85,10 @@ router.put(
 router.delete(
   "/:id",
   optionalAuth,
-  ProductAuditLogger.createMiddleware("CATEGORY_DELETED", "Category", "CATEGORY_MANAGEMENT"),
+  // ProductAuditLogger.createMiddleware("CATEGORY_DELETED", "Category", "CATEGORY_MANAGEMENT"),
   authenticate,
   authorizeRoles("Super-admin", "Fulfillment-Admin"),
+   auditLogger("Category_Deleted", "CONTENT_MANAGEMENT"),
   categoryController.deleteCategory
 );
 
@@ -95,6 +100,7 @@ router.post(
     { name: "dataFile", maxCount: 1 },
     { name: "imageZip", maxCount: 1 },
   ]),
+  auditLogger("Category_Bulk_Upload", "CONTENT_MANAGEMENT"),
   categoryController.bulkUploadCategories
 );
 

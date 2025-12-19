@@ -4,7 +4,7 @@ const SLATypesController = require("../controllers/slaController");
 const { authenticate, authorizeRoles } = require("/packages/utils/authMiddleware");
 const AuditLogger = require("../utils/auditLogger");
 
-
+const auditLogger = require("../.././../../packages/utils/auditLoggerMiddleware");
 router.get(
     "/",
     authenticate,
@@ -29,6 +29,7 @@ router.post(
         "Inventory-Staff",
         "Customer-Support"
     ),
+    auditLogger("SLA_Created", "SETTING"),
     SLATypesController.createSLAType
 );
 router.put(
@@ -42,6 +43,7 @@ router.put(
     //     "Inventory-Staff",
     //     "Customer-Support"
     // ),
+     auditLogger("SLA_Edited", "SETTING"),
     SLATypesController.updateSlaTypes
 );
 
@@ -71,6 +73,20 @@ router.get(
         "Customer-Support"
     ),
     SLATypesController.getSLATypesWithPagination
+);
+router.delete(
+    "/:id",
+    authenticate,
+    authorizeRoles(
+        "Super-admin",
+        "Fulfillment-Admin",
+        "Fulfillment-Staff",
+        "Inventory-Admin",
+        "Inventory-Staff",
+        "Customer-Support"
+    ),
+    auditLogger("SLA_Deleted", "SETTING"),
+    SLATypesController.deleteSlaType
 );
 
 

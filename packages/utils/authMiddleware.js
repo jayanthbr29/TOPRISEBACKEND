@@ -13,16 +13,19 @@ const authenticate = async (req, res, next) => {
       // A;
       console.log("token", token);
       decoded = await admin.auth().verifyIdToken(token);
+      console.log("decoded", decoded);
 
       req.user = { id: decoded.uid, role: "User (Firebase)" };
       
     } catch (err) {
       // Fallback to internal JWT verification
+      console.log("err", err);
       decoded = jwt.verify(
         token,
         "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiIsImtpZCI6IjE3NzMxNzdlODhlZTFiZTMyNWZiMzkyZDZkMDU3MGVkIn0.e30.Om3KOQDXsSvrY8I7BBABYugTo25IadUd7wF1LIgjv8VlDyNYsaXI_t4rPYcZgiMd8JxfS2y2hlQRc86S3Y_vEA"
       );
       req.user = { id: decoded.id, role: decoded.role };
+
     }
     next();
   } catch (err) {

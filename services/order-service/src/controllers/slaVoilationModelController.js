@@ -21,142 +21,165 @@ exports.createSLAViolation = async (req, res) => {
 };
 
 exports.getAllSLAViolations = async (req, res) => {
-    try {
-        const {
-            page = 1,
-            limit = 10,
-            search = "",
-            status,
-            dealer_id,
-            order_id,
-            sortBy = "created_at",
-            sortOrder = "desc",
-        } = req.query;
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      search = "",
+      status,
+      dealer_id,
+      order_id,
+      sortBy = "created_at",
+      sortOrder = "desc",
+    } = req.query;
 
-        const currentPage = Math.max(parseInt(page), 1);
-        const pageSize = Math.max(parseInt(limit), 1);
-        const skip = (currentPage - 1) * pageSize;
+    const currentPage = Math.max(parseInt(page), 1);
+    const pageSize = Math.max(parseInt(limit), 1);
+    const skip = (currentPage - 1) * pageSize;
 
-        const filter = {};
-         if (search) {
-            const orConditions = [
-                { sku: { $regex: search, $options: "i" } },
-                { status: { $regex: search, $options: "i" } },
-            ];
+    const filter = {};
 
-            if (mongoose.Types.ObjectId.isValid(search)) {
-                orConditions.push({ order_id: search });
-            }
+    if (search) {
+      const orConditions = [
+        { sku: { $regex: search, $options: "i" } },
+        { status: { $regex: search, $options: "i" } },
+      ];
 
-            filter.$or = orConditions;
-        }
-        if (status) filter.status = status;
-        if (dealer_id) filter.dealer_id = dealer_id;
-        if (order_id) filter.order_id = order_id;
+      
+      const matchingOrders = await Order.find(
+        { orderId: { $regex: search, $options: "i" } },
+        { _id: 1 }
+      ).lean();
 
-        const sort = { [sortBy]: sortOrder === "asc" ? 1 : -1 };
+      if (matchingOrders.length) {
+        orConditions.push({
+          order_id: { $in: matchingOrders.map(o => o._id) },
+        });
+      }
 
-        const [data, totalItems] = await Promise.all([
-            SLAViolationModel.find(filter)
-                .populate("order_id")
-                .sort(sort)
-                .skip(skip)
-                .limit(pageSize)
-                .lean(),
-            SLAViolationModel.countDocuments(filter),
-        ]);
-
-        const totalPages = Math.ceil(totalItems / pageSize);
-
-        return sendSuccess(
-            res,
-            {
-                data,
-                pagination: {
-                    totalItems,
-                    totalPages,
-                    currentPage,
-                    pageSize,
-                    hasNextPage: currentPage < totalPages,
-                    hasPreviousPage: currentPage > 1,
-                    nextPage: currentPage < totalPages ? currentPage + 1 : null,
-                    previousPage: currentPage > 1 ? currentPage - 1 : null,
-                },
-            },
-            "SLA violations fetched successfully"
-        );
-    } catch (error) {
-        logger.error("Get SLA violations failed:", error);
-        return sendError(res, "Failed to fetch SLA violations");
+      filter.$or = orConditions;
     }
+
+    if (status) filter.status = status;
+    if (dealer_id) filter.dealer_id = dealer_id;
+    if (order_id) filter.order_id = order_id;
+
+    const sort = { [sortBy]: sortOrder === "asc" ? 1 : -1 };
+
+    const [data, totalItems] = await Promise.all([
+      SLAViolationModel.find(filter)
+        .populate("order_id")
+        .sort(sort)
+        .skip(skip)
+        .limit(pageSize)
+        .lean(),
+      SLAViolationModel.countDocuments(filter),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / pageSize);
+
+    return sendSuccess(
+      res,
+      {
+        data,
+        pagination: {
+          totalItems,
+          totalPages,
+          currentPage,
+          pageSize,
+          hasNextPage: currentPage < totalPages,
+          hasPreviousPage: currentPage > 1,
+          nextPage: currentPage < totalPages ? currentPage + 1 : null,
+          previousPage: currentPage > 1 ? currentPage - 1 : null,
+        },
+      },
+      "SLA violations fetched successfully"
+    );
+  } catch (error) {
+    logger.error("Get SLA violations failed:", error);
+    return sendError(res, "Failed to fetch SLA violations");
+  }
 };
+
 exports.getSLAViolationsByDealerId = async (req, res) => {
-    try {
-        const { dealerId } = req.params;
-        const {
-            page = 1,
-            limit = 10,
-            search = "",
-            status,
-            sortBy = "created_at",
-            sortOrder = "desc",
-        } = req.query;
+  try {
+    const { dealerId } = req.params;
+    const {
+      page = 1,
+      limit = 10,
+      search = "",
+      status,
+      sortBy = "created_at",
+      sortOrder = "desc",
+    } = req.query;
 
-        const currentPage = Math.max(parseInt(page), 1);
-        const pageSize = Math.max(parseInt(limit), 1);
-        const skip = (currentPage - 1) * pageSize;
+    const currentPage = Math.max(parseInt(page), 1);
+    const pageSize = Math.max(parseInt(limit), 1);
+    const skip = (currentPage - 1) * pageSize;
 
-        const filter = { dealer_id: dealerId };
+    const filter = { dealer_id: dealerId };
 
-        if (search) {
-            const orConditions = [
-                { sku: { $regex: search, $options: "i" } },
-                { status: { $regex: search, $options: "i" } },
-            ];
+    if (search) {
+      const orConditions = [
+        { sku: { $regex: search, $options: "i" } },
+        { status: { $regex: search, $options: "i" } },
+      ];
 
-            if (mongoose.Types.ObjectId.isValid(search)) {
-                orConditions.push({ order_id: search });
-            }
+      
+      const matchingOrders = await Order.find(
+        { orderId: { $regex: search, $options: "i" } },
+        { _id: 1 }
+      ).lean();
 
-            filter.$or = orConditions;
-        }
-        if (status) filter.status = status;
-          const sort = { [sortBy]: sortOrder === "asc" ? 1 : -1 }
+      if (matchingOrders.length > 0) {
+        orConditions.push({
+          order_id: { $in: matchingOrders.map(o => o._id) },
+        });
+      }
 
-        const [data, totalItems] = await Promise.all([
-            SLAViolationModel.find(filter)
-                .populate("order_id")
-                .sort(sort)
-                .skip(skip)
-                .limit(pageSize)
-                .lean(),
-            SLAViolationModel.countDocuments(filter),
-        ]);
-
-        const totalPages = Math.ceil(totalItems / pageSize);
-
-        return sendSuccess(
-            res,
-            {
-                data,
-                pagination: {
-                    totalItems,
-                    totalPages,
-                    currentPage,
-                    pageSize,
-                    hasNextPage: currentPage < totalPages,
-                    hasPreviousPage: currentPage > 1,
-                    nextPage: currentPage < totalPages ? currentPage + 1 : null,
-                    previousPage: currentPage > 1 ? currentPage - 1 : null,
-                },
-            },
-            "Dealer SLA violations fetched successfully"
-        );
-    } catch (error) {
-        logger.error("Get SLA violations by dealer failed:", error);
-        return sendError(res, "Failed to fetch dealer SLA violations");
+      filter.$or = orConditions;
     }
+
+   
+    if (status) filter.status = status;
+
+    const sort = { [sortBy]: sortOrder === "asc" ? 1 : -1 };
+
+    const [data, totalItems] = await Promise.all([
+      SLAViolationModel.find(filter)
+        .populate("order_id")
+        .sort(sort)
+        .skip(skip)
+        .limit(pageSize)
+        .lean(),
+      SLAViolationModel.countDocuments(filter),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / pageSize);
+
+    return sendSuccess(
+      res,
+      {
+        data,
+        pagination: {
+          totalItems,
+          totalPages,
+          currentPage,
+          pageSize,
+          hasNextPage: currentPage < totalPages,
+          hasPreviousPage: currentPage > 1,
+          nextPage: currentPage < totalPages ? currentPage + 1 : null,
+          previousPage: currentPage > 1 ? currentPage - 1 : null,
+        },
+      },
+      "Dealer SLA violations fetched successfully"
+    );
+  } catch (error) {
+    logger.error("Get SLA violations by dealer failed:", error);
+    return sendError(res, "Failed to fetch dealer SLA violations");
+  }
 };
+
 
 exports.getSLAViolationById = async (req, res) => {
     try {

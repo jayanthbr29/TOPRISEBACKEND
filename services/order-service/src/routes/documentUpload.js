@@ -10,7 +10,8 @@ const AuditLogger = require("../utils/auditLogger");
 
 const documentUploadController = require("../controllers/documentUpload");
 const documentUploadAdminController = require("../controllers/documentUploadAdmin");
-
+const auditLogger = require("../.././../../packages/utils/auditLoggerMiddleware");
+  
 // ==================== USER ROUTES ====================
 
 /**
@@ -23,6 +24,7 @@ router.post(
     authenticate,
     authorizeRoles("User", "Dealer", "Super-admin"),
     upload.array("files", 10),
+     auditLogger("Purchase_Request_Created", "PURCHASE_REQUEST"),
     // AuditLogger.createMiddleware("DOCUMENT_UPLOADED", "DocumentUpload", "DOCUMENT_MANAGEMENT"),
     documentUploadController.createDocumentUpload
 );
@@ -48,7 +50,7 @@ router.get(
     "/user/:userId",
     authenticate,
     authorizeRoles("User", "Dealer", "Super-admin", "Fulfillment-Admin", "Customer-Support"),
-    AuditLogger.createMiddleware("USER_DOCUMENTS_ACCESSED", "DocumentUpload", "DOCUMENT_MANAGEMENT"),
+    // AuditLogger.createMiddleware("USER_DOCUMENTS_ACCESSED", "DocumentUpload", "DOCUMENT_MANAGEMENT"),
     documentUploadController.getDocumentsForUser
 );
 
@@ -61,7 +63,7 @@ router.patch(
     "/:id/cancel",
     authenticate,
     authorizeRoles("User", "Dealer"),
-    AuditLogger.createMiddleware("DOCUMENT_CANCELLED", "DocumentUpload", "DOCUMENT_MANAGEMENT"),
+    // AuditLogger.createMiddleware("DOCUMENT_CANCELLED", "DocumentUpload", "DOCUMENT_MANAGEMENT"),
     documentUploadController.cancelDocumentUpload
 );
 
@@ -74,7 +76,7 @@ router.delete(
     "/:id/delete",
     authenticate,
     authorizeRoles("User", "Dealer"),
-    AuditLogger.createMiddleware("DOCUMENT_DELETED", "DocumentUpload", "DOCUMENT_MANAGEMENT"),
+    // AuditLogger.createMiddleware("DOCUMENT_DELETED", "DocumentUpload", "DOCUMENT_MANAGEMENT"),
     documentUploadController.deleteDocumentUpload
 );
 
@@ -89,7 +91,7 @@ router.get(
     "/admin/stats",
     authenticate,
     authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin"),
-    AuditLogger.createMiddleware("DOCUMENT_STATS_ACCESSED", "DocumentUpload", "REPORTING"),
+    // AuditLogger.createMiddleware("DOCUMENT_STATS_ACCESSED", "DocumentUpload", "REPORTING"),
     documentUploadAdminController.getDocumentStatistics
 );
 
@@ -102,7 +104,7 @@ router.get(
     "/admin/all",
     authenticate,
     authorizeRoles("Super-admin", "Fulfillment-Admin", "Customer-Support", "Inventory-Admin"),
-    AuditLogger.createMiddleware("DOCUMENTS_LIST_ACCESSED", "DocumentUpload", "DOCUMENT_MANAGEMENT"),
+    // AuditLogger.createMiddleware("DOCUMENTS_LIST_ACCESSED", "DocumentUpload", "DOCUMENT_MANAGEMENT"),
     documentUploadAdminController.getAllDocumentUploads
 );
 
@@ -115,7 +117,7 @@ router.patch(
     "/admin/:id/assign",
     authenticate,
     authorizeRoles("Super-admin", "Fulfillment-Admin"),
-    AuditLogger.createMiddleware("DOCUMENT_ASSIGNED", "DocumentUpload", "DOCUMENT_MANAGEMENT"),
+    // AuditLogger.createMiddleware("DOCUMENT_ASSIGNED", "DocumentUpload", "DOCUMENT_MANAGEMENT"),
     documentUploadAdminController.assignDocument
 );
 
@@ -128,7 +130,7 @@ router.post(
     "/admin/:id/contact",
     authenticate,
     authorizeRoles("Super-admin", "Fulfillment-Admin", "Customer-Support"),
-    AuditLogger.createMiddleware("CUSTOMER_CONTACTED", "DocumentUpload", "DOCUMENT_MANAGEMENT"),
+    // AuditLogger.createMiddleware("CUSTOMER_CONTACTED", "DocumentUpload", "DOCUMENT_MANAGEMENT"),
     documentUploadAdminController.addContactHistory
 );
 
@@ -141,7 +143,7 @@ router.post(
     "/admin/:id/notes",
     authenticate,
     authorizeRoles("Super-admin", "Fulfillment-Admin", "Customer-Support"),
-    AuditLogger.createMiddleware("ADMIN_NOTE_ADDED", "DocumentUpload", "DOCUMENT_MANAGEMENT"),
+    // AuditLogger.createMiddleware("ADMIN_NOTE_ADDED", "DocumentUpload", "DOCUMENT_MANAGEMENT"),
     documentUploadAdminController.addAdminNotes
 );
 
@@ -154,7 +156,7 @@ router.post(
     "/admin/:id/items",
     authenticate,
     authorizeRoles("Super-admin", "Fulfillment-Admin"),
-    AuditLogger.createMiddleware("ITEMS_ADDED_TO_DOCUMENT", "DocumentUpload", "DOCUMENT_MANAGEMENT"),
+    // AuditLogger.createMiddleware("ITEMS_ADDED_TO_DOCUMENT", "DocumentUpload", "DOCUMENT_MANAGEMENT"),
     documentUploadAdminController.addItemsRequested
 );
 
@@ -180,7 +182,8 @@ router.patch(
     "/admin/:id/reject",
     authenticate,
     authorizeRoles("Super-admin", "Fulfillment-Admin"),
-    AuditLogger.createMiddleware("DOCUMENT_REJECTED", "DocumentUpload", "DOCUMENT_MANAGEMENT"),
+    auditLogger("Purchase_Request_Rejected", "PURCHASE_REQUEST"),
+    // AuditLogger.createMiddleware("DOCUMENT_REJECTED", "DocumentUpload", "DOCUMENT_MANAGEMENT"),
     documentUploadAdminController.rejectDocument
 );
 
@@ -192,8 +195,9 @@ router.patch(
 router.patch(
     "/admin/:id/status",
     authenticate,
+     auditLogger("Purchase_Request_Approved", "PURCHASE_REQUEST"),
     authorizeRoles("Super-admin", "Fulfillment-Admin"),
-    AuditLogger.createMiddleware("DOCUMENT_STATUS_UPDATED", "DocumentUpload", "DOCUMENT_MANAGEMENT"),
+    // AuditLogger.createMiddleware("DOCUMENT_STATUS_UPDATED", "DocumentUpload", "DOCUMENT_MANAGEMENT"),
     documentUploadAdminController.updateDocumentStatus
 );
 
@@ -211,6 +215,7 @@ router.get(
 
 router.post(
     "/create/orderby/admin",
+     auditLogger("Purchase_Request_Order_Created", "PURCHASE_REQUEST"),
     documentUploadAdminController.createOrderforPurchaseRequest
     
 );
@@ -218,7 +223,7 @@ router.get(
     "/admin/all/exports",
     authenticate,
     authorizeRoles("Super-admin", "Fulfillment-Admin", "Customer-Support", "Inventory-Admin"),
-    AuditLogger.createMiddleware("DOCUMENTS_LIST_ACCESSED", "DocumentUpload", "DOCUMENT_MANAGEMENT"),
+    // AuditLogger.createMiddleware("DOCUMENTS_LIST_ACCESSED", "DocumentUpload", "DOCUMENT_MANAGEMENT"),
     documentUploadAdminController.getAllDocumentUploadsNoPagination
 );
 

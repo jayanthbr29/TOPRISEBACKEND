@@ -19,6 +19,7 @@ const {
   authenticate,
   authorizeRoles,
 } = require("/packages/utils/authMiddleware");
+const auditLogger = require("../.././../../packages/utils/auditLoggerMiddleware");
 const AuditLogger = require("../utils/auditLogger");
 const { requireAuth } = require("../middleware/authMiddleware");
 
@@ -58,31 +59,32 @@ const auditMiddleware = (action, targetType = null, category = null) => {
 router.get(
   "/all",
   requireAuth,
-  auditMiddleware("ORDER_LIST_ACCESSED", "Order", "ORDER_MANAGEMENT"),
+  // auditLogger("ORDER_LIST_ACCESSED", "Order"),
+  // auditMiddleware("ORDER_LIST_ACCESSED", "Order", "ORDER_MANAGEMENT"),
   orderController.getOrders
 );
 router.get(
   "/id/:id",
   requireAuth,
-  auditMiddleware("ORDER_DETAILS_ACCESSED", "Order", "ORDER_MANAGEMENT"),
+  // auditMiddleware("ORDER_DETAILS_ACCESSED", "Order", "ORDER_MANAGEMENT"),
   orderController.getOrderById
 );
 router.get(
   "/picklists",
   requireAuth,
-  auditMiddleware("PICKLIST_ACCESSED", "Order", "ORDER_MANAGEMENT"),
+  // auditMiddleware("PICKLIST_ACCESSED", "Order", "ORDER_MANAGEMENT"),
   orderController.getPickList
 );
 router.get(
   "/picklists/dealer/:dealerId",
   requireAuth,
-  auditMiddleware("DEALER_PICKLIST_ACCESSED", "Order", "ORDER_MANAGEMENT"),
+  // auditMiddleware("DEALER_PICKLIST_ACCESSED", "Order", "ORDER_MANAGEMENT"),
   orderController.getPickListByDealer
 );
 router.get(
   "/picklists/employee/:employeeId",
   requireAuth,
-  auditMiddleware("EMPLOYEE_PICKLIST_ACCESSED", "Order", "ORDER_MANAGEMENT"),
+  // auditMiddleware("EMPLOYEE_PICKLIST_ACCESSED", "Order", "ORDER_MANAGEMENT"),
   orderController.getPickListByEmployee
 );
 
@@ -94,7 +96,7 @@ router.get(
 router.get(
   "/picklists/:id",
   requireAuth,
-  auditMiddleware("PICKLIST_DETAILS_ACCESSED", "Order", "ORDER_MANAGEMENT"),
+  // auditMiddleware("PICKLIST_DETAILS_ACCESSED", "Order", "ORDER_MANAGEMENT"),
   orderController.getPickListById
 );
 
@@ -106,31 +108,31 @@ router.get(
 router.get(
   "/picklists/stats",
   requireAuth,
-  auditMiddleware("PICKLIST_STATS_ACCESSED", "Order", "ORDER_MANAGEMENT"),
+  // auditMiddleware("PICKLIST_STATS_ACCESSED", "Order", "ORDER_MANAGEMENT"),
   orderController.getPickListStatistics
 );
 router.get(
   "/picklists/stats/staff",
   requireAuth,
-  auditMiddleware("FULFILLMENT_STAFF_PICKLIST_STATS_ACCESSED", "Order", "REPORTING"),
+  // auditMiddleware("FULFILLMENT_STAFF_PICKLIST_STATS_ACCESSED", "Order", "REPORTING"),
   orderController.getFulfillmentStaffPicklistStats
 );
 router.get(
   "/scanlogs",
   requireAuth,
-  auditMiddleware("SCAN_LOGS_ACCESSED", "Order", "ORDER_MANAGEMENT"),
+  // auditMiddleware("SCAN_LOGS_ACCESSED", "Order", "ORDER_MANAGEMENT"),
   orderController.getScanLogs
 );
 router.get(
   "/scanlogs/dealer/:dealerId",
   requireAuth,
-  auditMiddleware("DEALER_SCAN_LOGS_ACCESSED", "Order", "ORDER_MANAGEMENT"),
+  // auditMiddleware("DEALER_SCAN_LOGS_ACCESSED", "Order", "ORDER_MANAGEMENT"),
   orderController.getScanLogsByDealer
 );
 router.get(
   "/user/:userId",
   requireAuth,
-  auditMiddleware("USER_ORDERS_ACCESSED", "Order", "ORDER_MANAGEMENT"),
+  // auditMiddleware("USER_ORDERS_ACCESSED", "Order", "ORDER_MANAGEMENT"),
   orderController.getOrderByUserId
 );
 
@@ -138,73 +140,76 @@ router.get(
 router.get(
   "/dealer/:dealerId/kpis",
   requireAuth,
-  auditMiddleware("DEALER_ORDER_KPIS_ACCESSED", "Order", "ORDER_MANAGEMENT"),
+  // auditMiddleware("DEALER_ORDER_KPIS_ACCESSED", "Order", "ORDER_MANAGEMENT"),
   dealerOrderKPIController.getDealerOrderKPIs
 );
 
 router.get(
   "/dealer/:dealerId/orders",
   requireAuth,
-  auditMiddleware("DEALER_ORDERS_ACCESSED", "Order", "ORDER_MANAGEMENT"),
+  // auditMiddleware("DEALER_ORDERS_ACCESSED", "Order", "ORDER_MANAGEMENT"),
   dealerOrderKPIController.getDealerOrders
 );
 
 router.get(
   "/reports",
   requireAuth,
-  auditMiddleware("ORDER_REPORTS_GENERATED", "Report", "REPORTING"),
+  // auditMiddleware("ORDER_REPORTS_GENERATED", "Report", "REPORTING"),
   orderController.generateOrderReports
 );
 
 router.post(
   "/create",
   requireAuth,
-  setOrderSLAExpectations,
-  auditMiddleware("ORDER_CREATED", "Order", "ORDER_MANAGEMENT"),
+  auditLogger("Order_Created_COD", "ORDER"),
+  // setOrderSLAExpectations,
+  // auditMiddleware("ORDER_CREATED", "Order", "ORDER_MANAGEMENT"),
   orderController.createOrder
 );
 router.post(
   "/assign-dealers",
   requireAuth,
-  auditMiddleware("DEALER_ASSIGNED", "Order", "ORDER_MANAGEMENT"),
+  auditLogger("Dealer_Assigned_Order_Manually", "ORDER"),
+  // auditMiddleware("DEALER_ASSIGNED", "Order", "ORDER_MANAGEMENT"),
   orderController.assignOrderItemsToDealers
 );
 router.post(
   "/reassign-dealers",
   requireAuth,
-  auditMiddleware("DEALER_REMAPPED", "Order", "ORDER_MANAGEMENT"),
+  // auditMiddleware("DEALER_REMAPPED", "Order", "ORDER_MANAGEMENT"),
   orderController.reassignOrderItemsToDealers
 );
 
 router.post(
   "/create-pickup",
   requireAuth,
-  auditMiddleware("PICKUP_CREATED", "Order", "ORDER_MANAGEMENT"),
+  auditLogger("PickList_created", "ORDER"),
+  // auditMiddleware("PICKUP_CREATED", "Order", "ORDER_MANAGEMENT"),
   orderController.createPickup
 );
 router.post(
   "/assign-picklist",
   requireAuth,
-  auditMiddleware("PICKLIST_ASSIGNED", "Order", "ORDER_MANAGEMENT"),
+  // auditMiddleware("PICKLIST_ASSIGNED", "Order", "ORDER_MANAGEMENT"),
   orderController.assignPicklistToStaff
 );
 router.post(
   "/scan",
   requireAuth,
-  auditMiddleware("SKU_SCANNED", "Order", "ORDER_MANAGEMENT"),
+  // auditMiddleware("SKU_SCANNED", "Order", "ORDER_MANAGEMENT"),
   orderController.scanSku
 );
 router.put(
   "/dealer-update",
   requireAuth,
-  auditMiddleware("ORDER_UPDATED", "Order", "ORDER_MANAGEMENT"),
+  // auditMiddleware("ORDER_UPDATED", "Order", "ORDER_MANAGEMENT"),
   orderController.UpdateOrderForDealer
 );
 router.post(
   "/ship",
   requireAuth,
-  checkSLACompliance,
-  auditMiddleware("ORDER_SHIPPED", "Order", "ORDER_MANAGEMENT"),
+  // checkSLACompliance,
+  // auditMiddleware("ORDER_SHIPPED", "Order", "ORDER_MANAGEMENT"),
   orderController.shipOrder
 );
 
@@ -212,22 +217,22 @@ router.post(
 router.post(
   "/:orderId/pack",
   requireAuth,
-  slaViolationMiddleware.checkSLAOnOrderUpdate(),
-  auditMiddleware("ORDER_STATUS_CHANGED", "Order", "ORDER_MANAGEMENT"),
+  // slaViolationMiddleware.checkSLAOnOrderUpdate(),
+  // auditMiddleware("ORDER_STATUS_CHANGED", "Order", "ORDER_MANAGEMENT"),
   orderController.markAsPacked
 );
 router.post(
   "/:orderId/deliver",
   requireAuth,
-  slaViolationMiddleware.checkSLAOnOrderUpdate(),
-  auditMiddleware("ORDER_DELIVERED", "Order", "ORDER_MANAGEMENT"),
+  // slaViolationMiddleware.checkSLAOnOrderUpdate(),
+  // auditMiddleware("ORDER_DELIVERED", "Order", "ORDER_MANAGEMENT"),
   orderController.markAsDelivered
 );
 router.post(
   "/:orderId/cancel",
   requireAuth,
-  slaViolationMiddleware.checkSLAOnOrderUpdate(),
-  auditMiddleware("ORDER_CANCELLED", "Order", "ORDER_MANAGEMENT"),
+  // slaViolationMiddleware.checkSLAOnOrderUpdate(),
+  // auditMiddleware("ORDER_CANCELLED", "Order", "ORDER_MANAGEMENT"),
   orderController.cancelOrder
 );
 
@@ -235,20 +240,20 @@ router.post(
 router.post(
   "/:orderId/sku/:sku/pack",
   requireAuth,
-  slaViolationMiddleware.checkSLAOnOrderUpdate(),
-  auditMiddleware("SKU_PACKED", "Order", "ORDER_MANAGEMENT"),
+  // slaViolationMiddleware.checkSLAOnOrderUpdate(),
+  // auditMiddleware("SKU_PACKED", "Order", "ORDER_MANAGEMENT"),
   orderController.markSkuAsPacked
 );
 router.post(
   "/:orderId/sku/:sku/ship",
   requireAuth,
-  auditMiddleware("SKU_SHIPPED", "Order", "ORDER_MANAGEMENT"),
+  // auditMiddleware("SKU_SHIPPED", "Order", "ORDER_MANAGEMENT"),
   orderController.markSkuAsShipped
 );
 router.post(
   "/:orderId/sku/:sku/deliver",
   requireAuth,
-  auditMiddleware("SKU_DELIVERED", "Order", "ORDER_MANAGEMENT"),
+  // auditMiddleware("SKU_DELIVERED", "Order", "ORDER_MANAGEMENT"),
   orderController.markSkuAsDelivered
 );
 
@@ -256,31 +261,31 @@ router.post(
 router.get(
   "/:orderId/status-breakdown",
   requireAuth,
-  auditMiddleware(
-    "ORDER_STATUS_BREAKDOWN_ACCESSED",
-    "Order",
-    "ORDER_MANAGEMENT"
-  ),
+  // auditMiddleware(
+  //   "ORDER_STATUS_BREAKDOWN_ACCESSED",
+  //   "Order",
+  //   "ORDER_MANAGEMENT"
+  // ),
   orderController.getOrderStatusBreakdown
 );
 
 router.post(
   "/:orderId/check-delivery",
   requireAuth,
-  auditMiddleware("ORDER_DELIVERY_CHECKED", "Order", "ORDER_MANAGEMENT"),
+  // auditMiddleware("ORDER_DELIVERY_CHECKED", "Order", "ORDER_MANAGEMENT"),
   orderController.checkAndMarkOrderAsDelivered
 );
 
 router.post(
   "/sla/types",
   requireAuth,
-  auditMiddleware("SLA_TYPE_CREATED", "SLA", "SLA_MANAGEMENT"),
+  // auditMiddleware("SLA_TYPE_CREATED", "SLA", "SLA_MANAGEMENT"),
   slaController.createSLAType
 );
 router.get(
   "/sla/types",
   requireAuth,
-  auditMiddleware("SLA_TYPES_ACCESSED", "SLA", "SLA_MANAGEMENT"),
+  // auditMiddleware("SLA_TYPES_ACCESSED", "SLA", "SLA_MANAGEMENT"),
   slaController.getSLATypes
 );
 router.get(
@@ -292,52 +297,52 @@ router.get(
 router.post(
   "/dealers/:dealerId/sla",
   requireAuth,
-  auditMiddleware("DEALER_SLA_UPDATED", "SLA", "SLA_MANAGEMENT"),
+  // auditMiddleware("DEALER_SLA_UPDATED", "SLA", "SLA_MANAGEMENT"),
   slaController.setDealerSLA
 );
 // router.get("/dealers/:dealerId/sla", slaController.getDealerSLA);
 router.post(
   "/sla/violations",
   requireAuth,
-  auditMiddleware("SLA_VIOLATION_RECORDED", "SLA", "SLA_MANAGEMENT"),
+  // auditMiddleware("SLA_VIOLATION_RECORDED", "SLA", "SLA_MANAGEMENT"),
   slaController.logViolation
 );
 router.get(
   "/sla/violations",
   requireAuth,
-  auditMiddleware("SLA_VIOLATIONS_ACCESSED", "SLA", "SLA_MANAGEMENT"),
+  // auditMiddleware("SLA_VIOLATIONS_ACCESSED", "SLA", "SLA_MANAGEMENT"),
   slaController.getViolations
 );
 router.get(
   "/sla/violations/order/:orderId",
   requireAuth,
-  auditMiddleware("ORDER_SLA_VIOLATIONS_ACCESSED", "SLA", "SLA_MANAGEMENT"),
+  // auditMiddleware("ORDER_SLA_VIOLATIONS_ACCESSED", "SLA", "SLA_MANAGEMENT"),
   slaController.getViolationsByOrder
 );
 router.get(
   "/sla/violations/summary/:dealerId",
   requireAuth,
-  auditMiddleware(
-    "DEALER_SLA_VIOLATIONS_SUMMARY_ACCESSED",
-    "SLA",
-    "SLA_MANAGEMENT"
-  ),
+  // auditMiddleware(
+  //   "DEALER_SLA_VIOLATIONS_SUMMARY_ACCESSED",
+  //   "SLA",
+  //   "SLA_MANAGEMENT"
+  // ),
   slaController.getViolationsSummary
 );
 router.get(
   "/sla/violations/dealer/:dealerId",
   requireAuth,
-  auditMiddleware("DEALER_SLA_VIOLATIONS_ACCESSED", "SLA", "SLA_MANAGEMENT"),
+  // auditMiddleware("DEALER_SLA_VIOLATIONS_ACCESSED", "SLA", "SLA_MANAGEMENT"),
   slaController.getViolationsByDealerId
 );
 router.get(
   "/sla/violations/approaching",
   requireAuth,
-  auditMiddleware(
-    "APPROACHING_SLA_VIOLATIONS_ACCESSED",
-    "SLA",
-    "SLA_MANAGEMENT"
-  ),
+  // auditMiddleware(
+  //   "APPROACHING_SLA_VIOLATIONS_ACCESSED",
+  //   "SLA",
+  //   "SLA_MANAGEMENT"
+  // ),
   slaController.getApproachingViolations
 );
 // router.patch("/sla/violations/:violationId", slaController.updateViolationStatus);
@@ -346,42 +351,42 @@ router.get(
 router.post(
   "/sla/violations/manual",
   requireAuth,
-  auditMiddleware("MANUAL_SLA_VIOLATION_CREATED", "SLAViolation", "SLA_MANAGEMENT"),
+  // auditMiddleware("MANUAL_SLA_VIOLATION_CREATED", "SLAViolation", "SLA_MANAGEMENT"),
   slaViolationManagementController.createManualSLAViolation
 );
 
 router.post(
   "/sla/violations/:violationId/contact-dealer",
   requireAuth,
-  auditMiddleware("DEALER_CONTACTED_ABOUT_VIOLATION", "SLAViolation", "SLA_MANAGEMENT"),
+  // auditMiddleware("DEALER_CONTACTED_ABOUT_VIOLATION", "SLAViolation", "SLA_MANAGEMENT"),
   slaViolationManagementController.contactDealerAboutViolation
 );
 
 router.post(
   "/sla/violations/bulk-contact",
   requireAuth,
-  auditMiddleware("BULK_DEALER_CONTACT_ATTEMPTED", "SLAViolation", "SLA_MANAGEMENT"),
+  // auditMiddleware("BULK_DEALER_CONTACT_ATTEMPTED", "SLAViolation", "SLA_MANAGEMENT"),
   slaViolationManagementController.bulkContactDealers
 );
 
 router.get(
   "/sla/violations/with-contact-info",
   requireAuth,
-  auditMiddleware("SLA_VIOLATIONS_WITH_CONTACT_INFO_ACCESSED", "SLAViolation", "SLA_MANAGEMENT"),
+  // auditMiddleware("SLA_VIOLATIONS_WITH_CONTACT_INFO_ACCESSED", "SLAViolation", "SLA_MANAGEMENT"),
   slaViolationManagementController.getSLAViolationsWithContactInfo
 );
 
 router.put(
   "/sla/violations/:violationId/resolve",
   requireAuth,
-  auditMiddleware("SLA_VIOLATION_RESOLUTION_ATTEMPTED", "SLAViolation", "SLA_MANAGEMENT"),
+  // auditMiddleware("SLA_VIOLATION_RESOLUTION_ATTEMPTED", "SLAViolation", "SLA_MANAGEMENT"),
   slaViolationManagementController.resolveSLAViolation
 );
 
 router.get(
   "/sla/violations/dealer/:dealerId/summary",
   requireAuth,
-  auditMiddleware("DEALER_VIOLATION_SUMMARY_ACCESSED", "SLAViolation", "SLA_MANAGEMENT"),
+  // auditMiddleware("DEALER_VIOLATION_SUMMARY_ACCESSED", "SLAViolation", "SLA_MANAGEMENT"),
   slaViolationManagementController.getDealerViolationSummary
 );
 
@@ -389,42 +394,42 @@ router.get(
 router.get(
   "/sla/violations/enhanced",
   requireAuth,
-  auditMiddleware("ENHANCED_SLA_VIOLATIONS_ACCESSED", "SLAViolation", "SLA_MANAGEMENT"),
+  // auditMiddleware("ENHANCED_SLA_VIOLATIONS_ACCESSED", "SLAViolation", "SLA_MANAGEMENT"),
   slaViolationEnhancedController.getSLAViolationsWithPopulatedData
 );
 
 router.get(
   "/sla/violations/enhanced/:violationId",
   requireAuth,
-  auditMiddleware("ENHANCED_SLA_VIOLATION_DETAILS_ACCESSED", "SLAViolation", "SLA_MANAGEMENT"),
+  // auditMiddleware("ENHANCED_SLA_VIOLATION_DETAILS_ACCESSED", "SLAViolation", "SLA_MANAGEMENT"),
   slaViolationEnhancedController.getSLAViolationByIdWithPopulatedData
 );
 
 router.get(
   "/sla/violations/enhanced/dealer/:dealerId",
   requireAuth,
-  auditMiddleware("ENHANCED_DEALER_SLA_VIOLATIONS_ACCESSED", "SLAViolation", "SLA_MANAGEMENT"),
+  // auditMiddleware("ENHANCED_DEALER_SLA_VIOLATIONS_ACCESSED", "SLAViolation", "SLA_MANAGEMENT"),
   slaViolationEnhancedController.getSLAViolationsByDealerWithPopulatedData
 );
 
 router.get(
   "/sla/violations/enhanced/order/:orderId",
   requireAuth,
-  auditMiddleware("ENHANCED_ORDER_SLA_VIOLATIONS_ACCESSED", "SLAViolation", "SLA_MANAGEMENT"),
+  // auditMiddleware("ENHANCED_ORDER_SLA_VIOLATIONS_ACCESSED", "SLAViolation", "SLA_MANAGEMENT"),
   slaViolationEnhancedController.getSLAViolationsByOrderWithPopulatedData
 );
 
 router.get(
   "/sla/violations/enhanced/analytics",
   requireAuth,
-  auditMiddleware("ENHANCED_SLA_VIOLATION_ANALYTICS_ACCESSED", "SLAViolation", "SLA_MANAGEMENT"),
+  // auditMiddleware("ENHANCED_SLA_VIOLATION_ANALYTICS_ACCESSED", "SLAViolation", "SLA_MANAGEMENT"),
   slaViolationEnhancedController.getSLAViolationAnalytics
 );
 
 router.get(
   "/sla/violations/enhanced/search",
   requireAuth,
-  auditMiddleware("ENHANCED_SLA_VIOLATION_SEARCH_ACCESSED", "SLAViolation", "SLA_MANAGEMENT"),
+  // auditMiddleware("ENHANCED_SLA_VIOLATION_SEARCH_ACCESSED", "SLAViolation", "SLA_MANAGEMENT"),
   slaViolationEnhancedController.searchSLAViolations
 );
 
@@ -432,25 +437,25 @@ router.get(
 router.post(
   "/sla/scheduler/start",
   requireAuth,
-  auditMiddleware("SLA_SCHEDULER_STARTED", "SLA", "SLA_MANAGEMENT"),
+  // auditMiddleware("SLA_SCHEDULER_STARTED", "SLA", "SLA_MANAGEMENT"),
   slaController.startScheduler
 );
 router.post(
   "/sla/scheduler/stop",
   requireAuth,
-  auditMiddleware("SLA_SCHEDULER_STOPPED", "SLA", "SLA_MANAGEMENT"),
+  // auditMiddleware("SLA_SCHEDULER_STOPPED", "SLA", "SLA_MANAGEMENT"),
   slaController.stopScheduler
 );
 router.get(
   "/sla/scheduler/status",
   requireAuth,
-  auditMiddleware("SLA_SCHEDULER_STATUS_ACCESSED", "SLA", "SLA_MANAGEMENT"),
+  // auditMiddleware("SLA_SCHEDULER_STATUS_ACCESSED", "SLA", "SLA_MANAGEMENT"),
   slaController.getSchedulerStatus
 );
 router.post(
   "/sla/scheduler/trigger-check",
   requireAuth,
-  auditMiddleware("SLA_MANUAL_CHECK_TRIGGERED", "SLA", "SLA_MANAGEMENT"),
+  // auditMiddleware("SLA_MANUAL_CHECK_TRIGGERED", "SLA", "SLA_MANAGEMENT"),
   slaController.triggerManualCheck
 );
 
@@ -458,30 +463,30 @@ router.post(
 router.get(
   "/analytics/fulfillment",
   requireAuth,
-  auditMiddleware("FULFILLMENT_ANALYTICS_ACCESSED", "Order", "REPORTING"),
+  // auditMiddleware("FULFILLMENT_ANALYTICS_ACCESSED", "Order", "REPORTING"),
   orderController.getFulfillmentMetrics
 );
 router.get(
   "/analytics/sla-compliance",
   requireAuth,
-  auditMiddleware("SLA_COMPLIANCE_REPORT_ACCESSED", "Order", "REPORTING"),
+  // auditMiddleware("SLA_COMPLIANCE_REPORT_ACCESSED", "Order", "REPORTING"),
   orderController.getSLAComplianceReport
 );
 router.get(
   "/analytics/dealer-performance",
   requireAuth,
-  auditMiddleware(
-    "DEALER_PERFORMANCE_ANALYTICS_ACCESSED",
-    "Order",
-    "REPORTING"
-  ),
+  // auditMiddleware(
+  //   "DEALER_PERFORMANCE_ANALYTICS_ACCESSED",
+  //   "Order",
+  //   "REPORTING"
+  // ),
   orderController.getDealerPerformance
 );
 router.get(
   "/stats",
   requireAuth,
   requireRole(["Super-admin", "Inventory-Admin", "Fulfillment-Admin"]),
-  auditMiddleware("ORDER_STATS_ACCESSED", "Order", "REPORTING"),
+  // auditMiddleware("ORDER_STATS_ACCESSED", "Order", "REPORTING"),
   orderController.getOrderStats
 );
 
@@ -489,32 +494,32 @@ router.get(
 router.post(
   "/batch/assign",
   requireAuth,
-  auditMiddleware("BATCH_ORDER_ASSIGNMENT", "Order", "ORDER_MANAGEMENT"),
+  // auditMiddleware("BATCH_ORDER_ASSIGNMENT", "Order", "ORDER_MANAGEMENT"),
   orderController.batchAssignOrders
 );
 router.post(
   "/batch/status-update",
   requireAuth,
-  auditMiddleware("BATCH_ORDER_STATUS_UPDATE", "Order", "ORDER_MANAGEMENT"),
+  // auditMiddleware("BATCH_ORDER_STATUS_UPDATE", "Order", "ORDER_MANAGEMENT"),
   orderController.batchUpdateStatus
 );
 
 router.get(
   "/get/order-by-dealer/:dealerId",
   requireAuth,
-  auditMiddleware("DEALER_ORDERS_ACCESSED", "Order", "ORDER_MANAGEMENT"),
+  // auditMiddleware("DEALER_ORDERS_ACCESSED", "Order", "ORDER_MANAGEMENT"),
   orderController.getOrdersByDealerId
 );
 router.get(
   "/staff/:staffId/orders",
   requireAuth,
-  auditMiddleware("STAFF_ORDERS_ACCESSED", "Order", "ORDER_MANAGEMENT"),
+  // auditMiddleware("STAFF_ORDERS_ACCESSED", "Order", "ORDER_MANAGEMENT"),
   orderController.getOrdersForFulfillmentStaff
 );
 router.put(
   "/update/order-status-by-dealer",
   requireAuth,
-  auditMiddleware("DEALER_ORDER_STATUS_UPDATED", "Order", "ORDER_MANAGEMENT"),
+  // auditMiddleware("DEALER_ORDER_STATUS_UPDATED", "Order", "ORDER_MANAGEMENT"),
   orderController.markDealerPackedAndUpdateOrderStatus
 );
 router.put("/add/order-rating/by-userId", orderController.addReview);
@@ -576,7 +581,7 @@ router.get("/get/orderSummary", orderController.getOrderSummaryMonthlyorWeekly);
 router.get(
   "/:orderId/audit-logs",
   requireAuth,
-  auditMiddleware("ORDER_AUDIT_LOGS_ACCESSED", "Order", "ORDER_MANAGEMENT"),
+  // auditMiddleware("ORDER_AUDIT_LOGS_ACCESSED", "Order", "ORDER_MANAGEMENT"),
   async (req, res) => {
     try {
       const { orderId } = req.params;
@@ -619,11 +624,11 @@ router.get(
 router.get(
   "/user/:userId/audit-logs",
   requireAuth,
-  auditMiddleware(
-    "USER_ORDER_AUDIT_LOGS_ACCESSED",
-    "Order",
-    "ORDER_MANAGEMENT"
-  ),
+  // auditMiddleware(
+  //   "USER_ORDER_AUDIT_LOGS_ACCESSED",
+  //   "Order",
+  //   "ORDER_MANAGEMENT"
+  // ),
   async (req, res) => {
     try {
       const { userId } = req.params;
@@ -666,11 +671,11 @@ router.get(
 router.get(
   "/dealer/:dealerId/audit-logs",
   requireAuth,
-  auditMiddleware(
-    "DEALER_ORDER_AUDIT_LOGS_ACCESSED",
-    "Order",
-    "ORDER_MANAGEMENT"
-  ),
+  // auditMiddleware(
+  //   "DEALER_ORDER_AUDIT_LOGS_ACCESSED",
+  //   "Order",
+  //   "ORDER_MANAGEMENT"
+  // ),
   async (req, res) => {
     try {
       const { dealerId } = req.params;
@@ -723,7 +728,7 @@ router.get(
     "Inventory-Admin",
     "Analytics-Admin",
   ]),
-  auditMiddleware("ORDER_STATS_ACCESSED", "System", "ANALYTICS"),
+  // auditMiddleware("ORDER_STATS_ACCESSED", "System", "ANALYTICS"),
   orderStatsController.getOrderStats
 );
 
@@ -741,7 +746,7 @@ router.get(
     "Inventory-Admin",
     "Analytics-Admin",
   ]),
-  auditMiddleware("DEALER_ORDER_STATS_ACCESSED", "Dealer", "ANALYTICS"),
+  // auditMiddleware("DEALER_ORDER_STATS_ACCESSED", "Dealer", "ANALYTICS"),
   orderStatsController.getDealerOrderStats
 );
 
@@ -759,7 +764,7 @@ router.get(
     "Inventory-Admin",
     "Analytics-Admin",
   ]),
-  auditMiddleware("ORDER_STATS_DASHBOARD_ACCESSED", "System", "ANALYTICS"),
+  // auditMiddleware("ORDER_STATS_DASHBOARD_ACCESSED", "System", "ANALYTICS"),
   orderStatsController.getOrderStatsDashboard
 );
 
@@ -777,7 +782,7 @@ router.get(
     "Inventory-Admin",
     "Analytics-Admin",
   ]),
-  auditMiddleware("ORDER_STATS_FILTERS_ACCESSED", "System", "ANALYTICS"),
+  // auditMiddleware("ORDER_STATS_FILTERS_ACCESSED", "System", "ANALYTICS"),
   orderStatsController.getOrderStatsWithFilters
 );
 
@@ -795,7 +800,7 @@ router.get(
     "Inventory-Admin",
     "Analytics-Admin",
   ]),
-  auditMiddleware("DEALER_STATS_ACCESSED", "Dealer", "ANALYTICS"),
+  // auditMiddleware("DEALER_STATS_ACCESSED", "Dealer", "ANALYTICS"),
   orderController.getDealerStats
 );
 
@@ -804,7 +809,7 @@ router.get(
   "/payment-stats",
   authenticate,
   authorizeRoles('Super-admin', 'Fulfillment-Admin', 'Inventory-Admin', 'Customer-Support'),
-  auditMiddleware("PAYMENT_STATS_ACCESSED", "Payment", "ANALYTICS"),
+  // auditMiddleware("PAYMENT_STATS_ACCESSED", "Payment", "ANALYTICS"),
   paymentStatsController.getPaymentStats
 );
 
@@ -812,7 +817,7 @@ router.get(
   "/payment-stats/period",
   authenticate,
   authorizeRoles('Super-admin', 'Fulfillment-Admin', 'Inventory-Admin', 'Customer-Support'),
-  auditMiddleware("PAYMENT_STATS_PERIOD_ACCESSED", "Payment", "ANALYTICS"),
+  // auditMiddleware("PAYMENT_STATS_PERIOD_ACCESSED", "Payment", "ANALYTICS"),
   paymentStatsController.getPaymentStatsByPeriod
 );
 
@@ -820,14 +825,14 @@ router.get(
   "/payment-stats/summary",
   authenticate,
   authorizeRoles('Super-admin', 'Fulfillment-Admin', 'Inventory-Admin', 'Customer-Support'),
-  auditMiddleware("PAYMENT_STATS_SUMMARY_ACCESSED", "Payment", "ANALYTICS"),
+  // auditMiddleware("PAYMENT_STATS_SUMMARY_ACCESSED", "Payment", "ANALYTICS"),
   paymentStatsController.getPaymentStatsSummary
 );
 
 router.put(
   "/update/order-status-by-dealer/by-sku",
   requireAuth,
-  auditMiddleware("DEALER_ORDER_STATUS_UPDATED", "Order", "ORDER_MANAGEMENT"),
+  // auditMiddleware("DEALER_ORDER_STATUS_UPDATED", "Order", "ORDER_MANAGEMENT"),
   // orderController.markDealerPackedAndUpdateOrderStatusBySKU
   orderController.markDealerPackedAndUpdateOrderStatusBySKUOne
 );

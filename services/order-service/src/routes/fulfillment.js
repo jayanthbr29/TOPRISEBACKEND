@@ -3,7 +3,7 @@ const router = express.Router();
 const fulfillmentController = require("../controllers/fulfillmentController");
 const { authenticate, authorizeRoles } = require("/packages/utils/authMiddleware");
 const { requireAuth } = require("../middleware/authMiddleware");
-
+const auditLogger = require("../.././../../packages/utils/auditLoggerMiddleware");
 // ==================== FULFILLMENT STATISTICS ====================
 
 // Get fulfillment statistics
