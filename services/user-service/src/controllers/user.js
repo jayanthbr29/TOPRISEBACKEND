@@ -19,6 +19,7 @@ const streamifier = require("streamifier");
 const axios = require("axios");
 const PasswordReset = require("../models/PasswordReset");
 const crypto = require("crypto");
+const auditLogger = require("../../../../packages/utils/auditLoggerMiddleware");
 
 // Helper function to fetch SLA type information from order service
 async function fetchSLATypeInfo(slaTypeId, authorizationHeader) {
@@ -277,6 +278,11 @@ exports.loginUserForMobile = async (req, res) => {
 
     return sendSuccess(res, { user: firebaseUser, token }, "Login successful");
   } catch (err) {
+    try {
+        auditLogger("Login_Failed_user", "USER");
+      } catch (err) {
+        console.log(err);
+      }
     logger.error(`❌ Firebase login error: ${err.message}`);
     sendError(res, err);
   }
@@ -691,7 +697,7 @@ exports.getDealerById = async (req, res) => {
   try {
     const { id } = req.params;
     const { includeSLAInfo = false } = req.query;
-    const authorizationHeader = req.headers.authorization; 
+    const authorizationHeader = req.headers.authorization;
     // const cacheKey = `dealers:${id}`;
     // const cached = await redisClient.get(cacheKey);
     // if (cached) {
@@ -994,7 +1000,17 @@ exports.loginUserForDashboard = async (req, res) => {
         logger.warn(`❌ Password mismatch for user: ${email}`);
         return sendError(res, "Invalid credentials", 401);
       }
+      try {
+        auditLogger("Login_Failed_admin", "USER");
+      } catch (err) {
+        console.log(err);
+      }
     } catch (bcryptError) {
+      try {
+        auditLogger("Login_Failed_admin", "USER");
+      } catch (err) {
+        console.log(err);
+      }
       logger.error(`❌ Bcrypt comparison error for user ${email}:`, bcryptError.message);
       logger.error(`❌ Password type: ${typeof password}, User password type: ${typeof user.password}`);
       return sendError(res, "Authentication error. Please try again.", 500);
@@ -2378,7 +2394,7 @@ async function getEmployeeIdByEmployeeId(empId) {
     throw new Error(`Employee with employee_id '${empId}' not found`);
   }
 
- if (!employee._id) {
+  if (!employee._id) {
     throw new Error(`Employee '${empId}' does not have an associated _id`);
   }
 
@@ -4633,7 +4649,7 @@ exports.setDealerPermissions = async (req, res) => {
     if (dealer.is_permissios_set) {
       return res.status(400).json({
         message: "Permissions already set. Use edit API instead."
-      }); 
+      });
     }
 
     dealer.permission = {
@@ -4705,7 +4721,7 @@ exports.updateDealerPermissions = async (req, res) => {
         dealer.permission.readPermissions.allowed_fields;
     }
 
-   
+
     if (updatePermissions) {
       dealer.permission.updatePermissions.isEnabled =
         updatePermissions.isEnabled ??
@@ -4799,7 +4815,7 @@ exports.getDealersBydealerId = async (req, res) => {
 }
 
 
-exports.updateDealerLastfullfillmentTime= async (req, res) => {
+exports.updateDealerLastfullfillmentTime = async (req, res) => {
   try {
     const { dealerId } = req.params;
     const dealer = await Dealer.findOne({ _id: dealerId });
@@ -4929,17 +4945,17 @@ exports.addAllowedBrandsToDealer = async (req, res) => {
   }
 }
 
-exports.removeAllowedBrandsFromDealer = async (req, res) => { 
+exports.removeAllowedBrandsFromDealer = async (req, res) => {
   try {
     const { dealerId } = req.params;
-    const { brands } = req.body;  
-    if (!brands || !Array.isArray(brands) || brands.length === 0) {     
-      return sendError(res, "Brands array is required and cannot be empty", 400);   
+    const { brands } = req.body;
+    if (!brands || !Array.isArray(brands) || brands.length === 0) {
+      return sendError(res, "Brands array is required and cannot be empty", 400);
     }
 
-    const dealer = await Dealer.findById(dealerId);    
-    if (!dealer) {      
-      return sendError(res, "Dealer not found", 404);    
+    const dealer = await Dealer.findById(dealerId);
+    if (!dealer) {
+      return sendError(res, "Dealer not found", 404);
     }
 
     // Remove specified brands from the allowed_brands array
@@ -4999,6 +5015,42 @@ exports.getDealerByBrandId = async (req, res) => {
     );
   } catch (err) {
     logger.error(`Get dealers by brand ID error: ${err.message}`);
+    sendError(res, err);
+  }
+};
+
+exports.removeSlaFromDealers = async (req, res) => {
+  try {
+    
+    const { slaId } = req.body;
+
+    const dealers = await Dealer.find({ SLA_type: slaId });
+    if (!dealers || dealers.length === 0) {
+      return sendSuccess(
+        res,
+        [],
+        "No dealers found for the specified SLA"
+      );
+    }
+
+    for (const dealer of dealers) {
+      dealer.SLA_type = null;
+      await dealer.save();  
+    }
+
+    logger.info(
+      `Removed SLA from ${dealers.length} dealers`
+    );
+    sendSuccess(
+      res,
+      {
+        total_dealers: dealers.length,
+        dealers: dealers,
+      },
+      `SLA removed from dealers successfully`
+    );
+  } catch (err) {
+    logger.error(`Remove SLA from dealers error: ${err.message}`);
     sendError(res, err);
   }
 };

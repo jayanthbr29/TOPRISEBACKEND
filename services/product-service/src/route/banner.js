@@ -8,6 +8,7 @@ const {
 } = require("/packages/utils/authMiddleware");
 const storage = multer.memoryStorage();
 // const upload = multer({ storage });
+const auditLogger = require("../.././../../packages/utils/auditLoggerMiddleware");
 
 const bannerController = require("../controller/banner");
 const bannerAdminController = require("../controllers/bannerAdmin");
@@ -36,12 +37,14 @@ router.post(
     { name: "mobile", maxCount: 1 },
     { name: "tablet", maxCount: 1 },
   ]),
+   auditLogger("Banner_Created", "CONTENT_MANAGEMENT"),
   authenticate,
   authorizeRoles("Super-admin"),
   bannerController.createBanner
 );
 router.put(
   "/:id",
+  auditLogger("Banner_Edited", "CONTENT_MANAGEMENT"),
   upload.fields([
     { name: "web", maxCount: 1 },
     { name: "mobile", maxCount: 1 },
@@ -64,6 +67,7 @@ router.delete(
   "/:id",
   authenticate,
   authorizeRoles("Super-admin"),
+   auditLogger("Banner_Deleted", "CONTENT_MANAGEMENT"),
   bannerController.deleteBanner
 );
 router.put(
@@ -79,6 +83,7 @@ router.post(
     { name: "dataFile", maxCount: 1 },
     { name: "imageZip", maxCount: 1 }
   ]),
+    auditLogger("Banner_Bulk_Upload", "CONTENT_MANAGEMENT"),
   bannerController.bulkUploadBanners
 );
 module.exports = router;

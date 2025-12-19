@@ -17,9 +17,10 @@ const {
 const Refund = require("../models/refund");
 const ReturnModel = require("../models/return");
 const { generatePdfAndUploadInvoice } = require("../../../../packages/utils/generateInvoice");
+const auditLogger = require("../.././../../packages/utils/auditLoggerMiddleware");
 exports.createPayment = async (req, res) => {
   try {
-    const { userId, amount, orderSource, orderType, customerDetails ,type_of_delivery,delivery_type} =
+    const { userId, amount, orderSource, orderType, customerDetails, type_of_delivery, delivery_type } =
       req.body;
     if (!userId || !amount) {
       logger.error("User ID and amount are required");
@@ -38,8 +39,8 @@ exports.createPayment = async (req, res) => {
         orderSource: orderSource,
         orderType: orderType,
         customerDetails: JSON.stringify(customerDetails),
-        type_of_delivery:type_of_delivery,
-        delivery_type:delivery_type
+        type_of_delivery: type_of_delivery,
+        delivery_type: delivery_type
         //   cart_id:cart_id
       },
     };
@@ -216,20 +217,20 @@ exports.verifyPayment = async (req, res) => {
 
     const invoiceNumber = `INV-${Date.now()}`;
     const customerDetails = newOrder.customerDetails;
-     const items = await Promise.all(newOrder.skus.map(async (s) =>{ 
-          //call product service to get product name
-          const productResponse = await axios.get(`http://product-service:5001/products/v1/sku/${s.sku}`); 
-          const productData = productResponse.data.data;  
-    
-          // if customer address is from delhi means it contains delhi in address then make scgst and cgst 0  and make igst= scgst+cgst
-          const scgst = (s.gst_percentage || 0) / 2;
-          const cgst = (s.gst_percentage || 0) / 2;
-          const igst = scgst + cgst;
-          const lowerCaseAddress = customerDetails?.address?.toLowerCase();
-          const containsDelhi = lowerCaseAddress.includes('delhi');
-          console.log("containsDelhi",containsDelhi);
-          if (containsDelhi) {
-             return ({
+    const items = await Promise.all(newOrder.skus.map(async (s) => {
+      //call product service to get product name
+      const productResponse = await axios.get(`http://product-service:5001/products/v1/sku/${s.sku}`);
+      const productData = productResponse.data.data;
+
+      // if customer address is from delhi means it contains delhi in address then make scgst and cgst 0  and make igst= scgst+cgst
+      const scgst = (s.gst_percentage || 0) / 2;
+      const cgst = (s.gst_percentage || 0) / 2;
+      const igst = scgst + cgst;
+      const lowerCaseAddress = customerDetails?.address?.toLowerCase();
+      const containsDelhi = lowerCaseAddress.includes('delhi');
+      console.log("containsDelhi", containsDelhi);
+      if (containsDelhi) {
+        return ({
           productName: s.productName,
           sku: s.sku,
           hsn: productData?.hsn_code || "N/A",
@@ -237,16 +238,16 @@ exports.verifyPayment = async (req, res) => {
           unitPrice: s.selling_price,
           quantity: s.quantity,
           taxRate: `${igst || 0}%`,
-          cgstPercent:  0 ,
-          cgstAmount:  0,
-          sgstPercent:  0,
+          cgstPercent: 0,
+          cgstAmount: 0,
+          sgstPercent: 0,
           sgstAmount: 0,
           igstPercent: igst || 0,
           igstAmount: s.gst_amount || 0,
           totalAmount: s.totalPrice,
         });
-      }else{
-    return ({
+      } else {
+        return ({
           productName: s.productName,
           sku: s.sku,
           hsn: productData?.hsn_code || "N/A",
@@ -259,10 +260,10 @@ exports.verifyPayment = async (req, res) => {
           sgstPercent: (s.gst_percentage || 0) / 2,
           sgstAmount: (s.gst_amount || 0) / 2,
           totalAmount: s.totalPrice,
-          });
+        });
       }
-          
-        }));
+
+    }));
     const shippingCharges = Number(cart.deliveryCharge) || 0;
     const totalOrderAmount = Number((req.body.payload.payment.entity.amount / 100)) || 0;
 
@@ -341,6 +342,12 @@ exports.verifyPayment = async (req, res) => {
         "✅ Notification created successfully",
         successData.message
       );
+    }
+    //create audit log
+    try {
+      auditLogger("Order_Created_Prepaid", "ORDER");
+    } catch (e) {
+      console.log(e)
     }
 
     // Send order confirmation email
@@ -425,7 +432,7 @@ exports.verifyPayment = async (req, res) => {
       return res.status(200).json({ error: "Return not found" });
     }
     returnData.returnStatus = "Refund_Failed";
-    returnData.timestamps.refundCompletedAt = new Date(); 
+    returnData.timestamps.refundCompletedAt = new Date();
     returnData.refund.refundStatus = "Failed";
     await returnData.save();
 
@@ -485,41 +492,41 @@ exports.getPaymentDetails = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-    const { payment_status, payment_method, startDate, endDate ,razorpay_payment_method,sort} = req.query;
-   console.log("query", req.query)
+    const { payment_status, payment_method, startDate, endDate, razorpay_payment_method, sort } = req.query;
+    console.log("query", req.query)
     // Build filter
     const filter = {};
-    if (payment_status!=="all") filter.payment_status = payment_status;
-    if (payment_method!=="all") filter.payment_method = payment_method;
-    if(payment_method === "Razorpay" && razorpay_payment_method && razorpay_payment_method !=="all"){
+    if (payment_status !== "all") filter.payment_status = payment_status;
+    if (payment_method !== "all") filter.payment_method = payment_method;
+    if (payment_method === "Razorpay" && razorpay_payment_method && razorpay_payment_method !== "all") {
       filter.razorpay_payment_method = razorpay_payment_method;
     }
     if (startDate || endDate) {
       filter.created_at = {};
       if (startDate) filter.created_at.$gte = new Date(startDate);
-      if (endDate){ 
+      if (endDate) {
         filter.created_at.$lte = new Date(endDate);
         //set end date hours to 23:59:59
         filter.created_at.$lte.setHours(23);
         filter.created_at.$lte.setMinutes(59);
         filter.created_at.$lte.setSeconds(59);
-      
+
       }
     }
     console.log("filter", filter)
     const sortOptions = {};
-    if(sort){
-    if(sort=="asc"){
-      sortOptions.amount = 1;
-    }else if(sort=="desc"){
-      sortOptions.amount = -1;
+    if (sort) {
+      if (sort == "asc") {
+        sortOptions.amount = 1;
+      } else if (sort == "desc") {
+        sortOptions.amount = -1;
+      }
+    } else {
+      sortOptions.created_at = -1;
     }
-  }else{
-    sortOptions.created_at = -1;
-  }
 
     const totalPayments = await Payment.countDocuments(filter)
-    ;
+      ;
 
     // Populate order with comprehensive details
     const paymentDetails = await Payment.find(filter)
@@ -535,7 +542,7 @@ exports.getPaymentDetails = async (req, res) => {
       .sort(sortOptions)
       .skip(skip)
       .limit(limit);
-      console.log("paymentDetails", paymentDetails);
+    console.log("paymentDetails", paymentDetails);
 
     // Enhance each payment with comprehensive order details
     const enhancedPayments = paymentDetails.map(payment => ({
@@ -1065,53 +1072,53 @@ exports.getPaymentDetailsNoPagination = async (req, res) => {
 
       orderDetails: payment.order_id
         ? {
-            _id: payment.order_id._id,
-            orderId: payment.order_id.orderId,
-            orderDate: payment.order_id.orderDate,
-            totalAmount: payment.order_id.totalAmount,
-            orderType: payment.order_id.orderType,
-            orderSource: payment.order_id.orderSource,
-            status: payment.order_id.status,
-            customerDetails: payment.order_id.customerDetails,
-            paymentType: payment.order_id.paymentType,
-            skus: payment.order_id.skus,
-            order_Amount: payment.order_id.order_Amount,
-            GST: payment.order_id.GST,
-            deliveryCharges: payment.order_id.deliveryCharges,
-            timestamps: payment.order_id.timestamps,
-            type_of_delivery: payment.order_id.type_of_delivery,
-            trackingInfo: payment.order_id.trackingInfo,
-            invoiceNumber: payment.order_id.invoiceNumber,
-            purchaseOrderId: payment.order_id.purchaseOrderId,
-            slaInfo: payment.order_id.slaInfo,
-            order_track_info: payment.order_id.order_track_info,
+          _id: payment.order_id._id,
+          orderId: payment.order_id.orderId,
+          orderDate: payment.order_id.orderDate,
+          totalAmount: payment.order_id.totalAmount,
+          orderType: payment.order_id.orderType,
+          orderSource: payment.order_id.orderSource,
+          status: payment.order_id.status,
+          customerDetails: payment.order_id.customerDetails,
+          paymentType: payment.order_id.paymentType,
+          skus: payment.order_id.skus,
+          order_Amount: payment.order_id.order_Amount,
+          GST: payment.order_id.GST,
+          deliveryCharges: payment.order_id.deliveryCharges,
+          timestamps: payment.order_id.timestamps,
+          type_of_delivery: payment.order_id.type_of_delivery,
+          trackingInfo: payment.order_id.trackingInfo,
+          invoiceNumber: payment.order_id.invoiceNumber,
+          purchaseOrderId: payment.order_id.purchaseOrderId,
+          slaInfo: payment.order_id.slaInfo,
+          order_track_info: payment.order_id.order_track_info,
 
-            // Computed fields
-            skuCount: payment.order_id.skus?.length || 0,
-            totalSKUs:
-              payment.order_id.skus?.reduce(
-                (t, sku) => t + sku.quantity,
-                0
-              ) || 0,
+          // Computed fields
+          skuCount: payment.order_id.skus?.length || 0,
+          totalSKUs:
+            payment.order_id.skus?.reduce(
+              (t, sku) => t + sku.quantity,
+              0
+            ) || 0,
 
-            customerName: payment.order_id.customerDetails?.name || "N/A",
-            customerEmail: payment.order_id.customerDetails?.email || "N/A",
-            customerPhone: payment.order_id.customerDetails?.phone || "N/A",
+          customerName: payment.order_id.customerDetails?.name || "N/A",
+          customerEmail: payment.order_id.customerDetails?.email || "N/A",
+          customerPhone: payment.order_id.customerDetails?.phone || "N/A",
 
-            // Dealer info
-            dealers:
-              payment.order_id.skus?.flatMap((sku) =>
-                sku.dealerMapped?.map((dealer) => ({
-                  dealerId: dealer.dealerId?._id,
-                  dealerName:
-                    dealer.dealerId?.trade_name ||
-                    dealer.dealerId?.legal_name,
-                  dealerCode: dealer.dealerId?.dealer_code,
-                  dealerEmail: dealer.dealerId?.email,
-                  dealerPhone: dealer.dealerId?.phone_Number
-                })) || []
-              ) || []
-          }
+          // Dealer info
+          dealers:
+            payment.order_id.skus?.flatMap((sku) =>
+              sku.dealerMapped?.map((dealer) => ({
+                dealerId: dealer.dealerId?._id,
+                dealerName:
+                  dealer.dealerId?.trade_name ||
+                  dealer.dealerId?.legal_name,
+                dealerCode: dealer.dealerId?.dealer_code,
+                dealerEmail: dealer.dealerId?.email,
+                dealerPhone: dealer.dealerId?.phone_Number
+              })) || []
+            ) || []
+        }
         : null,
 
       paymentSummary: {

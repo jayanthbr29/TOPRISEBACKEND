@@ -9,12 +9,15 @@ const { optionalAuth } = require("../middleware/authMiddleware");
 const ProductAuditLogger = require("../utils/auditLogger");
 const multer = require("multer");
 const upload = multer();
+const auditLogger = require("../.././../../packages/utils/auditLoggerMiddleware");
+
 // ✅ CREATE PINCODE
 router.post(
     "/",
     optionalAuth,
     // ProductAuditLogger.createMiddleware("PINCODE_CREATED", "Pincode", "PINCODE_MANAGEMENT"),
     authenticate,
+    auditLogger("Pincode_Created", "SETTING"),
     authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin"),
     pincodeController.createPincode
 );
@@ -43,6 +46,7 @@ router.get(
 router.put(
     "/:id",
     optionalAuth,
+    auditLogger("Pincode_Edited", "SETTING"),
     // ProductAuditLogger.createMiddleware("PINCODE_UPDATED", "Pincode", "PINCODE_MANAGEMENT"),
     authenticate,
     authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin"),
@@ -53,6 +57,7 @@ router.put(
 router.delete(
     "/:id",
     optionalAuth,
+    auditLogger("Pincode_Deleted", "SETTING"),
     // ProductAuditLogger.createMiddleware("PINCODE_DELETED", "Pincode", "PINCODE_MANAGEMENT"),
     authenticate,
     authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin"),
@@ -70,6 +75,7 @@ router.get(
 router.post(
     "/bulk",
     optionalAuth,
+    auditLogger("Pincode_Bulk_create", "SETTING"),
     // ProductAuditLogger.createMiddleware("BULK_PINCODES_CREATED", "Pincode", "PINCODE_MANAGEMENT"),
     authenticate,
     authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin"),
@@ -88,7 +94,7 @@ router.get(
 
 router.delete(
     "/bulk/delete",
-
+ auditLogger("Pincode_Bulk_Delete", "SETTING"),
     // ProductAuditLogger.createMiddleware("BULK_PINCODES_DELETED", "Pincode", "PINCODE_MANAGEMENT"),
     authenticate,
     authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin"),
@@ -97,6 +103,7 @@ router.delete(
 
 router.post(
   "/bulk-upload",
+   auditLogger("Pincode_Bulk_create", "SETTING"),
   upload.single("file"),
   pincodeController.bulkUploadPincodes
 );

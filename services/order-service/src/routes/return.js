@@ -5,9 +5,12 @@ const {
     authenticate,
     authorizeRoles,
 } = require("/packages/utils/authMiddleware");
+const auditLogger = require("../.././../../packages/utils/auditLoggerMiddleware");
 
 // Return request management
-router.post("/create", returnController.createReturnRequest);
+router.post("/create", 
+    auditLogger("Order_Return_Created", "RETURN"),
+    returnController.createReturnRequest);
 router.get("/:returnId",  returnController.getReturnRequest);
 router.get("/", returnController.getReturnRequests);
 router.get("/stats/overview", returnController.getReturnRequestStats);
@@ -16,7 +19,9 @@ router.get("/user/:userId/test", returnController.testUserReturnRequests);
 //return request byuser
 
 // Return validation and processing
-router.put("/:returnId/validate", returnController.validateReturnRequest);
+router.put("/:returnId/validate",
+     auditLogger("Return_Validated", "RETURN"),
+    returnController.validateReturnRequest);
 router.put("/:returnId/schedule-pickup", returnController.schedulePickup);
 router.put("/:returnId/complete-pickup", returnController.completePickup);
 
@@ -33,10 +38,18 @@ router.put("/:returnId/complete", returnController.completeReturn);
 // Additional features
 router.post("/:returnId/notes", returnController.addNote);
 
-router.put("/validate-return/:returnId",returnController.validateReturnRequest);
-router.put("/Intiate-Borzo-Return/:returnId",returnController.intiateBorzoOrderForReturn);
+router.put("/validate-return/:returnId",
+      auditLogger("Return_Validated", "RETURN"),
+    returnController.validateReturnRequest);
+router.put("/Intiate-Borzo-Return/:returnId",
+      auditLogger("Return_Borzo_Initiated", "RETURN"),
+    returnController.intiateBorzoOrderForReturn);
 router.put("/start-Inspection/:returnId",returnController.startReturnRequestInspection);
-router.put("/complete-Inspection/:returnId",returnController.completeReturnRequestInspection); 
-router.put("/Reject-return/:returnId",returnController.rejectReturnRequest);
+router.put("/complete-Inspection/:returnId",
+     auditLogger("Return_Inspection_Completed", "RETURN"),
+    returnController.completeReturnRequestInspection); 
+router.put("/Reject-return/:returnId",
+    auditLogger("Return_Rejected", "RETURN"),
+    returnController.rejectReturnRequest);
 router.get("/return/stats",returnController.getReturnStatusCounts);
 module.exports = router;

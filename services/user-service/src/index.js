@@ -93,7 +93,7 @@ const appSettingRoutes = require("./routes/appSetting");
 const permissionMatrixRoutes = require("./routes/PermissionMatrix");
 const auditRoutes = require("./routes/audit");
 const pincodeRoutes = require("./routes/pincode");
-
+const actionAuditLogsRoutes = require("./routes/actionAuditLogsRoutes");
 
 
 app.use("/api/users", userRoutes); // ✅ All routes now live under /api/users
@@ -103,6 +103,7 @@ app.use("/api/permissionMatrix", permissionMatrixRoutes);
 app.use("/api/audit", auditRoutes);
 app.use("/api/reports", reportsRoutes);
 app.use("/api/pincodes", pincodeRoutes);
+app.use("/api/action-audit-logs", actionAuditLogsRoutes);
 // Routes
 
 // Health Check

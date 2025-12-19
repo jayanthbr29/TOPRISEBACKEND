@@ -7,7 +7,7 @@ const { sendSuccess, sendError } = require("/packages/utils/responseHandler");
 const { fetchDealer } = require("../utils/userserviceClient1");
 const slaViolationScheduler = require("../jobs/slaViolationScheduler");
 const slaViolationMiddleware = require("../middleware/slaViolationMiddleware");
-
+const axios = require("axios");
 // SLA Type Management
 exports.createSLAType = async (req, res) => {
   try {
@@ -522,8 +522,8 @@ function getViolationSeverity(violationMinutes) {
 
 exports.updateSlaTypes = async (req, res) => {
   try {
-    const {id}=req.params;
-    const{ name, description, expected_hours } = req.body;
+    const { id } = req.params;
+    const { name, description, expected_hours } = req.body;
     const slaType = await SLAType.findById(id);
 
     if (!slaType) {
@@ -559,7 +559,7 @@ exports.getSLATypesWithPagination = async (req, res) => {
     const {
       page = 1,
       limit = 10,
-      search ,
+      search,
       sortBy = "created_at",
       sortOrder = "desc",
     } = req.query;
@@ -617,5 +617,32 @@ exports.getSLATypesWithPagination = async (req, res) => {
   } catch (error) {
     logger.error("Get SLA Types with pagination failed:", error);
     return sendError(res, "Failed to get SLA Types");
+  }
+};
+
+exports.deleteSlaType = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const slaType = await SLAType.findById(id);
+    if (!slaType) {
+      return sendError(res, "SLA type not found", 404);
+    }
+    
+    const response = await axios.post("http://user-service:5001/api/users/dealer/sla/delete", {
+      slaId: slaType._id
+    },{
+      headers: {
+        'Content-Type': 'application/json',
+        authorization: req.headers.authorization
+      } 
+    })
+    const deletedSlaType = await SLAType.findByIdAndDelete(id);
+    if (!deletedSlaType) {
+      return sendError(res, "SLA type not found", 404);
+    }
+    sendSuccess(res, deletedSlaType, "SLA type deleted successfully");
+  } catch (error) {
+    logger.error(`❌ Error deleting SLA type: ${error.message}`);
+    sendError(res, "Failed to delete SLA type", 500);
   }
 };

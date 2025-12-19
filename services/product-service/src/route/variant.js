@@ -6,6 +6,7 @@ const {
   authorizeRoles,
 } = require("/packages/utils/authMiddleware");
 const multer = require("multer");
+const auditLogger = require("../.././../../packages/utils/auditLoggerMiddleware");
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
@@ -15,6 +16,7 @@ router.post(
   authenticate,
   authorizeRoles("Super-admin", "Fulfillment-Admin"),
   upload.single("file"),
+    auditLogger("Variant_Created", "CONTENT_MANAGEMENT"),
   variantController.createVariant
 );
 
@@ -50,6 +52,7 @@ router.get(
 router.put(
   "/:id",
   authenticate,
+    auditLogger("Variant_Edited", "CONTENT_MANAGEMENT"),
   authorizeRoles("Super-admin", "Fulfillment-Admin"),
   upload.single("file"),
   variantController.updateVariant
@@ -59,12 +62,14 @@ router.delete(
   "/:id",
   authenticate,
   authorizeRoles("Super-admin", "Fulfillment-Admin"),
+   auditLogger("Variant_Deleted", "CONTENT_MANAGEMENT"),
   variantController.deleteVariant
 );
 
 router.post(
   "/bulk-upload/variants",
   authenticate,
+   auditLogger("Variant_Bulk_Upload", "CONTENT_MANAGEMENT"),
   authorizeRoles("Super-admin", "Inventory-Admin"),
   upload.fields([
     { name: "dataFile", maxCount: 1 },

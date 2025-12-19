@@ -6,6 +6,7 @@ const {
 } = require("/packages/utils/authMiddleware");
 const multer = require("multer");
 const router = express.Router();
+const auditLogger = require("../.././../../packages/utils/auditLoggerMiddleware");
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
@@ -16,6 +17,7 @@ router.post(
   upload.single("file"), // Image file should be sent with key: 'file'
   authenticate,
   authorizeRoles("Super-admin", "Fulfillment-Admin"),
+  auditLogger("Sub_Category_Created", "CONTENT_MANAGEMENT"),
   subCategoryController.createSubCategory
 );
 
@@ -53,6 +55,7 @@ router.put(
   authenticate,
   authorizeRoles("Super-admin", "Fulfillment-Admin"),
   upload.single("file"), // Optional updated image
+   auditLogger("Sub_Category_Edited", "CONTENT_MANAGEMENT"),
   subCategoryController.updateSubCategory
 );
 
@@ -61,6 +64,7 @@ router.delete(
   "/:id",
   authenticate,
   authorizeRoles("Super-admin", "Fulfillment-Admin"),
+  auditLogger("Sub_Category_Deleted", "CONTENT_MANAGEMENT"),
   subCategoryController.deleteSubCategory
 );
 
@@ -72,6 +76,7 @@ router.post(
     { name: "dataFile", maxCount: 1 },
     { name: "imageZip", maxCount: 1 },
   ]),
+   auditLogger("Sub_Category_Bulk_Upload", "CONTENT_MANAGEMENT"),
   subCategoryController.bulkUploadSubCategories
 );
 

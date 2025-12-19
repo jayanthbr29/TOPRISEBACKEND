@@ -92,6 +92,7 @@ const requireAuth = (req, res, next) => {
       
       // Decode token without verification for testing
       const decoded = jwt.decode(token);
+      console.log('decoded', decoded);
       
       if (!decoded) {
         logger.warn('Invalid JWT token: could not decode');
