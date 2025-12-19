@@ -579,7 +579,7 @@ router.patch(
 router.post(
   "/:userId/bank-details",
   authenticate,
-  requireRole(["User", "Super-admin"]),
+  // requireRole(["User", "Super-admin"]),
   // auditMiddleware("BANK_DETAILS_ADDED", "User", "USER_MANAGEMENT"),
   userController.addBankDetails
 );

@@ -72,7 +72,7 @@ exports.createReturnRequest = async (req, res) => {
     }
 
     // Validate return eligibility
-    const eligibilityResult = await validateReturnEligibility(order, sku);
+    // const eligibilityResult = await validateReturnEligibility(order, sku);
     // console.log("Eligibility Result:", eligibilityResult);
     // if (!eligibilityResult.isEligible) {
     //   return sendError(res, "Return is not eligible");
@@ -86,11 +86,13 @@ exports.createReturnRequest = async (req, res) => {
       returnReason,
       returnDescription,
       returnImages,
-      isEligible: eligibilityResult.isEligible,
-      eligibilityReason: eligibilityResult.reason,
-      isWithinReturnWindow: eligibilityResult.isWithinReturnWindow,
-      isProductReturnable: eligibilityResult.isProductReturnable,
-      returnWindowDays: eligibilityResult.returnWindowDays,
+      isEligible: true,
+      isWithinReturnWindow: true,
+      // isEligible: eligibilityResult.isEligible,
+      // eligibilityReason: eligibilityResult.reason,
+      // isWithinReturnWindow: eligibilityResult.isWithinReturnWindow,
+      // isProductReturnable: eligibilityResult.isProductReturnable,
+      // returnWindowDays: eligibilityResult.returnWindowDays,
       originalOrderDate: order.orderDate,
       originalDeliveryDate: order.skus.find((s) => s.sku === sku)?.tracking_info
         ?.timestamps?.deliveredAt,
