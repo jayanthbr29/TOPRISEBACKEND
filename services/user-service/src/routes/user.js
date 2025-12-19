@@ -578,7 +578,7 @@ router.patch(
 // Bank Details Routes
 router.post(
   "/:userId/bank-details",
-  authenticate,
+  // authenticate,
   // requireRole(["User", "Super-admin"]),
   // auditMiddleware("BANK_DETAILS_ADDED", "User", "USER_MANAGEMENT"),
   userController.addBankDetails
@@ -586,16 +586,15 @@ router.post(
 
 router.put(
   "/:userId/bank-details",
-  authenticate,
-  requireRole(["User", "Super-admin"]),
+  // authenticate,
+  // requireRole(["User", "Super-admin"]),
   // auditMiddleware("BANK_DETAILS_UPDATED", "User", "USER_MANAGEMENT"),
   userController.updateBankDetails
 );
 
 router.get(
   "/:userId/bank-details",
-  authenticate,
-  requireRole(["User", "Super-admin"]),
+
   // auditMiddleware("BANK_DETAILS_ACCESSED", "User", "USER_MANAGEMENT"),
   userController.getBankDetails
 );
