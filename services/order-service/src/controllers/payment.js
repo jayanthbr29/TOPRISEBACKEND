@@ -320,29 +320,29 @@ exports.verifyPayment = async (req, res) => {
     //  push Notification
 
     let tokenDummy;
-    const successData =
-      await createUnicastOrMulticastNotificationUtilityFunction(
-        [req.body.payload.payment.entity.notes.user_id],
-        ["INAPP", "PUSH", "EMAIL"],
-        "Order Placed",
-        `Order Placed Successfully with order id ${orderId}`,
-        "",
-        "",
-        "Order",
-        {
-          order_id: newOrder._id,
-        },
-        tokenDummy
-      );
-    if (!successData.success) {
-      console.log(successData);
-      logger.error("❌ Create notification error:", successData.message);
-    } else {
-      logger.info(
-        "✅ Notification created successfully",
-        successData.message
-      );
-    }
+    // const successData =
+    //   await createUnicastOrMulticastNotificationUtilityFunction(
+    //     [req.body.payload.payment.entity.notes.user_id],
+    //     ["INAPP", "PUSH", "EMAIL"],
+    //     "Order Placed",
+    //     `Order Placed Successfully with order id ${orderId}`,
+    //     "",
+    //     "",
+    //     "Order",
+    //     {
+    //       order_id: newOrder._id,
+    //     },
+    //     tokenDummy
+    //   );
+    // if (!successData.success) {
+    //   console.log(successData);
+    //   logger.error("❌ Create notification error:", successData.message);
+    // } else {
+    //   logger.info(
+    //     "✅ Notification created successfully",
+    //     successData.message
+    //   );
+    // }
     //create audit log
     try {
       auditLogger("Order_Created_Prepaid", "ORDER");
@@ -351,49 +351,49 @@ exports.verifyPayment = async (req, res) => {
     }
 
     // Send order confirmation email
-    try {
-      const emailResult = await sendOrderConfirmationEmail(
-        newOrder.customerDetails.email,
-        newOrder,
-        req.headers.authorization
-      );
-      if (emailResult.success) {
-        logger.info("✅ Order confirmation email sent successfully");
-      } else {
-        logger.error("❌ Failed to send order confirmation email:", emailResult.message);
-      }
-    } catch (emailError) {
-      logger.error("❌ Error sending order confirmation email:", emailError);
-    }
+    // try {
+    //   const emailResult = await sendOrderConfirmationEmail(
+    //     newOrder.customerDetails.email,
+    //     newOrder,
+    //     req.headers.authorization
+    //   );
+    //   if (emailResult.success) {
+    //     logger.info("✅ Order confirmation email sent successfully");
+    //   } else {
+    //     logger.error("❌ Failed to send order confirmation email:", emailResult.message);
+    //   }
+    // } catch (emailError) {
+    //   logger.error("❌ Error sending order confirmation email:", emailError);
+    // }
     // Get Super-admin users for notification (using internal endpoint)
-    let superAdminIds = [];
-    try {
-      const userData = await axios.get(
-        "http://user-service:5001/api/users/internal/super-admins"
-      );
-      if (userData.data.success) {
-        superAdminIds = userData.data.data.map((u) => u._id);
-      }
-    } catch (error) {
-      logger.warn("Failed to fetch Super-admin users for notification:", error.message);
-    }
+    // let superAdminIds = [];
+    // try {
+    //   const userData = await axios.get(
+    //     "http://user-service:5001/api/users/internal/super-admins"
+    //   );
+    //   if (userData.data.success) {
+    //     superAdminIds = userData.data.data.map((u) => u._id);
+    //   }
+    // } catch (error) {
+    //   logger.warn("Failed to fetch Super-admin users for notification:", error.message);
+    // }
 
-    const notify = await createUnicastOrMulticastNotificationUtilityFunction(
-      superAdminIds,
-      ["INAPP", "PUSH", "EMAIL"],
-      "Order Created Alert",
-      `Order Placed Successfully with order id ${orderId}`,
-      "",
-      "",
-      "Order",
-      {
-        order_id: newOrder._id,
-      },
-      req.headers.authorization
-    );
-    if (!notify.success)
-      logger.error("❌ Create notification error:", notify.message);
-    else logger.info("✅ Notification created successfully");
+    // const notify = await createUnicastOrMulticastNotificationUtilityFunction(
+    //   superAdminIds,
+    //   ["INAPP", "PUSH", "EMAIL"],
+    //   "Order Created Alert",
+    //   `Order Placed Successfully with order id ${orderId}`,
+    //   "",
+    //   "",
+    //   "Order",
+    //   {
+    //     order_id: newOrder._id,
+    //   },
+    //   req.headers.authorization
+    // );
+    // if (!notify.success)
+    //   logger.error("❌ Create notification error:", notify.message);
+    // else logger.info("✅ Notification created successfully");
   } else if (req.body.event == "payment.failed") {
     console.log("Valid signature inside payment.failed", req.body);
     console.dir(req.body, { depth: null });

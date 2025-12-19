@@ -246,7 +246,16 @@ router.get(
 router.get(
   "/:id",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin", "Inventory-Admin", "User"]),
+  requireRole([
+    "Super-admin",
+    "Fulfillment-Admin",
+    "Fulfillment-Staff",
+    "Inventory-Admin",
+    "Inventory-Staff",
+    "Dealer",
+    "User",
+    "Customer-Support",
+  ]),
   // // auditMiddleware("USER_DETAILS_ACCESSED", "User", "USER_MANAGEMENT"),
   userController.getUserById
 );
