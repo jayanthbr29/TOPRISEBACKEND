@@ -574,8 +574,9 @@ exports.getReturnRequest = async (req, res) => {
 
     const returnRequest = await Return.findById(returnId).populate(
       "orderId",
-      "orderId orderDate customerDetails"
-    );
+      
+    )
+    .populate("refund.refund_id");
     // .populate('dealerId', 'dealerName');
 
     if (!returnRequest) {
@@ -628,7 +629,8 @@ exports.getReturnRequests = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const returnRequests = await Return.find(filter)
-      .populate("orderId", "orderId orderDate customerDetails")
+      .populate("orderId", )
+      .populate("refund.refund_id")
       // Note: dealerId populate removed to avoid "Schema hasn't been registered for model 'Dealer'" error
       .sort({ "timestamps.requestedAt": -1 })
       .skip(skip)
