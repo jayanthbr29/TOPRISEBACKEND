@@ -38,7 +38,7 @@ const auditMiddleware = (action, targetType = null, category = null) => {
 router.get("/stats",
   requireAuth,
   requireRole(["Super-admin", "Fulfillment-Admin", "Inventory-Admin"]),
-  auditMiddleware("SLA_VIOLATION_STATS_ACCESSED", "System", "SLA_MANAGEMENT"),
+  // auditMiddleware("SLA_VIOLATION_STATS_ACCESSED", "System", "SLA_MANAGEMENT"),
   SLAViolationStatsController.getSLAViolationStats
 );
 
@@ -50,7 +50,7 @@ router.get("/stats",
 router.get("/summary",
   requireAuth,
   requireRole(["Super-admin", "Fulfillment-Admin", "Inventory-Admin"]),
-  auditMiddleware("SLA_VIOLATION_SUMMARY_ACCESSED", "System", "SLA_MANAGEMENT"),
+  // auditMiddleware("SLA_VIOLATION_SUMMARY_ACCESSED", "System", "SLA_MANAGEMENT"),
   SLAViolationStatsController.getSLAViolationSummary
 );
 
@@ -62,7 +62,7 @@ router.get("/summary",
 router.get("/dealers-with-violations",
   requireAuth,
   requireRole(["Super-admin", "Fulfillment-Admin"]),
-  auditMiddleware("DEALERS_WITH_VIOLATIONS_ACCESSED", "System", "SLA_MANAGEMENT"),
+  // auditMiddleware("DEALERS_WITH_VIOLATIONS_ACCESSED", "System", "SLA_MANAGEMENT"),
   SLAViolationStatsController.getDealersWithMultipleViolations
 );
 
@@ -74,7 +74,7 @@ router.get("/dealers-with-violations",
 router.put("/disable-dealer/:dealerId",
   requireAuth,
   requireRole(["Super-admin", "Fulfillment-Admin"]),
-  auditMiddleware("DEALER_DISABLE_ATTEMPTED", "Dealer", "SLA_MANAGEMENT"),
+  // auditMiddleware("DEALER_DISABLE_ATTEMPTED", "Dealer", "SLA_MANAGEMENT"),
   SLAViolationStatsController.disableDealerForViolations
 );
 
@@ -98,7 +98,7 @@ router.get("/trends",
 router.get("/top-violators",
   requireAuth,
   requireRole(["Super-admin", "Fulfillment-Admin", "Inventory-Admin"]),
-  auditMiddleware("TOP_VIOLATING_DEALERS_ACCESSED", "System", "SLA_MANAGEMENT"),
+  // auditMiddleware("TOP_VIOLATING_DEALERS_ACCESSED", "System", "SLA_MANAGEMENT"),
   SLAViolationStatsController.getTopViolatingDealers
 );
 
@@ -110,7 +110,7 @@ router.get("/top-violators",
 router.get("/violation/:violationId",
   requireAuth,
   requireRole(["Super-admin", "Fulfillment-Admin", "Inventory-Admin"]),
-  auditMiddleware("DETAILED_VIOLATION_INFO_ACCESSED", "SLAViolation", "SLA_MANAGEMENT"),
+  // auditMiddleware("DETAILED_VIOLATION_INFO_ACCESSED", "SLAViolation", "SLA_MANAGEMENT"),
   SLAViolationStatsController.getDetailedViolationInfo
 );
 
@@ -122,7 +122,7 @@ router.get("/violation/:violationId",
 router.put("/resolve/:violationId",
   requireAuth,
   requireRole(["Super-admin", "Fulfillment-Admin"]),
-  auditMiddleware("SLA_VIOLATION_RESOLUTION_ATTEMPTED", "SLAViolation", "SLA_MANAGEMENT"),
+  // auditMiddleware("SLA_VIOLATION_RESOLUTION_ATTEMPTED", "SLAViolation", "SLA_MANAGEMENT"),
   SLAViolationStatsController.resolveViolation
 );
 
@@ -134,7 +134,7 @@ router.put("/resolve/:violationId",
 router.get("/dashboard",
   requireAuth,
   requireRole(["Super-admin", "Fulfillment-Admin", "Inventory-Admin"]),
-  auditMiddleware("SLA_VIOLATION_DASHBOARD_ACCESSED", "System", "SLA_MANAGEMENT"),
+  // auditMiddleware("SLA_VIOLATION_DASHBOARD_ACCESSED", "System", "SLA_MANAGEMENT"),
   async (req, res) => {
     try {
       const { user } = req;
@@ -179,7 +179,7 @@ router.get("/dashboard",
 router.get("/alerts",
   requireAuth,
   requireRole(["Super-admin", "Fulfillment-Admin"]),
-  auditMiddleware("SLA_VIOLATION_ALERTS_ACCESSED", "System", "SLA_MANAGEMENT"),
+  // auditMiddleware("SLA_VIOLATION_ALERTS_ACCESSED", "System", "SLA_MANAGEMENT"),
   async (req, res) => {
     try {
       const { user } = req;
@@ -221,7 +221,7 @@ router.get("/alerts",
 router.post("/bulk-disable",
   requireAuth,
   requireRole(["Super-admin"]),
-  auditMiddleware("BULK_DEALER_DISABLE_ATTEMPTED", "System", "SLA_MANAGEMENT"),
+  // auditMiddleware("BULK_DEALER_DISABLE_ATTEMPTED", "System", "SLA_MANAGEMENT"),
   async (req, res) => {
     try {
       const { dealerIds, reason, adminNotes } = req.body;

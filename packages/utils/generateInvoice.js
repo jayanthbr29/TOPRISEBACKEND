@@ -836,7 +836,9 @@ doc.moveDown(1);
 const leftColX = 50;
 const rightColX = 300;
 let infoY = doc.y;
+let rigInfoY = doc.y;
 const lineGap = 18;
+const addressWidth = 170;
 
 doc.font("DejaVu-Bold").fontSize(11);
 
@@ -846,16 +848,35 @@ doc.font("DejaVu").text(customerDetails.name || "N/A", leftColX + 80, infoY);
 
 infoY += lineGap;
 doc.font("DejaVu-Bold").text("Shipping Method:", leftColX, infoY);
-doc.font("DejaVu").text("N/A", leftColX + 120, infoY);
+doc.font("DejaVu").text("Borzo", leftColX + 120, infoY);
 
 infoY += lineGap;
 doc.font("DejaVu-Bold").text("Address:", leftColX, infoY);
-doc.font("DejaVu").text(customerDetails.address || "N/A", leftColX + 80, infoY);
+// doc.font("DejaVu").text(customerDetails.address || "N/A", leftColX + 80, infoY);
 
+// // 🔹 Measure address height BEFORE printing
+const addressText = customerDetails.address || "N/A";
+const addressHeight = doc
+  .font("DejaVu")
+  .fontSize(11)
+  .heightOfString(addressText, {
+    width: addressWidth,
+    lineGap: 2,
+  });
 
+// Print address
+doc.text(
+  addressText,
+  leftColX + 80,
+  infoY,
+  { width: addressWidth, lineGap: 2 }
+);
+infoY += addressHeight;
+const leftBottom = infoY;
 
 // RIGHT COLUMN (Phone, Email, OrderID, Order Date)
-infoY = doc.y - (lineGap * 3); // Reset to align top with Name
+// infoY = doc.y - (lineGap * 3); // Reset to align top with Name
+infoY = rigInfoY;
 
 doc.font("DejaVu-Bold").text("Phone:", rightColX, infoY);
 doc.font("DejaVu").text(customerDetails.phone || "N/A", rightColX + 60, infoY);
@@ -872,7 +893,12 @@ infoY += lineGap;
 doc.font("DejaVu-Bold").text("Order Date :", rightColX, infoY);
 doc.font("DejaVu").text(orderDate || "N/A", rightColX + 90, infoY);
 
-doc.moveDown(3);
+const rightBottom = infoY + lineGap;
+console.log("leftBottom", leftBottom, "rightBottom", rightBottom);
+const maxHeight = Math.max(leftBottom, rightBottom);
+// doc.moveDown(3);
+doc.y = maxHeight + 5;
+// doc.y = Math.max(leftBottom, rightBottom) + 25;
 
   //-------------------------------
   // ITEM TABLE
@@ -1222,11 +1248,11 @@ cx += tCol.taxable;
   taxY += taxRowH;
 });
 
-tableY = taxY + taxRowH;
-if (tableY + 120 > PAGE_BOTTOM) {
-  doc.addPage();
-  tableY = PAGE_TOP;
-}
+// tableY = taxY + taxRowH;
+// if (tableY + 120 > PAGE_BOTTOM) {
+//   doc.addPage();
+//   tableY = PAGE_TOP;
+// }
 // ================= TOTAL TAX ROW =================
 doc.rect(tx, taxY, taxWidth, taxRowH).stroke();
 doc.font("DejaVu-Bold").fontSize(6);
