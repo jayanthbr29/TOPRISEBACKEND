@@ -1974,3 +1974,69 @@ exports.getReturnStatusCounts = async (req, res) => {
     });
   }
 };
+
+
+exports.getReturnRequestsFulfillmentStaff = async (req, res) => {
+  try {
+    const {
+      customerId,
+      status,
+      orderId,
+      page = 1,
+      limit = 10,
+      startDate,
+      endDate,
+      refundMethod,
+      
+    } = req.query;
+  const {
+    dealerId,
+  } = req.body;
+    const filter = {};
+
+    if (customerId) filter.customerId = customerId;
+    if (status) filter.returnStatus = status;
+    if (orderId) filter.orderId = orderId;
+     // if (dealerId) filter.dealerId = dealerId;
+    //dealerId is an Array
+   
+    if(Array.isArray(dealerId)) filter.dealerId = { $in: dealerId };
+
+    if (startDate && endDate) {
+      filter["timestamps.requestedAt"] = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate),
+      };
+    }
+    if(refundMethod) filter['refund.refundMethod']=refundMethod;
+
+    const skip = (page - 1) * limit;
+
+    const returnRequests = await Return.find(filter)
+      .populate("orderId", )
+      .populate("refund.refund_id")
+      // Note: dealerId populate removed to avoid "Schema hasn't been registered for model 'Dealer'" error
+      .sort({ "timestamps.requestedAt": -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await Return.countDocuments(filter);
+
+    return sendSuccess(
+      res,
+      {
+        returnRequests,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: Math.ceil(total / limit),
+        },
+      },
+      "Return requests fetched successfully"
+    );
+  } catch (error) {
+    logger.error("Get return requests error:", error);
+    return sendError(res, "Failed to get return requests");
+  }
+};

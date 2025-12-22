@@ -52,4 +52,6 @@ router.put("/Reject-return/:returnId",
     auditLogger("Return_Rejected", "RETURN"),
     returnController.rejectReturnRequest);
 router.get("/return/stats",returnController.getReturnStatusCounts);
+
+router.post("/return/forFullfillmentStaff",returnController.getReturnRequestsFulfillmentStaff);
 module.exports = router;
