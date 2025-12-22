@@ -17,7 +17,7 @@ console.log("getProductAnalytics:", typeof reportsController.getProductAnalytics
 router.get(
     "/analytics",
     optionalAuth,
-    ProductAuditLogger.createMiddleware("PRODUCT_ANALYTICS_ACCESSED", "Product", "REPORTING"),
+    // ProductAuditLogger.createMiddleware("PRODUCT_ANALYTICS_ACCESSED", "Product", "REPORTING"),
     authenticate,
     authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Analytics-Admin"),
     reportsController.getProductAnalytics
@@ -27,7 +27,7 @@ router.get(
 router.get(
     "/performance",
     optionalAuth,
-    ProductAuditLogger.createMiddleware("PRODUCT_PERFORMANCE_ACCESSED", "Product", "REPORTING"),
+    // ProductAuditLogger.createMiddleware("PRODUCT_PERFORMANCE_ACCESSED", "Product", "REPORTING"),
     authenticate,
     authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Analytics-Admin"),
     reportsController.getProductPerformance
@@ -37,7 +37,7 @@ router.get(
 router.get(
     "/inventory",
     optionalAuth,
-    ProductAuditLogger.createMiddleware("PRODUCT_INVENTORY_ACCESSED", "Product", "REPORTING"),
+    // ProductAuditLogger.createMiddleware("PRODUCT_INVENTORY_ACCESSED", "Product", "REPORTING"),
     authenticate,
     authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Analytics-Admin"),
     reportsController.getProductInventory
@@ -47,7 +47,7 @@ router.get(
 router.get(
     "/category",
     optionalAuth,
-    ProductAuditLogger.createMiddleware("PRODUCT_CATEGORY_REPORT_ACCESSED", "Product", "REPORTING"),
+    // ProductAuditLogger.createMiddleware("PRODUCT_CATEGORY_REPORT_ACCESSED", "Product", "REPORTING"),
     authenticate,
     authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Analytics-Admin"),
     reportsController.getProductCategoryReport
@@ -66,7 +66,7 @@ router.get(
 router.get(
     "/export",
     optionalAuth,
-    ProductAuditLogger.createMiddleware("PRODUCT_EXPORT_REPORT_ACCESSED", "Product", "REPORTING"),
+    // ProductAuditLogger.createMiddleware("PRODUCT_EXPORT_REPORT_ACCESSED", "Product", "REPORTING"),
     authenticate,
     authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Analytics-Admin"),
     reportsController.exportProductReport

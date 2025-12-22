@@ -43,7 +43,7 @@ const auditMiddleware = (action, targetType = null, category = null) => {
  */
 router.get("/dashboard",
   optionalAuth,
-  auditMiddleware("DASHBOARD_ACCESSED", "System", "REPORTING"),
+  // auditMiddleware("DASHBOARD_ACCESSED", "System", "REPORTING"),
   AnalyticsController.getDashboard
 );
 
@@ -54,7 +54,7 @@ router.get("/dashboard",
  */
 router.get("/kpis",
   optionalAuth,
-  auditMiddleware("KPIS_ACCESSED", "System", "REPORTING"),
+  // auditMiddleware("KPIS_ACCESSED", "System", "REPORTING"),
   AnalyticsController.getKPIs
 );
 
@@ -65,7 +65,7 @@ router.get("/kpis",
  */
 router.get("/trends",
   optionalAuth,
-  auditMiddleware("TRENDS_ACCESSED", "System", "REPORTING"),
+  // auditMiddleware("TRENDS_ACCESSED", "System", "REPORTING"),
   AnalyticsController.getTrendComparison
 );
 
@@ -76,7 +76,7 @@ router.get("/trends",
  */
 router.post("/export",
   optionalAuth,
-  auditMiddleware("DASHBOARD_EXPORTED", "System", "REPORTING"),
+  // auditMiddleware("DASHBOARD_EXPORTED", "System", "REPORTING"),
   AnalyticsController.exportDashboard
 );
 
@@ -90,7 +90,7 @@ router.post("/export",
 router.get("/audit-logs",
   requireAuth,
   requireRole(["Super-admin", "System", "Fulfillment-Admin", "Inventory-Admin", "Fulfillment-Staff", "Inventory-Staff"]),
-  auditMiddleware("AUDIT_LOGS_ACCESSED", "System", "AUDIT"),
+  // auditMiddleware("AUDIT_LOGS_ACCESSED", "System", "AUDIT"),
   AnalyticsController.getAuditLogs
 );
 
@@ -102,7 +102,7 @@ router.get("/audit-logs",
 router.get("/audit-stats",
   requireAuth,
   requireRole(["Super-admin", "System"]),
-  auditMiddleware("AUDIT_STATS_ACCESSED", "System", "AUDIT"),
+  // auditMiddleware("AUDIT_STATS_ACCESSED", "System", "AUDIT"),
   AnalyticsController.getAuditStats
 );
 
@@ -116,7 +116,7 @@ router.get("/audit-stats",
 router.get("/fulfillment",
   requireAuth,
   requireRole(["Fulfillment-Admin", "Super-admin"]),
-  auditMiddleware("FULFILLMENT_ANALYTICS_ACCESSED", "System", "REPORTING"),
+  // auditMiddleware("FULFILLMENT_ANALYTICS_ACCESSED", "System", "REPORTING"),
   async (req, res) => {
     try {
       // Implementation for fulfillment-specific analytics
@@ -160,7 +160,7 @@ router.get("/fulfillment",
 router.get("/inventory",
   requireAuth,
   requireRole(["Inventory-Admin", "Super-admin"]),
-  auditMiddleware("INVENTORY_ANALYTICS_ACCESSED", "System", "REPORTING"),
+  // auditMiddleware("INVENTORY_ANALYTICS_ACCESSED", "System", "REPORTING"),
   async (req, res) => {
     try {
       // Implementation for inventory-specific analytics
@@ -202,7 +202,7 @@ router.get("/inventory",
 router.get("/dealer/:dealerId",
   requireAuth,
   requireRole(["Dealer", "Super-admin", "Fulfillment-Admin"]),
-  auditMiddleware("DEALER_ANALYTICS_ACCESSED", "Dealer", "REPORTING"),
+  // auditMiddleware("DEALER_ANALYTICS_ACCESSED", "Dealer", "REPORTING"),
   async (req, res) => {
     try {
       const { dealerId } = req.params;
@@ -250,7 +250,7 @@ router.get("/dealer/:dealerId",
  */
 router.get("/realtime/orders",
   requireAuth,
-  auditMiddleware("REALTIME_ORDERS_ACCESSED", "System", "REPORTING"),
+  // auditMiddleware("REALTIME_ORDERS_ACCESSED", "System", "REPORTING"),
   async (req, res) => {
     try {
       const { role } = req.user;
@@ -285,7 +285,7 @@ router.get("/realtime/orders",
 router.get("/realtime/alerts",
   requireAuth,
   requireRole(["Super-admin", "Fulfillment-Admin", "Inventory-Admin"]),
-  auditMiddleware("REALTIME_ALERTS_ACCESSED", "System", "REPORTING"),
+  // auditMiddleware("REALTIME_ALERTS_ACCESSED", "System", "REPORTING"),
   async (req, res) => {
     try {
       // Get SLA violations
@@ -327,7 +327,7 @@ router.get("/realtime/alerts",
  */
 router.get("/compare",
   requireAuth,
-  auditMiddleware("COMPARATIVE_ANALYTICS_ACCESSED", "System", "REPORTING"),
+  // auditMiddleware("COMPARATIVE_ANALYTICS_ACCESSED", "System", "REPORTING"),
   async (req, res) => {
     try {
       const {

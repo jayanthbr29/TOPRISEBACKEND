@@ -231,6 +231,7 @@ router.post(
 router.post(
   "/:orderId/cancel",
   requireAuth,
+  auditLogger("Order_Cancel", "ORDER"),
   // slaViolationMiddleware.checkSLAOnOrderUpdate(),
   // auditMiddleware("ORDER_CANCELLED", "Order", "ORDER_MANAGEMENT"),
   orderController.cancelOrder
