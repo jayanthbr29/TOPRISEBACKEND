@@ -51,7 +51,7 @@ const auditMiddleware = (action, targetType = null, category = null) => {
 router.get(
   "/getemployees",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff", "Inventory-Admin", "Inventory-Staff"]),
   // // auditMiddleware("EMPLOYEE_LIST_ACCESSED", "Employee", "EMPLOYEE_MANAGEMENT"),
   userController.getAllEmployees
 );
@@ -59,7 +59,7 @@ router.get(
 router.get(
   "/stats",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff", "Inventory-Admin", "Inventory-Staff"]),
   // // auditMiddleware("USER_STATS_ACCESSED", "System", "REPORTING"),
   userController.getUserStats
 );
@@ -67,7 +67,7 @@ router.get(
 router.get(
   "/insights",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff", "Inventory-Admin", "Inventory-Staff"]),
   // // auditMiddleware("USER_INSIGHTS_ACCESSED", "System", "REPORTING"),
   userController.getUserInsights
 );
@@ -75,7 +75,7 @@ router.get(
 router.get(
   "/employee/get-by-id",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff", "Inventory-Admin", "Inventory-Staff"]),
   // // auditMiddleware(
   //   "EMPLOYEE_DETAILS_ACCESSED",
   //   "Employee",
@@ -87,7 +87,7 @@ router.get(
 router.get(
   "/employee/stats",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin","Fulfillment-Admin","Fulfillment-Staff", "Inventory-Admin", "Inventory-Staff"]),
   // // auditMiddleware("EMPLOYEE_STATS_ACCESSED", "Employee", "REPORTING"),
   userController.getEmployeeStats
 );
@@ -95,7 +95,7 @@ router.get(
 router.get(
   "/dealer/stats",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff", "Inventory-Admin", "Inventory-Staff"]),
   // // auditMiddleware("DEALER_STATS_ACCESSED", "Dealer", "REPORTING"),
   dealerStatsController.getDealerStats
 );
@@ -108,7 +108,7 @@ router.get(
 router.get(
   "/fulfillment-staff",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff","Inventory-Admin", "Inventory-Staff"]),
   // // auditMiddleware("FULFILLMENT_STAFF_LIST_ACCESSED", "Employee", "EMPLOYEE_MANAGEMENT"),
   fulfillmentStaffController.getAllFulfillmentStaff
 );
@@ -117,7 +117,7 @@ router.get(
 router.get(
   "/fulfillment-staff/stats",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff","Inventory-Admin", "Inventory-Staff"]),
   // // auditMiddleware("FULFILLMENT_STAFF_STATS_ACCESSED", "Employee", "REPORTING"),
   fulfillmentStaffController.getFulfillmentStaffStats
 );
@@ -126,7 +126,7 @@ router.get(
 router.get(
   "/fulfillment-staff/regions",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff","Inventory-Admin", "Inventory-Staff"]),
   // // auditMiddleware("FULFILLMENT_STAFF_REGIONS_ACCESSED", "Employee", "EMPLOYEE_MANAGEMENT"),
   fulfillmentStaffController.getAvailableRegions
 );
@@ -135,7 +135,7 @@ router.get(
 router.get(
   "/fulfillment-staff/by-region",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff","Inventory-Admin", "Inventory-Staff"]),
   // // auditMiddleware("FULFILLMENT_STAFF_BY_REGION_ACCESSED", "Employee", "EMPLOYEE_MANAGEMENT"),
   fulfillmentStaffController.getFulfillmentStaffByRegion
 );
@@ -166,7 +166,7 @@ router.post(
 router.post(
   "/createUser",
   authenticate,
-  requireRole(["Super-admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin","Inventory-Admin", "Inventory-Staff","Fulfillment-Admin","Fulfillment-Staff"]),
   // // auditMiddleware("USER_CREATED", "User", "USER_MANAGEMENT"),
   userController.createUser
 );
@@ -199,7 +199,7 @@ router.post(
 router.get(
   "/dealers",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff", "Inventory-Admin", "Inventory-Staff"]),
   // // auditMiddleware("DEALER_LIST_ACCESSED", "Dealer", "DEALER_MANAGEMENT"),
   userController.getAllDealers
 );
@@ -276,7 +276,7 @@ router.get(
 router.delete(
   "/:id",
   authenticate,
-  requireRole(["Super-admin","User","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin","User","Inventory-Admin", "Inventory-Staff","Fulfillment-Admin","Fulfillment-Staff"]),
   // // auditMiddleware("USER_DELETED", "User", "USER_MANAGEMENT"),
   userController.deleteUser
 );
@@ -293,7 +293,7 @@ router.put(
 router.post(
   "/dealer",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff","Inventory-Admin", "Inventory-Staff"]),
   auditLogger("Create_Dealer", "USER"),
   // // auditMiddleware("DEALER_CREATED", "Dealer", "DEALER_MANAGEMENT"),
   userController.createDealer
@@ -303,7 +303,7 @@ router.patch(
   "/disable-dealer/:dealerId",
   authenticate,
    auditLogger("Deactivate_Dealer", "USER"),
-  requireRole(["Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff","Inventory-Admin", "Inventory-Staff"]),
   // // auditMiddleware("DEALER_DEACTIVATED", "Dealer", "DEALER_MANAGEMENT"),
   userController.disableDealer
 );
@@ -311,7 +311,7 @@ router.patch(
 router.post(
   "/create-Employee",
   authenticate,
-  requireRole(["Super-admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin","Inventory-Admin", "Inventory-Staff","Fulfillment-Admin","Fulfillment-Staff"]),
    auditLogger("Create_Employee", "USER"),
   // // auditMiddleware("EMPLOYEE_CREATED", "Employee", "EMPLOYEE_MANAGEMENT"),
   userController.createEmployee
@@ -414,7 +414,7 @@ router.get(
 router.post(
   "/dealers/bulk",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff","Inventory-Admin", "Inventory-Staff"]),
   upload.single("file"),
   // // auditMiddleware("BULK_DEALERS_CREATED", "Dealer", "DEALER_MANAGEMENT"),
   userController.createDealersBulk
@@ -423,7 +423,7 @@ router.post(
 router.post(
   "/map-categories/",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff","Inventory-Admin", "Inventory-Staff"]),
   // // auditMiddleware("CATEGORIES_MAPPED_TO_USER", "User", "USER_MANAGEMENT"),
   userController.mapCategoriesToUser
 );
@@ -431,7 +431,7 @@ router.post(
 router.put(
   "/updateAddress/:id",
   authenticate,
-  requireRole(["User","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["User","Inventory-Admin", "Inventory-Staff","Fulfillment-Admin","Fulfillment-Staff"]),
   // // auditMiddleware("ADDRESS_UPDATED", "User", "USER_MANAGEMENT"),
   userController.updateUserAddress
 );
@@ -440,14 +440,14 @@ router.put(
   "/dealer/:id",
   authenticate,
   auditLogger("Update_Dealer_Details", "USER"),
-  requireRole(["Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff","Inventory-Admin", "Inventory-Staff"]),
   // // auditMiddleware("DEALER_UPDATED", "Dealer", "DEALER_MANAGEMENT"),
   userController.updateDealer
 );
 router.put(
   "/address/:userId",
   authenticate,
-  requireRole(["User","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["User","Inventory-Admin", "Inventory-Staff","Fulfillment-Admin","Fulfillment-Staff"]),
   // auditMiddleware("ADDRESS_EDITED", "User", "USER_MANAGEMENT"),
   userController.editUserAddress
 );
@@ -455,7 +455,7 @@ router.put(
 router.delete(
   "/address/:userId",
   authenticate,
-  requireRole(["User","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["User","Inventory-Admin", "Inventory-Staff","Fulfillment-Admin","Fulfillment-Staff"]),
   // auditMiddleware("ADDRESS_DELETED", "User", "USER_MANAGEMENT"),
   userController.deleteUserAddress
 );
@@ -472,7 +472,7 @@ auditLogger("Update_Employee_Profile", "USER"),
 router.put(
   "/update-cartId/:userId",
   authenticate,
-  requireRole(["User", "Super-admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["User", "Super-admin","Inventory-Admin", "Inventory-Staff","Fulfillment-Admin","Fulfillment-Staff"]),
   // auditMiddleware("USER_CART_ID_UPDATED", "User", "USER_MANAGEMENT"),
   userController.updateUserCartId
 );
@@ -480,7 +480,7 @@ router.put(
 router.post(
   "/:userId/vehicles",
   authenticate,
-  requireRole(["User", "Super-admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["User", "Super-admin","Inventory-Admin", "Inventory-Staff","Fulfillment-Admin","Fulfillment-Staff"]),
   // auditMiddleware("VEHICLE_ADDED", "User", "USER_MANAGEMENT"),
   userController.addVehicleDetails
 );
@@ -488,7 +488,7 @@ router.post(
 router.put(
   "/:userId/vehicles/:vehicleId",
   authenticate,
-  requireRole(["User", "Super-admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["User", "Super-admin","Inventory-Admin", "Inventory-Staff","Fulfillment-Admin","Fulfillment-Staff"]),
   // auditMiddleware("VEHICLE_UPDATED", "User", "USER_MANAGEMENT"),
   userController.editVehicleDetails
 );
@@ -496,7 +496,7 @@ router.put(
 router.delete(
   "/:userId/vehicles/:vehicleId",
   authenticate,
-  requireRole(["User", "Super-admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["User", "Super-admin","Inventory-Admin", "Inventory-Staff","Fulfillment-Admin","Fulfillment-Staff"]),
   // auditMiddleware("VEHICLE_DELETED", "User", "USER_MANAGEMENT"),
   userController.deleteVehicleDetails
 );
@@ -504,7 +504,7 @@ router.delete(
 router.put(
   "/update-fcmToken/:userId",
   authenticate,
-  requireRole(["User", "Super-admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["User", "Super-admin","Inventory-Admin", "Inventory-Staff","Fulfillment-Admin","Fulfillment-Staff"]),
   // auditMiddleware("FCM_TOKEN_UPDATED", "User", "USER_MANAGEMENT"),
   userController.updateFCMToken
 );
@@ -520,7 +520,7 @@ router.put(
 router.put(
   "/remove-support/:ticketId/:supportId",
   authenticate,
-  requireRole(["Super-admin", "Customer-Support","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Customer-Support","Inventory-Admin", "Inventory-Staff","Fulfillment-Admin","Fulfillment-Staff"]),
   // auditMiddleware("SUPPORT_REMOVED", "User", "USER_MANAGEMENT"),
   userController.removeTicketFromSupport
 );
@@ -528,7 +528,7 @@ router.put(
 router.put(
   "/update-wishlistId/:userId",
   authenticate,
-  requireRole(["User", "Super-admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["User", "Super-admin","Inventory-Admin", "Inventory-Staff","Fulfillment-Admin","Fulfillment-Staff"]),
   // auditMiddleware("WISHLIST_ID_UPDATED", "User", "USER_MANAGEMENT"),
   userController.updateWhislistId
 );
@@ -537,7 +537,7 @@ router.patch(
   "/enable-dealer/:dealerId",
   authenticate,
   auditLogger("Activate_Dealer", "USER"),
-  requireRole(["Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff","Inventory-Admin", "Inventory-Staff"]),
   // auditMiddleware("DEALER_ACTIVATED", "Dealer", "DEALER_MANAGEMENT"),
   userController.enableDealer
 );
@@ -545,7 +545,7 @@ router.patch(
 router.get(
   "/get/dealer-for-assign/:productId",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff","Inventory-Admin", "Inventory-Staff"]),
   // auditMiddleware(
   //   "DEALER_FOR_ASSIGNMENT_ACCESSED",
   //   "Dealer",
@@ -557,7 +557,7 @@ router.get(
 router.get(
   "/get/userBy/Email/:email",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff","Inventory-Admin", "Inventory-Staff"]),
   // auditMiddleware("USER_BY_EMAIL_ACCESSED", "User", "USER_MANAGEMENT"),
   userController.getUserByEmail
 );
@@ -565,7 +565,7 @@ router.get(
 router.patch(
   "/updateDealer/addAllowedCategores/:dealerId",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff","Inventory-Admin", "Inventory-Staff"]),
   // auditMiddleware("ALLOWED_CATEGORIES_ADDED", "Dealer", "DEALER_MANAGEMENT"),
   userController.addAllowedCategories
 );
@@ -573,7 +573,7 @@ router.patch(
 router.patch(
   "/updateDealer/removeAllowedCategores/:dealerId",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff","Inventory-Admin", "Inventory-Staff"]),
   // auditMiddleware("ALLOWED_CATEGORIES_REMOVED", "Dealer", "DEALER_MANAGEMENT"),
   userController.removeAllowedCategories
 );
@@ -605,7 +605,7 @@ router.get(
 router.delete(
   "/:userId/bank-details",
   authenticate,
-  requireRole(["User", "Super-admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["User", "Super-admin","Inventory-Admin", "Inventory-Staff","Fulfillment-Admin","Fulfillment-Staff"]),
   // auditMiddleware("BANK_DETAILS_DELETED", "User", "USER_MANAGEMENT"),
   userController.deleteBankDetails
 );
@@ -619,7 +619,7 @@ router.get(
 router.get(
   "/bank-details/account/:account_number",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff",]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff","Inventory-Admin", "Inventory-Staff",]),
   // auditMiddleware(
   //   "BANK_DETAILS_BY_ACCOUNT_ACCESSED",
   //   "User",
@@ -632,7 +632,7 @@ router.get(
 router.post(
   "/dealers/:dealerId/assign-employees",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff","Inventory-Admin", "Inventory-Staff"]),
   // auditMiddleware(
   //   "EMPLOYEES_ASSIGNED_TO_DEALER",
   //   "Dealer",
@@ -644,7 +644,7 @@ router.post(
 router.delete(
   "/dealers/:dealerId/remove-employees",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff","Inventory-Admin", "Inventory-Staff"]),
   // auditMiddleware(
   //   "EMPLOYEES_REMOVED_FROM_DEALER",
   //   "Dealer",
@@ -656,7 +656,7 @@ router.delete(
 router.get(
   "/dealers/:dealerId/assigned-employees",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin", "Dealer","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff", "Dealer","Inventory-Admin", "Inventory-Staff"]),
   // auditMiddleware(
   //   "DEALER_ASSIGNED_EMPLOYEES_ACCESSED",
   //   "Dealer",
@@ -668,7 +668,7 @@ router.get(
 router.put(
   "/dealers/:dealerId/assignments/:assignmentId/status",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff","Inventory-Admin", "Inventory-Staff"]),
   // auditMiddleware(
   //   "EMPLOYEE_ASSIGNMENT_STATUS_UPDATED",
   //   "Dealer",
@@ -680,7 +680,7 @@ router.put(
 router.get(
   "/employees/:employeeId/dealer-assignments",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff","Inventory-Admin", "Inventory-Staff"]),
   // auditMiddleware(
   //   "EMPLOYEE_ASSIGNMENTS_ACCESSED",
   //   "Employee",
@@ -692,7 +692,7 @@ router.get(
 router.post(
   "/dealers/bulk-assign-employees",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff","Inventory-Admin", "Inventory-Staff"]),
   // auditMiddleware("BULK_EMPLOYEES_ASSIGNED", "Dealer", "EMPLOYEE_MANAGEMENT"),
   userController.bulkAssignEmployeesToDealers
 );
@@ -717,7 +717,7 @@ router.get(
 router.get(
   "/user/stats/userCounts",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin", "Inventory-Admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff", "Inventory-Admin","Inventory-Admin", "Inventory-Staff"]),
   // auditMiddleware("USER_STATS_ACCESSED", "System", "REPORTING"),
   userController.getUserStats
 );
@@ -727,7 +727,7 @@ router.get(
   authenticate,
   requireRole([
     "Super-admin",
-    "Fulfillment-Admin",
+    "Fulfillment-Admin","Fulfillment-Staff",
     "Inventory-Admin",
     "Dealer",
     "User",
@@ -742,7 +742,7 @@ router.get(
   authenticate,
   requireRole([
     "Super-admin",
-    "Fulfillment-Admin",
+    "Fulfillment-Admin","Fulfillment-Staff",
     "Inventory-Admin",
     "Dealer",
     "User",
@@ -766,7 +766,7 @@ router.get(
 router.get(
   "/:userId/audit-logs",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff", "Inventory-Admin", "Inventory-Staff"]),
   // auditMiddleware("USER_AUDIT_LOGS_ACCESSED", "User", "USER_MANAGEMENT"),
   async (req, res) => {
     try {
@@ -810,7 +810,7 @@ router.get(
 router.get(
   "/dealer/:dealerId/audit-logs",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff","Inventory-Admin", "Inventory-Staff"]),
   // auditMiddleware("DEALER_AUDIT_LOGS_ACCESSED", "Dealer", "DEALER_MANAGEMENT"),
   async (req, res) => {
     try {
@@ -854,7 +854,7 @@ router.get(
 router.get(
   "/employee/:employeeId/audit-logs",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff","Inventory-Admin", "Inventory-Staff"]),
   // auditMiddleware(
   //   "EMPLOYEE_AUDIT_LOGS_ACCESSED",
   //   "Employee",
@@ -1053,7 +1053,7 @@ router.get(
   requireRole([
     "Dealer",
     "Super-admin",
-    "Fulfillment-Admin",
+    "Fulfillment-Admin","Fulfillment-Staff",
     "Inventory-Admin", "Inventory-Staff"
   ]),
   // auditMiddleware(
@@ -1070,7 +1070,7 @@ router.get(
   requireRole([
     "Dealer",
     "Super-admin",
-    "Fulfillment-Admin",
+    "Fulfillment-Admin","Fulfillment-Staff",
     "Inventory-Admin", "Inventory-Staff"
   ]),
   
@@ -1088,7 +1088,7 @@ router.get(
   requireRole([
     "Dealer",
     "Super-admin",
-    "Fulfillment-Admin",
+    "Fulfillment-Admin","Fulfillment-Staff",
     "Inventory-Admin", "Inventory-Staff"
   ]),
   // auditMiddleware("DEALER_DASHBOARD_ACCESSED", "Dealer", "DEALER_MANAGEMENT"),
@@ -1102,7 +1102,7 @@ router.get(
   requireRole([
     "Dealer",
     "Super-admin",
-    "Fulfillment-Admin",
+    "Fulfillment-Admin","Fulfillment-Staff",
     "Inventory-Admin", "Inventory-Staff"
   ]),
   // auditMiddleware("DEALER_ID_LOOKUP_BY_USER", "Dealer", "DEALER_MANAGEMENT"),
@@ -1115,7 +1115,7 @@ router.get(
   requireRole([
     "Dealer",
     "Super-admin",
-    "Fulfillment-Admin",
+    "Fulfillment-Admin","Fulfillment-Staff",
     "Inventory-Admin", "Inventory-Staff"
   ]),
   // auditMiddleware(
@@ -1136,7 +1136,7 @@ router.post("/user/reset/password/:token",
 router.put(
   "/employee/revoke-role",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff","Inventory-Admin", "Inventory-Staff"]),
   auditLogger("Deactivate_Employee", "USER"),
   // auditMiddleware("EMPLOYEE_ROLE_REVOKED", "Employee", "EMPLOYEE_MANAGEMENT"),
   userController.revokeEmployeeRole
@@ -1145,7 +1145,7 @@ router.put(
 router.put(
   "/employee/reactivate-role",
   authenticate,
-  requireRole(["Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"]),
+  requireRole(["Super-admin", "Fulfillment-Admin","Fulfillment-Staff","Inventory-Admin", "Inventory-Staff"]),
   auditLogger("Activate_Employee", "USER"),
   // auditMiddleware("EMPLOYEE_ROLE_REACTIVATED", "Employee", "EMPLOYEE_MANAGEMENT"),
   userController.reactivateEmployeeRole
