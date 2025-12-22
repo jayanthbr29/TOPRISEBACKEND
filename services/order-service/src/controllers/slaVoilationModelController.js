@@ -276,11 +276,10 @@ exports.closeSLAViolation = async (req, res) => {
 exports.checkAndCreateSLAVoilation = async (req,res) => {
     try{
        const{dealerId,orderId,sku}=req.body;
-       const order = await Order.findById(orderId);
+       const order = await Order.findById(new mongoose.Types.ObjectId(orderId));
        if(!order) return sendError(res, "Order not found", 404);
        //get dealer info from  user service
         const dealerResponse=await fetchDealerInfo(dealerId,req.headers.authorization);
-        console.log(dealerResponse);
         const assigendDate= order.dealerMapping.find((dm) => dm.dealerId.toString() === dealerId)?.assignedAt;
         const slaId= dealerResponse.SLA_type;
         if(!slaId){

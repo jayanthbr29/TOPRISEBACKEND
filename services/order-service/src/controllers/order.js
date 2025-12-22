@@ -7786,7 +7786,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
                       skuLists.map(async (sku) => {
                         const response = await axios.post(`http://order-service:5001/api/sla-voilation-model/checkVoilation`,
                           {
-                            order_id: order._id,
+                            orderId: orderId,
                             sku: sku,
                             dealerId: dealerId,
                           },
@@ -7796,6 +7796,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
                             }
                           }
                         )
+                        console.log("voilation response", response.data);
                       })
                     )
                     //create audit log
@@ -8126,7 +8127,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
                       skuLists.map(async (sku) => {
                         const response = await axios.post(`http://order-service:5001/api/sla-voilation-model/checkVoilation`,
                           {
-                            order_id: order._id,
+                            orderId: order._id,
                             sku: sku,
                             dealerId: dealerId,
                           },
