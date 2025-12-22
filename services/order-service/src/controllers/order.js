@@ -7981,7 +7981,8 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
           }) ||
           "Delivery Address";
         const customerGeo = await geocodeAddress(order.customerDetails?.pincode,);
-
+ const picklist = await PickList.findById(picklistId);
+        const skuList = picklist.skuList.map(item => item.sku);
         const pickupPoint = {
           address: dealerAddressString,
           building_number: dealerInfo?.address?.building_no || "",
@@ -7997,10 +7998,10 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
           longitude: dealerGeo?.longitude || 77.31912,
           // latitude: 28.583905,
           // longitude: 77.322733,
-          client_order_id: `ORD,${order.orderId},${sku}`,
+          client_order_id: sku ? `ORDS,${order.orderId},${sku}` : `ORDM,${order.orderId},${skuList.join(",")}`,
+
         };
-        const picklist = await PickList.findById(picklistId);
-        const skuList = picklist.skuList.map(item => item.sku);
+       
 
         const dropPoint = {
           address: customerAddressString,
