@@ -3458,7 +3458,7 @@ exports.createOrderBorzoEndofDay = async (req, res) => {
     const borzoOrderPayload = {
       type,
       matter,
-      vehicle_type_id,
+      // vehicle_type_id,
       total_weight_kg: total_weight_kg.toString(),
       insurance_amount: insurance_amount.toString(),
       is_client_notification_enabled,
@@ -6157,7 +6157,7 @@ exports.createOrderBorzoInstantUpdated = async (req, res) => {
       insurance_amount: insurance_amount.toString(),
       is_client_notification_enabled,
       is_contact_person_notification_enabled,
-      vehicle_type_id,
+      // vehicle_type_id,
       // points: points.map((point) => ({
       //   address: point.address,
       //   contact_person: {
@@ -8041,7 +8041,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
           insurance_amount: securePackageAmount, // Default insurance
           is_client_notification_enabled: true,
           is_contact_person_notification_enabled: true,
-          vehicle_type_id: vehicle_type,
+          // vehicle_type_id: vehicle_type,
 
           points: borzoPointsUsed,
         };

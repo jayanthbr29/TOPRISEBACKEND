@@ -279,10 +279,10 @@ exports.loginUserForMobile = async (req, res) => {
     return sendSuccess(res, { user: firebaseUser, token }, "Login successful");
   } catch (err) {
     try {
-        auditLogger("Login_Failed_user", "USER");
-      } catch (err) {
-        console.log(err);
-      }
+      auditLogger("Login_Failed_user", "USER");
+    } catch (err) {
+      console.log(err);
+    }
     logger.error(`❌ Firebase login error: ${err.message}`);
     sendError(res, err);
   }
@@ -524,6 +524,12 @@ exports.createDealer = async (req, res) => {
       onboarding_date,
       remarks,
     });
+    //update assigned employee with dealer id make sure noy to duplicate assigned dealers
+    assigned_Toprise_employee.forEach(async (employee) => {
+      await Employee.findByIdAndUpdate(employee.assigned_user, {
+        $addToSet: { assigned_dealers: dealer._id },
+      });
+    })
 
     logger.info(`✅ Dealer created for user: ${email}`);
     sendSuccess(res, { user, dealer }, "Dealer created successfully");
@@ -536,9 +542,29 @@ exports.updateDealer = async (req, res) => {
   try {
     const { id } = req.params;
     const dealerData = await Dealer.findById(id);
+
+    if (req.body.assigned_Toprise_employee) {
+
+
+
+      //remove dealer from employee
+      dealerData.assigned_Toprise_employee.forEach(async (employee) => {
+        await Employee.findByIdAndUpdate(employee.assigned_user, {
+          $pull: { assigned_dealers: id },
+        });
+      })
+    }
     const updatedDealer = await Dealer.findByIdAndUpdate(id, req.body, {
       new: true,
     });
+    if (req.body.assigned_Toprise_employee) {
+      //update assigned employee with dealer id make sure noy to duplicate assigned dealers
+      req.body.assigned_Toprise_employee.forEach(async (employee) => {
+        await Employee.findByIdAndUpdate(employee.assigned_user, {
+          $addToSet: { assigned_dealers: id },
+        });
+      })
+    }
     // check for brand change- removed brandids
     const removedBrands = dealerData.brands_allowed.filter(
       (brand) => !req.body.brands_allowed.includes(brand)
@@ -552,6 +578,7 @@ exports.updateDealer = async (req, res) => {
       });
       console.log("result", result.data);
     }
+
 
     if (!updatedDealer) return sendError(res, "Dealer not found", 404);
     logger.info(`Updated dealer: ${id}`);
@@ -1232,12 +1259,14 @@ exports.updateEmailOrName = async (req, res) => {
     });
     const Update = await Employee.findOneAndUpdate(
       { user_id: userId },
-      { $set: {
-        First_name: username,
-        email: email
-      } },
+      {
+        $set: {
+          First_name: username,
+          email: email
+        }
+      },
       { new: true }
-    );  
+    );
 
     if (!updatedUser) return sendError(res, "User not found", 404);
 
@@ -2572,7 +2601,31 @@ exports.createDealersBulk = async (req, res) => {
           remarks: row.remarks || "",
         });
 
-        await newDealer.save();
+        const createdDealer = await newDealer.save();
+        if (row.assigned_user_ids) {
+          const ids = row.assigned_user_ids.split("|").map(e => e.trim());
+          console.log("Assigned employees:", ids);
+
+          for (const empId of ids) {
+            try {
+              // const userId = await getUserIdByEmployeeId(empId);
+              const userId = await getEmployeeIdByEmployeeId(empId);
+
+
+
+
+              await Employee.findByIdAndUpdate(userId, {
+                $addToSet: { assigned_dealers: createdDealer._id },
+              });
+
+              //update assigned employees with dealer id
+
+            } catch (mapErr) {
+              console.warn(`⚠️ Employee mapping failed for ${empId}:`, mapErr.message);
+              throw mapErr;
+            }
+          }
+        }
         console.log(`🎉 Dealer Created: ${newDealer.legal_name}`);
         createdDealers.push(newDealer);
 
@@ -4793,8 +4846,8 @@ exports.getEmployeeByUserId = async (req, res) => {
     const { userId } = req.params;
 
     const employee = await Employee.findOne({ user_id: userId })
-    .populate("user_id",)
-    .populate("assigned_dealers");
+      .populate("user_id",)
+      .populate("assigned_dealers");
     if (!employee) {
       return res.status(404).json({ message: "Employee not found for the given User ID" });
     }
@@ -5037,7 +5090,7 @@ exports.getDealerByBrandId = async (req, res) => {
 
 exports.removeSlaFromDealers = async (req, res) => {
   try {
-    
+
     const { slaId } = req.body;
 
     const dealers = await Dealer.find({ SLA_type: slaId });
@@ -5051,7 +5104,7 @@ exports.removeSlaFromDealers = async (req, res) => {
 
     for (const dealer of dealers) {
       dealer.SLA_type = null;
-      await dealer.save();  
+      await dealer.save();
     }
 
     logger.info(
