@@ -34,7 +34,7 @@ router.get(
 router.get(
     "/category/:categoryId/count",
     authenticate,
-    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Analytics-Admin"),
+    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff", "Analytics-Admin"),
     productsByCategoryController.getProductCountByCategory
 );
 
@@ -42,7 +42,7 @@ router.get(
 router.get(
     "/categories/with-counts",
     authenticate,
-    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Analytics-Admin"),
+    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff", "Analytics-Admin"),
     productsByCategoryController.getCategoriesWithProductCounts
 );
 

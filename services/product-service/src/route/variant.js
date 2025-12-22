@@ -14,7 +14,7 @@ const upload = multer({ storage });
 router.post(
   "/",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"),
   upload.single("file"),
     auditLogger("Variant_Created", "CONTENT_MANAGEMENT"),
   variantController.createVariant
@@ -23,7 +23,7 @@ router.post(
 router.get(
   "/",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin", "User", "Dealer"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin", "User", "Dealer","Inventory-Admin", "Inventory-Staff"),
   variantController.getAllVariants
 );
 
@@ -38,14 +38,14 @@ router.get(
 router.get(
   "/count",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Analytics-Admin"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff", "Analytics-Admin"),
   variantController.getVariantCount
 );
 
 router.get(
   "/:id",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin", "User"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin", "User","Inventory-Admin", "Inventory-Staff"),
   variantController.getVariantById
 );
 
@@ -53,7 +53,7 @@ router.put(
   "/:id",
   authenticate,
     auditLogger("Variant_Edited", "CONTENT_MANAGEMENT"),
-  authorizeRoles("Super-admin", "Fulfillment-Admin"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"),
   upload.single("file"),
   variantController.updateVariant
 );
@@ -61,7 +61,7 @@ router.put(
 router.delete(
   "/:id",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"),
    auditLogger("Variant_Deleted", "CONTENT_MANAGEMENT"),
   variantController.deleteVariant
 );
@@ -70,7 +70,7 @@ router.post(
   "/bulk-upload/variants",
   authenticate,
    auditLogger("Variant_Bulk_Upload", "CONTENT_MANAGEMENT"),
-  authorizeRoles("Super-admin", "Inventory-Admin"),
+  authorizeRoles("Super-admin", "Inventory-Admin", "Inventory-Staff"),
   upload.fields([
     { name: "dataFile", maxCount: 1 },
     { name: "imageZip", maxCount: 1 },

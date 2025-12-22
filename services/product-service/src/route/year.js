@@ -16,7 +16,7 @@ router.post(
   "/",
    auditLogger("Year_Created", "CONTENT_MANAGEMENT"),
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"),
   yearController.createYear
 );
 router.get("/", yearController.getAllYears);

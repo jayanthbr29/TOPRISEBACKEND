@@ -373,7 +373,7 @@ router.patch(
   // ),
    auditLogger("Product_Bulk_Approve", "PRODUCT"),
   authenticate,
-  authorizeRoles("Super-admin", "Inventory-Admin"),
+  authorizeRoles("Super-admin", "Inventory-Admin", "Inventory-Staff"),
   productController.bulkApproveProducts
 );
 
@@ -388,7 +388,7 @@ router.patch(
   // ),
    auditLogger("Product_Bulk_Reject", "PRODUCT"),
   authenticate,
-  authorizeRoles("Super-admin", "Inventory-Admin"),
+  authorizeRoles("Super-admin", "Inventory-Admin", "Inventory-Staff"),
   productController.bulkRejectProducts
 );
 
@@ -416,7 +416,7 @@ router.get(
   //   "PRODUCT_MANAGEMENT"
   // ),
   authenticate,
-  authorizeRoles("Super-admin", "Inventory-Admin", "Dealer", "Fulfillment-Admin"),
+  authorizeRoles("Super-admin", "Inventory-Admin", "Inventory-Staff", "Dealer", "Fulfillment-Admin"),
   productController.getProductsByDealer
 );
 
@@ -430,7 +430,7 @@ router.get(
   //   "DEBUG"
   // ),
   authenticate,
-  authorizeRoles("Super-admin", "Inventory-Admin"),
+  authorizeRoles("Super-admin", "Inventory-Admin", "Inventory-Staff"),
   productController.getAvailableDealers
 );
 

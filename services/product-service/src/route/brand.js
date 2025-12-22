@@ -17,14 +17,14 @@ router.post(
   upload.single("file"), // Image file should be sent with key: 'file'
   authenticate,
   auditLogger("Brand_Created", "CONTENT_MANAGEMENT"),
-  authorizeRoles("Super-admin", "Fulfillment-Admin"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"),
   brandController.createBrand
 );
 
 router.get(
   "/",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin", "User", "Dealer"),
+  authorizeRoles("Super-admin", "Inventory-Admin", "Inventory-Staff","Fulfillment-Admin", "User", "Dealer"),
   brandController.getAllBrands
 );
 router.get("/brandByType/:type", brandController.getBrandsByType);
@@ -33,14 +33,14 @@ router.get("/brandByType/:type", brandController.getBrandsByType);
 router.get(
   "/count",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Analytics-Admin"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff","Analytics-Admin"),
   brandController.getBrandCount
 );
 
 router.get(
   "/:id",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin", "User"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin", "User","Inventory-Admin", "Inventory-Staff"),
   brandController.getBrandById
 );
 
@@ -48,7 +48,7 @@ router.put(
   "/:id",
   authenticate,
   auditLogger("Brand_Edited", "CONTENT_MANAGEMENT"),
-  authorizeRoles("Super-admin", "Fulfillment-Admin"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"),
   upload.single("file"), // Optional updated image
   brandController.updateBrand
 );
@@ -56,7 +56,7 @@ router.put(
 router.delete(
   "/:id",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"),
    auditLogger("Brand_Deleted", "CONTENT_MANAGEMENT"),
   brandController.deleteBrand
 );
@@ -65,7 +65,7 @@ router.post(
   "/bulk-upload/brands",
   authenticate,
    auditLogger("Brand_Bulk_Upload", "CONTENT_MANAGEMENT"),
-  authorizeRoles("Super-admin", "Inventory-Admin"),
+  authorizeRoles("Super-admin", "Inventory-Admin","Inventory-Admin", "Inventory-Staff"),
   upload.fields([
     { name: "dataFile", maxCount: 1 },
     { name: "imageZip", maxCount: 1 },
