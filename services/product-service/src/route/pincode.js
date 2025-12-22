@@ -18,7 +18,7 @@ router.post(
     // ProductAuditLogger.createMiddleware("PINCODE_CREATED", "Pincode", "PINCODE_MANAGEMENT"),
     authenticate,
     auditLogger("Pincode_Created", "SETTING"),
-    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin"),
+    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff"),
     pincodeController.createPincode
 );
 
@@ -28,7 +28,7 @@ router.get(
     optionalAuth,
     // ProductAuditLogger.createMiddleware("PINCODE_LIST_ACCESSED", "Pincode", "PINCODE_MANAGEMENT"),
     authenticate,
-    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Dealer", "User"),
+    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff", "Dealer", "User"),
     pincodeController.getAllPincodes
 );
 
@@ -38,7 +38,7 @@ router.get(
     optionalAuth,
     // ProductAuditLogger.createMiddleware("PINCODE_DETAILS_ACCESSED", "Pincode", "PINCODE_MANAGEMENT"),
     authenticate,
-    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Dealer", "User"),
+    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff", "Dealer", "User"),
     pincodeController.getPincodeById
 );
 
@@ -49,7 +49,7 @@ router.put(
     auditLogger("Pincode_Edited", "SETTING"),
     // ProductAuditLogger.createMiddleware("PINCODE_UPDATED", "Pincode", "PINCODE_MANAGEMENT"),
     authenticate,
-    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin"),
+    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff"),
     pincodeController.updatePincode
 );
 
@@ -60,7 +60,7 @@ router.delete(
     auditLogger("Pincode_Deleted", "SETTING"),
     // ProductAuditLogger.createMiddleware("PINCODE_DELETED", "Pincode", "PINCODE_MANAGEMENT"),
     authenticate,
-    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin"),
+    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff"),
     pincodeController.deletePincode
 );
 
@@ -78,7 +78,7 @@ router.post(
     auditLogger("Pincode_Bulk_create", "SETTING"),
     // ProductAuditLogger.createMiddleware("BULK_PINCODES_CREATED", "Pincode", "PINCODE_MANAGEMENT"),
     authenticate,
-    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin"),
+    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff"),
     pincodeController.bulkCreatePincodes
 );
 
@@ -88,7 +88,7 @@ router.get(
     optionalAuth,
     // ProductAuditLogger.createMiddleware("PINCODE_STATS_ACCESSED", "Pincode", "REPORTING"),
     authenticate,
-    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Analytics-Admin"),
+    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff", "Analytics-Admin"),
     pincodeController.getPincodeStats
 );
 
@@ -97,7 +97,7 @@ router.delete(
  auditLogger("Pincode_Bulk_Delete", "SETTING"),
     // ProductAuditLogger.createMiddleware("BULK_PINCODES_DELETED", "Pincode", "PINCODE_MANAGEMENT"),
     authenticate,
-    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin"),
+    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff"),
     pincodeController.bulkDeletePincodes
 );
 
@@ -111,7 +111,7 @@ router.post(
 router.get(
   "/get/pincode/metadata",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Analytics-Admin"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff", "Analytics-Admin"),
   pincodeController.getPincodeMetaData
 )
 module.exports = router;

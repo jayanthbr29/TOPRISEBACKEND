@@ -21,7 +21,7 @@ router.post(
   // ProductAuditLogger.createMiddleware("CATEGORY_CREATED", "Category", "CATEGORY_MANAGEMENT"),
   upload.single("file"), // Image file should be sent with key: 'file'
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"),
   auditLogger("Category_Created", "CONTENT_MANAGEMENT"),
   categoryController.createCategory
 );
@@ -29,7 +29,7 @@ router.post(
 router.post(
   "/map-categories/",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"),
   categoryController.mapCategoriesToDealer
 );
 
@@ -62,7 +62,7 @@ router.get("/application", categoryController.getLiveCategory);
 router.get(
   "/count",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Analytics-Admin"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff", "Analytics-Admin"),
   categoryController.getCategoryCount
 );
 
@@ -76,7 +76,7 @@ router.put(
   // ProductAuditLogger.createMiddleware("CATEGORY_UPDATED", "Category", "CATEGORY_MANAGEMENT"),
   authenticate,
    auditLogger("Category_Edited", "CONTENT_MANAGEMENT"),
-  authorizeRoles("Super-admin", "Fulfillment-Admin"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"),
   upload.single("file"), // Optional updated image
   categoryController.updateCategory
 );
@@ -87,7 +87,7 @@ router.delete(
   optionalAuth,
   // ProductAuditLogger.createMiddleware("CATEGORY_DELETED", "Category", "CATEGORY_MANAGEMENT"),
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"),
    auditLogger("Category_Deleted", "CONTENT_MANAGEMENT"),
   categoryController.deleteCategory
 );
@@ -95,7 +95,7 @@ router.delete(
 router.post(
   "/bulk-upload/categories",
   authenticate,
-  authorizeRoles("Super-admin", "Inventory-Admin"),
+  authorizeRoles("Super-admin", "Inventory-Admin", "Inventory-Staff"),
   upload.fields([
     { name: "dataFile", maxCount: 1 },
     { name: "imageZip", maxCount: 1 },
@@ -107,7 +107,7 @@ router.post(
 router.get(
   "/getCategories/byDealer/:dealerId",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Analytics-Admin"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff", "Analytics-Admin"),
   categoryController.getCategoriesByDealerId
 );
 

@@ -16,7 +16,7 @@ const purchaseOrderController = require("../controller/purchaseOrder");
 router.post(
   "/",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin", "User", "Dealer"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin", "User", "Dealer","Inventory-Admin", "Inventory-Staff"),
   upload.array("files", 10),
   purchaseOrderController.createPurchaseOrder
 );
@@ -29,7 +29,7 @@ router.post(
 router.get(
   "/stats",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin","Inventory-Admin", "Inventory-Staff"),
   purchaseOrderController.getPurchaseOrderStats
 );
 
@@ -41,7 +41,7 @@ router.get(
 router.get(
   "/filter",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin", "User", "Dealer"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin", "User", "Dealer","Inventory-Admin", "Inventory-Staff"),
   purchaseOrderController.getFilteredPurchaseOrders
 );
 
@@ -53,7 +53,7 @@ router.get(
 router.get(
   "/user/:user_id",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin", "User", "Dealer"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin", "User", "Dealer","Inventory-Admin", "Inventory-Staff"),
   purchaseOrderController.getPurchaseOrdersByUserId
 );
 
@@ -65,7 +65,7 @@ router.get(
 router.get(
   "/",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin", "User", "Dealer"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin", "User", "Dealer","Inventory-Admin", "Inventory-Staff"),
   purchaseOrderController.getAllPurchaseOrders
 );
 
@@ -77,7 +77,7 @@ router.get(
 router.get(
   "/:id",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin", "User", "Dealer"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin", "User", "Dealer","Inventory-Admin", "Inventory-Staff"),
   purchaseOrderController.getPurchaseOrderById
 );
 
@@ -89,7 +89,7 @@ router.get(
 router.put(
   "/:id",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin", "User", "Dealer"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin", "User", "Dealer","Inventory-Admin", "Inventory-Staff"),
   upload.array("files", 10),
   purchaseOrderController.updatePurchaseOrder
 );
@@ -102,7 +102,7 @@ router.put(
 router.patch(
   "/:id/status",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"),
   purchaseOrderController.updatePurchaseOrderStatus
 );
 
@@ -114,7 +114,7 @@ router.patch(
 router.delete(
   "/:id",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"),
   purchaseOrderController.deletePurchaseOrder
 );
 

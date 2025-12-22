@@ -16,7 +16,7 @@ router.post(
   "/",
   upload.single("file"), // Image file should be sent with key: 'file'
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"),
   auditLogger("Sub_Category_Created", "CONTENT_MANAGEMENT"),
   subCategoryController.createSubCategory
 );
@@ -25,7 +25,7 @@ router.post(
 router.get(
   "/",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin", "User", "Dealer"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin", "User", "Dealer","Inventory-Admin", "Inventory-Staff"),
   subCategoryController.getAllSubCategories
 );
 
@@ -37,7 +37,7 @@ router.get("/application", subCategoryController.getLiveSubCategory);
 router.get(
   "/count",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Analytics-Admin"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff", "Analytics-Admin"),
   subCategoryController.getSubCategoryCount
 );
 
@@ -45,7 +45,7 @@ router.get(
 router.get(
   "/:id",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin", "User"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin", "User","Inventory-Admin", "Inventory-Staff"),
   subCategoryController.getSubCategoryById
 );
 
@@ -53,7 +53,7 @@ router.get(
 router.put(
   "/:id",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"),
   upload.single("file"), // Optional updated image
    auditLogger("Sub_Category_Edited", "CONTENT_MANAGEMENT"),
   subCategoryController.updateSubCategory
@@ -63,7 +63,7 @@ router.put(
 router.delete(
   "/:id",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"),
   auditLogger("Sub_Category_Deleted", "CONTENT_MANAGEMENT"),
   subCategoryController.deleteSubCategory
 );

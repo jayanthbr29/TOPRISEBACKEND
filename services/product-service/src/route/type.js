@@ -21,14 +21,14 @@ router.get("/:id", typeController.getTypeById);
 router.put(
   "/:id",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"),
   upload.single("file"),
   typeController.updateType
 );
 router.delete(
   "/:id",
   authenticate,
-  authorizeRoles("Super-admin", "Fulfillment-Admin"),
+  authorizeRoles("Super-admin", "Fulfillment-Admin","Inventory-Admin", "Inventory-Staff"),
   typeController.deleteType
 );
 

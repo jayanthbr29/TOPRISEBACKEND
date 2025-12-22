@@ -19,7 +19,7 @@ router.get(
     optionalAuth,
     // ProductAuditLogger.createMiddleware("PRODUCT_ANALYTICS_ACCESSED", "Product", "REPORTING"),
     authenticate,
-    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Analytics-Admin"),
+    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff", "Analytics-Admin"),
     reportsController.getProductAnalytics
 );
 
@@ -29,7 +29,7 @@ router.get(
     optionalAuth,
     // ProductAuditLogger.createMiddleware("PRODUCT_PERFORMANCE_ACCESSED", "Product", "REPORTING"),
     authenticate,
-    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Analytics-Admin"),
+    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff", "Analytics-Admin"),
     reportsController.getProductPerformance
 );
 
@@ -39,7 +39,7 @@ router.get(
     optionalAuth,
     // ProductAuditLogger.createMiddleware("PRODUCT_INVENTORY_ACCESSED", "Product", "REPORTING"),
     authenticate,
-    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Analytics-Admin"),
+    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff", "Analytics-Admin"),
     reportsController.getProductInventory
 );
 
@@ -49,7 +49,7 @@ router.get(
     optionalAuth,
     // ProductAuditLogger.createMiddleware("PRODUCT_CATEGORY_REPORT_ACCESSED", "Product", "REPORTING"),
     authenticate,
-    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Analytics-Admin"),
+    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff", "Analytics-Admin"),
     reportsController.getProductCategoryReport
 );
 
@@ -68,7 +68,7 @@ router.get(
     optionalAuth,
     // ProductAuditLogger.createMiddleware("PRODUCT_EXPORT_REPORT_ACCESSED", "Product", "REPORTING"),
     authenticate,
-    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Analytics-Admin"),
+    authorizeRoles("Super-admin", "Fulfillment-Admin", "Inventory-Admin", "Inventory-Staff", "Analytics-Admin"),
     reportsController.exportProductReport
 );
 
