@@ -1217,13 +1217,27 @@ exports.updateEmailOrName = async (req, res) => {
     const { userId } = req.params;
     const { email, username } = req.body;
 
+    const emailExists = await User.findOne({ email });
+    if (emailExists) return sendError(res, "Email already exists", 400);
+
+    const employee = await Employee.findOne({ _id: userId });
+    if (!employee) return sendError(res, "Employee not found", 404);
+
     const updateData = {};
     if (email) updateData.email = email;
     if (username) updateData.username = username;
 
-    const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
+    const updatedUser = await User.findByIdAndUpdate(employee.user_id, updateData, {
       new: true,
     });
+    const Update = await Employee.findOneAndUpdate(
+      { user_id: userId },
+      { $set: {
+        First_name: username,
+        email: email
+      } },
+      { new: true }
+    );  
 
     if (!updatedUser) return sendError(res, "User not found", 404);
 
@@ -4778,7 +4792,9 @@ exports.getEmployeeByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const employee = await Employee.findOne({ user_id: userId });
+    const employee = await Employee.findOne({ user_id: userId })
+    .populate("user_id",)
+    .populate("assigned_dealers");
     if (!employee) {
       return res.status(404).json({ message: "Employee not found for the given User ID" });
     }

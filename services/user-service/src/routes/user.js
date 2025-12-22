@@ -438,6 +438,7 @@ router.put(
 router.put(
   "/dealer/:id",
   authenticate,
+  auditLogger("Update_Dealer_Details", "USER"),
   requireRole(["Super-admin", "Fulfillment-Admin"]),
   // // auditMiddleware("DEALER_UPDATED", "Dealer", "DEALER_MANAGEMENT"),
   userController.updateDealer
@@ -461,7 +462,8 @@ router.delete(
 router.put(
   "/profile/:userId",
   authenticate,
-  requireRole(["User"]),
+  // requireRole(["User"]),
+auditLogger("Update_Employee_Profile", "USER"),
   // auditMiddleware("USER_PROFILE_UPDATED", "User", "USER_MANAGEMENT"),
   userController.updateEmailOrName
 );
