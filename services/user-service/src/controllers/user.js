@@ -1285,6 +1285,39 @@ exports.updateEmailOrName = async (req, res) => {
   }
 };
 
+exports.updateEmailOrNameUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { email, username } = req.body;
+
+    //validate emailm using regular expression
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (email && !emailRegex.test(email)) {
+      return sendError(res, "Invalid email format", 400);
+    }
+
+
+    // const emailExists = await User.findOne({ email });
+    // if (emailExists) return sendError(res, "Email already exists", 400);
+
+    const updateData = {};
+    if (email) updateData.email = email;
+    if (username) updateData.username = username;
+
+    const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
+      new: true,
+    });
+   
+
+    if (!updatedUser) return sendError(res, "User not found", 404);
+
+    logger.info(`✅ Updated email/username for user: ${userId}`);
+    sendSuccess(res, updatedUser, "User profile updated successfully");
+  } catch (err) {
+    logger.error(`❌ Update profile error: ${err.message}`);
+    sendError(res, err);
+  }
+};
 exports.updateUserCartId = async (req, res) => {
   try {
     const { userId } = req.params;

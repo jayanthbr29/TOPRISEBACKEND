@@ -470,6 +470,14 @@ auditLogger("Update_Employee_Profile", "USER"),
 );
 
 router.put(
+  "/profile/user/:userId",
+  authenticate,
+  // requireRole(["User"]),
+  // auditMiddleware("USER_PROFILE_UPDATED", "User", "USER_MANAGEMENT"),
+  userController.updateEmailOrNameUser
+);
+
+router.put(
   "/update-cartId/:userId",
   authenticate,
   requireRole(["User", "Super-admin","Inventory-Admin", "Inventory-Staff","Fulfillment-Admin","Fulfillment-Staff"]),
