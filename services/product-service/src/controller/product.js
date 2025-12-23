@@ -7881,3 +7881,58 @@ exports.removeDealerFromProductBybrandId=async (req,res)=>{
     return sendError(res,"Failed to remove dealer from product",500);
   }
 }
+
+
+exports.getDealerProductStockStats = async (req, res) => {
+  try {
+    const { dealerId } = req.params;
+
+    if (!dealerId) {
+      return sendError(res, "DealerId is required", 400);
+    }
+
+    // Fetch only approved products where dealer exists
+    const products = await Product.find({
+      Qc_status: "Approved",
+      "available_dealers.dealers_Ref": dealerId,
+    }).lean();
+
+    let totalProducts = 0;
+    let inStockCount = 0;
+    let outOfStockCount = 0;
+
+    for (const product of products) {
+      const dealerEntry = product.available_dealers.find(
+        (d) => d.dealers_Ref === dealerId
+      );
+      if(product.out_of_stock){
+        outOfStockCount++;
+        continue;
+      }
+
+      if (!dealerEntry) continue;
+
+      totalProducts++;
+
+      if (dealerEntry.inStock === true) {
+        inStockCount++;
+      } else {
+        outOfStockCount++;
+      }
+    }
+
+    return sendSuccess(
+      res,
+      {
+        dealerId,
+        totalProducts,
+        inStockCount,
+        outOfStockCount,
+      },
+      "Dealer product stock statistics fetched successfully"
+    );
+  } catch (error) {
+    console.error("Dealer product stock stats error:", error);
+    return sendError(res, "Failed to fetch dealer product stock statistics");
+  }
+};
