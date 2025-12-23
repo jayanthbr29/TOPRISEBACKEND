@@ -1244,8 +1244,15 @@ exports.updateEmailOrName = async (req, res) => {
     const { userId } = req.params;
     const { email, username } = req.body;
 
-    const emailExists = await User.findOne({ email });
-    if (emailExists) return sendError(res, "Email already exists", 400);
+    //validate emailm using regular expression
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (email && !emailRegex.test(email)) {
+      return sendError(res, "Invalid email format", 400);
+    }
+
+
+    // const emailExists = await User.findOne({ email });
+    // if (emailExists) return sendError(res, "Email already exists", 400);
 
     const employee = await Employee.findOne({ _id: userId });
     if (!employee) return sendError(res, "Employee not found", 404);
