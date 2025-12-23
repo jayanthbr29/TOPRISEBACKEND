@@ -849,4 +849,7 @@ router.get(
   orderController.getPickListNoPagination
 );
 router.get("/get/order-stats/by-dealer/:dealerId", orderController.getOrderStatsByDealer);
+
+router.get("/dealer/:dealerId/revenue", orderController.getDealerRevenue);
+
 module.exports = router;

@@ -4,6 +4,7 @@ const dealerAssignmentQueue = require("../queues/assignmentQueue");
 const { v4: uuidv4 } = require("uuid"); // npm install uuid
 const Cart = require("../models/cart");
 const { Parser } = require("json2csv");
+const mongoose = require("mongoose");
 //added picklist model
 const {
   cacheGet,
@@ -8328,5 +8329,67 @@ exports.getOrderStatsByDealer = async (req, res) => {
   } catch (error) {
     console.error("Error fetching order stats:", error);
     return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+
+exports.getDealerRevenue = async (req, res) => {
+  try {
+    const { dealerId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(dealerId)) {
+      return sendError(res, "Invalid dealerId", 400);
+    }
+
+    const dealerObjectId = new mongoose.Types.ObjectId(dealerId);
+
+    const orders = await Order.find({
+      status: { $ne: "Cancelled" },
+      "dealerMapping.dealerId": dealerObjectId,
+    }).lean();
+
+    let totalRevenue = 0;
+    const orderWiseBreakdown = [];
+
+    for (const order of orders) {
+      // Get SKUs assigned to this dealer in this order
+      const dealerSkus = order.dealerMapping
+        .filter(
+          (dm) => dm.dealerId.toString() === dealerId
+        )
+        .map((dm) => dm.sku);
+
+      let orderRevenue = 0;
+
+      for (const skuItem of order.skus) {
+        if (dealerSkus.includes(skuItem.sku)) {
+          orderRevenue += skuItem?.totalPrice || 0;
+        }
+      }
+
+      if (orderRevenue > 0) {
+        totalRevenue += orderRevenue;
+
+        orderWiseBreakdown.push({
+          orderId: order.orderId,
+          mongoOrderId: order._id,
+          revenue: orderRevenue,
+        });
+      }
+    }
+
+    return sendSuccess(
+      res,
+      {
+        dealerId,
+        totalRevenue,
+        totalOrders: orderWiseBreakdown.length,
+        orders: orderWiseBreakdown,
+      },
+      "Dealer revenue calculated successfully"
+    );
+  } catch (error) {
+    console.error("Dealer revenue error:", error);
+    return sendError(res, "Failed to calculate dealer revenue");
   }
 };
