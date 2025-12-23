@@ -7859,6 +7859,7 @@ exports.getProductsByFiltersForExport = async (req, res) => {
 exports.getProductStatsByDealerId = async (req, res) => {
   try {
     const { dealerId } = req.params;
+    console.log("calling dealer id", dealerId);
 
     if (!dealerId) {
       return sendError(res, "DealerId is required", 400);
@@ -7909,7 +7910,7 @@ exports.getProductStatsByDealerId = async (req, res) => {
       },
       "Product stats fetched successfully"
     );
-    
+
   } catch (error) {
     console.error("getProductStatsByDealerId error:", error);
     return sendError(res, "Failed to fetch product stats", 500);
