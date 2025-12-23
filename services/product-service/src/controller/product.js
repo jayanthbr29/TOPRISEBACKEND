@@ -360,16 +360,16 @@ exports.bulkUploadProducts = async (req, res) => {
         rows.map((r) => normalizeName(r.sub_category)).filter(Boolean)
       ),
     ];
-   const uniqModels = [
-  ...new Set(
-    rows
-      .flatMap(r => String(r.model || "")
-        .split(",")
-        // .map(x => normalizeName(x))
-        .filter(Boolean)
-      )
-  ),
-];
+    const uniqModels = [
+      ...new Set(
+        rows
+          .flatMap(r => String(r.model || "")
+            .split(",")
+            // .map(x => normalizeName(x))
+            .filter(Boolean)
+          )
+      ),
+    ];
 
     const uniqVariants = [
       ...new Set(
@@ -386,8 +386,8 @@ exports.bulkUploadProducts = async (req, res) => {
     });
 
     const modelMap = new Map(
-  modelDocs.map((d) => [normalizeName(d.model_name), d._id])
-);
+      modelDocs.map((d) => [normalizeName(d.model_name), d._id])
+    );
 
     const variantMap = new Map(
       variantDocs.map((d) => [normalizeName(d.variant_name), d._id])
@@ -539,29 +539,29 @@ exports.bulkUploadProducts = async (req, res) => {
       }
 
       /* 6.3¾  Model & Variant mapping  */
-     let modelIds = [];
+      let modelIds = [];
 
-// Parse model names (comma-separated)
-if (row.model) {
-  const modelNames = String(row.model)
-    .split(",")
-    .map(m => normalizeName(m))
-    .filter(Boolean);
+      // Parse model names (comma-separated)
+      if (row.model) {
+        const modelNames = String(row.model)
+          .split(",")
+          .map(m => normalizeName(m))
+          .filter(Boolean);
 
-  modelIds = modelNames
-    .map(n => modelMap.get(n))
-    .filter(Boolean);
-}
+        modelIds = modelNames
+          .map(n => modelMap.get(n))
+          .filter(Boolean);
+      }
 
-if (!modelIds.length) {
-  errors.push({
-    row: i + 2,
-    error: `Unknown model(s): ${row.model}`,
-    rowData: row,
-  });
-  failed++;
-  continue;
-}
+      if (!modelIds.length) {
+        errors.push({
+          row: i + 2,
+          error: `Unknown model(s): ${row.model}`,
+          rowData: row,
+        });
+        failed++;
+        continue;
+      }
 
 
       const variantIds = (row.variant || "")
@@ -603,16 +603,16 @@ if (!modelIds.length) {
         continue;
       }
       //build search tags array
-    let searchTags = [];
-    if (row.search_tags) {
-      const tags = String(row.search_tags)
-        .split(",")
-        .map((t) => normalizeName(t))
-        .filter(Boolean);
+      let searchTags = [];
+      if (row.search_tags) {
+        const tags = String(row.search_tags)
+          .split(",")
+          .map((t) => normalizeName(t))
+          .filter(Boolean);
 
-      searchTags = tags
-        
-    }
+        searchTags = tags
+
+      }
 
 
       /* 6.5  Build doc */
@@ -629,11 +629,11 @@ if (!modelIds.length) {
         year_range: yearIds,
         created_by: userId,
         created_by_role: userRole,
-       model: modelIds,
+        model: modelIds,
 
         qc_status: initialQcStatus,
         live_status: initialStatus,
-        search_tags: searchTags,  
+        search_tags: searchTags,
         images: imageMap[part.toLowerCase()]
           ? [imageMap[part.toLowerCase()]]
           : [],
@@ -1013,16 +1013,16 @@ exports.bulkEditProducts = async (req, res) => {
       ),
     ];
     const uniqModels = [
-  ...new Set(
-    rows
-      .flatMap(r =>
-        String(r.model || "")
-          .split(",")
-          // .map(x => normalizeName(x))
-          .filter(Boolean)
-      )
-  ),
-];
+      ...new Set(
+        rows
+          .flatMap(r =>
+            String(r.model || "")
+              .split(",")
+              // .map(x => normalizeName(x))
+              .filter(Boolean)
+          )
+      ),
+    ];
 
     const uniqVariants = [
       ...new Set(
@@ -1239,22 +1239,22 @@ exports.bulkEditProducts = async (req, res) => {
 
         // Model
         // Model (supports multi-select)
-if (row.model) {
-  const modelNames = String(row.model)
-    .split(",")
-    .map((m) => normalizeName(m))
-    .filter(Boolean);
+        if (row.model) {
+          const modelNames = String(row.model)
+            .split(",")
+            .map((m) => normalizeName(m))
+            .filter(Boolean);
 
-  const modelIds = modelNames
-    .map((name) => modelMap.get(name))
-    .filter(Boolean);
+          const modelIds = modelNames
+            .map((name) => modelMap.get(name))
+            .filter(Boolean);
 
-  if (!modelIds.length) {
-    throw new Error(`Unknown model(s): «${row.model}»`);
-  }
+          if (!modelIds.length) {
+            throw new Error(`Unknown model(s): «${row.model}»`);
+          }
 
-  update.model = modelIds; // Array of ObjectIds
-}
+          update.model = modelIds; // Array of ObjectIds
+        }
 
 
         // Variants
@@ -1274,36 +1274,36 @@ if (row.model) {
 
         // Year range
         // Year range
-if (row.year_range) {
+        if (row.year_range) {
 
-  let rawYear = row.year_range;
+          let rawYear = row.year_range;
 
-  // FIX: Excel may convert "2023,2015" → 20232015
-  if (typeof rawYear === "number") {
-    const str = String(rawYear);
-    // If 8 digits → assume two joined years
-    if (/^\d{8}$/.test(str)) {
-      rawYear = `${str.substring(0, 4)},${str.substring(4, 8)}`;
-    }
-  }
+          // FIX: Excel may convert "2023,2015" → 20232015
+          if (typeof rawYear === "number") {
+            const str = String(rawYear);
+            // If 8 digits → assume two joined years
+            if (/^\d{8}$/.test(str)) {
+              rawYear = `${str.substring(0, 4)},${str.substring(4, 8)}`;
+            }
+          }
 
-  // Normalize everything
-  const years = String(rawYear)
-    .replace(/[\.]/g, ",")  // support 2023.2015 also
-    .split(/[, \-\/]+/)      // split by comma / space / hyphen
-    .map(y => normalizeName(y))
-    .filter(Boolean);
+          // Normalize everything
+          const years = String(rawYear)
+            .replace(/[\.]/g, ",")  // support 2023.2015 also
+            .split(/[, \-\/]+/)      // split by comma / space / hyphen
+            .map(y => normalizeName(y))
+            .filter(Boolean);
 
-  const yearIds = years
-    .map((y) => yearMap.get(y))
-    .filter(Boolean);
+          const yearIds = years
+            .map((y) => yearMap.get(y))
+            .filter(Boolean);
 
-  if (!yearIds.length) {
-    throw new Error(`Unknown year_range «${row.year_range}»`);
-  }
+          if (!yearIds.length) {
+            throw new Error(`Unknown year_range «${row.year_range}»`);
+          }
 
-  update.year_range = yearIds;
-}
+          update.year_range = yearIds;
+        }
 
 
         // Search tags
@@ -1506,7 +1506,7 @@ exports.bulkAssignDealersProducts = async (req, res) => {
 
         // Category Permission Check
         const productCategory = product.category?.toString();
-        const productBrand = product.brand?.toString(); 
+        const productBrand = product.brand?.toString();
 
         // if (
         //   allowedCategories.length &&
@@ -1540,13 +1540,13 @@ exports.bulkAssignDealersProducts = async (req, res) => {
           (d) => d.dealers_Ref?.toString() === dealer._id
         );
 
-        if (existingDealer &&(dealer.is_active)) {
+        if (existingDealer && (dealer.is_active)) {
           // Update existing dealer block
           existingDealer.inStock = inStock;
           existingDealer.quantity_per_dealer = quantity;
           existingDealer.dealer_margin = margin;
           existingDealer.dealer_priority_override = priority;
-        } else if(allowedBrands.includes(productBrand)&&(dealer.is_active)) {
+        } else if (allowedBrands.includes(productBrand) && (dealer.is_active)) {
           // Add new dealer block
           product.available_dealers.push({
             dealers_Ref: dealer._id,
@@ -1683,26 +1683,26 @@ exports.getProductsByFilters = async (req, res) => {
     filter.live_status = "Approved";
     filter.Qc_status = "Approved";
 
-    if (brand&&(brand!='null')) filter.brand = { $in: csvToIn(brand) };
-    if (category&&(category!='null')) filter.category = { $in: csvToIn(category) };
-    if (sub_category&&(sub_category!='null')) filter.sub_category = { $in: csvToIn(sub_category) };
-    if (product_type&&(product_type!='null')) filter.product_type = { $in: csvToIn(product_type) };
-    if (model&&(model!='null')) filter.model = { $in: csvToIn(model) };
-    if (variant&&(variant!='null')) filter.variant = { $in: csvToIn(variant) };
-    if (make&&(make!='null')) filter.make = { $in: csvToIn(make) };
-    if ((year_range)&&(year_range!='null') )filter.year_range = { $in: csvToIn(year_range) };
+    if (brand && (brand != 'null')) filter.brand = { $in: csvToIn(brand) };
+    if (category && (category != 'null')) filter.category = { $in: csvToIn(category) };
+    if (sub_category && (sub_category != 'null')) filter.sub_category = { $in: csvToIn(sub_category) };
+    if (product_type && (product_type != 'null')) filter.product_type = { $in: csvToIn(product_type) };
+    if (model && (model != 'null')) filter.model = { $in: csvToIn(model) };
+    if (variant && (variant != 'null')) filter.variant = { $in: csvToIn(variant) };
+    if (make && (make != 'null')) filter.make = { $in: csvToIn(make) };
+    if ((year_range) && (year_range != 'null')) filter.year_range = { $in: csvToIn(year_range) };
 
-    if (is_universal !== undefined&&(is_universal!='null')) filter.is_universal = is_universal === "true";
-    if (is_consumable !== undefined &&(is_consumable!='null')) filter.is_consumable = is_consumable === "true";
+    if (is_universal !== undefined && (is_universal != 'null')) filter.is_universal = is_universal === "true";
+    if (is_consumable !== undefined && (is_consumable != 'null')) filter.is_consumable = is_consumable === "true";
 
     // Text-based filters with regex for partial matching
-    if (product_name&&(product_name!='null')) {
+    if (product_name && (product_name != 'null')) {
       filter.product_name = { $regex: product_name, $options: 'i' };
     }
-    if (sku_code&&(sku_code!='null')) {
+    if (sku_code && (sku_code != 'null')) {
       filter.sku_code = { $regex: sku_code, $options: 'i' };
     }
-  if (part_name&&(part_name!='null')) {
+    if (part_name && (part_name != 'null')) {
       filter.manufacturer_part_name = { $regex: part_name, $options: 'i' };
     }
 
@@ -1712,7 +1712,7 @@ exports.getProductsByFilters = async (req, res) => {
       if (max_price) filter.selling_price.$lte = Number(max_price);
     }
 
-if (startDate || endDate) {
+    if (startDate || endDate) {
       filter.created_at = {};
       if (startDate) filter.created_at.$gte = new Date(startDate);
       if (endDate) filter.created_at.$lte = new Date(endDate);
@@ -1805,7 +1805,7 @@ if (startDate || endDate) {
     // Total count after all filters
     const totalCount = allProducts.length;
 
-   
+
 
     // Apply pagination now
     const products = allProducts.slice(skip, skip + limitNumber);
@@ -2585,21 +2585,21 @@ exports.createProductSingle = async (req, res) => {
     }
     let modelArray = [];
 
-if (data.model) {
-  if (Array.isArray(data.model)) {
-    modelArray = data.model; // Already array
-  } else {
-    modelArray = [data.model]; // Convert single to array
-  }
-}
+    if (data.model) {
+      if (Array.isArray(data.model)) {
+        modelArray = data.model; // Already array
+      } else {
+        modelArray = [data.model]; // Convert single to array
+      }
+    }
 
-// Validate all model IDs
-for (const modelId of modelArray) {
-  const modelDoc = await Model.findById(modelId);
-  if (!modelDoc) {
-    return sendError(res, `Invalid model ID: ${modelId}`, 400);
-  }
-}
+    // Validate all model IDs
+    for (const modelId of modelArray) {
+      const modelDoc = await Model.findById(modelId);
+      if (!modelDoc) {
+        return sendError(res, `Invalid model ID: ${modelId}`, 400);
+      }
+    }
 
 
 
@@ -2612,7 +2612,7 @@ for (const modelId of modelArray) {
       images: imageUrls,
       year_range: yearRangeArray,
       variant: variantArray,
-        model: modelArray, 
+      model: modelArray,
       search_tags: searchTagsArray,
       available_dealers: data.available_dealers && data.available_dealers.map((dealer) => ({
         dealers_Ref: dealer.dealers_Ref,
@@ -2817,7 +2817,7 @@ async function resolveDisplayValue(field, value) {
   if (!map[field]) return value;
 
   const { model, display, isArray } = map[field];
-  console.log("Resolving", field, "with value:", value,"model",model);
+  console.log("Resolving", field, "with value:", value, "model", model);
 
   const M = require(`../models/${model}`);
 
@@ -2861,15 +2861,15 @@ function normalizeValueEditProduct(existing, incoming) {
     try {
       const parsed = JSON.parse(incoming);
       if (Array.isArray(parsed)) return parsed;
-    } catch (_) {}
+    } catch (_) { }
 
     return incoming;
   }
 
   // Normalize plain objects (dimensions)
   if (
-    typeof existing === "object" && 
-    existing !== null && 
+    typeof existing === "object" &&
+    existing !== null &&
     !Array.isArray(existing)
   ) {
     const normalized = {};
@@ -2922,33 +2922,33 @@ exports.editProductSingle = async (req, res) => {
 
     // Detect changes
     for (const field of Object.keys(patch)) {
-  const oldVal = product[field];
-  const normalizedNewVal = normalizeValueEditProduct(oldVal, patch[field]);
+      const oldVal = product[field];
+      const normalizedNewVal = normalizeValueEditProduct(oldVal, patch[field]);
 
-  const changed =
-    JSON.stringify(oldVal) !== JSON.stringify(normalizedNewVal);
+      const changed =
+        JSON.stringify(oldVal) !== JSON.stringify(normalizedNewVal);
 
-  if (changed) {
-    // RESOLVE readable values for logging
-    const readableOld = await resolveDisplayValue(field, oldVal);
-    const readableNew = await resolveDisplayValue(field, normalizedNewVal);
+      if (changed) {
+        // RESOLVE readable values for logging
+        const readableOld = await resolveDisplayValue(field, oldVal);
+        const readableNew = await resolveDisplayValue(field, normalizedNewVal);
 
-    changedFields.push(field);
+        changedFields.push(field);
 
-    oldValues[field] = readableOld;
-    newValues[field] = readableNew;
+        oldValues[field] = readableOld;
+        newValues[field] = readableNew;
 
-    // For DB update still use normalized value
-    updateSet[field] = normalizedNewVal;
-  }
-}
+        // For DB update still use normalized value
+        updateSet[field] = normalizedNewVal;
+      }
+    }
 
 
     if (changedFields.length === 0) {
       return sendSuccess(res, product, "No changes detected");
     }
 
-    const iteration_number = (product.iteration_number || 0) +1;
+    const iteration_number = (product.iteration_number || 0) + 1;
 
     const changeLogEntry = {
       iteration_number,
@@ -2963,20 +2963,20 @@ exports.editProductSingle = async (req, res) => {
     updateSet.updated_at = new Date();
 
     if (patch.available_dealers) {
-  const normalizedDealers = patch.available_dealers.map((dealer) => ({
-    dealers_Ref: dealer.dealers_Ref,
-    quantity_per_dealer: Number(dealer.quantity_per_dealer) || 0,
-    dealer_margin: Number(dealer.dealer_margin) || 0,
-    inStock: Number(dealer.quantity_per_dealer) > 0,
-  }));
+      const normalizedDealers = patch.available_dealers.map((dealer) => ({
+        dealers_Ref: dealer.dealers_Ref,
+        quantity_per_dealer: Number(dealer.quantity_per_dealer) || 0,
+        dealer_margin: Number(dealer.dealer_margin) || 0,
+        inStock: Number(dealer.quantity_per_dealer) > 0,
+      }));
 
-  // ✅ Save dealers
-  updateSet.available_dealers = normalizedDealers;
+      // ✅ Save dealers
+      updateSet.available_dealers = normalizedDealers;
 
-  // ✅ Derive out_of_stock from dealers
-  const hasStock = normalizedDealers.some(d => d.inStock === true);
-  updateSet.out_of_stock = !hasStock;
-}
+      // ✅ Derive out_of_stock from dealers
+      const hasStock = normalizedDealers.some(d => d.inStock === true);
+      updateSet.out_of_stock = !hasStock;
+    }
 
     const updatedProduct = await Product.findByIdAndUpdate(
       id,
@@ -2989,7 +2989,7 @@ exports.editProductSingle = async (req, res) => {
     //implement stock logic
 
     // Perform update
-    
+
 
     return sendSuccess(res, updatedProduct, "Product updated successfully");
   } catch (err) {
@@ -3227,14 +3227,14 @@ exports.getProductById = async (req, res) => {
   try {
     const { id } = req.params;
     const product = await Product.findById(id)
-  .populate({
-    path: "brand",
-    populate: {
-      path: "type",
-      model: "Type"
-    }
-  })
-  .populate("category sub_category model variant year_range");
+      .populate({
+        path: "brand",
+        populate: {
+          path: "type",
+          model: "Type"
+        }
+      })
+      .populate("category sub_category model variant year_range");
     if (!product) return sendError(res, "Product not found", 404);
 
     // Populate dealer details from user service
@@ -4146,7 +4146,7 @@ exports.createProductSingleByDealer = async (req, res) => {
       return sendError(res, "Failed to generate SKU", 500);
     }
 
-      let yearRangeArray = [];
+    let yearRangeArray = [];
 
     if (data.year_range) {
       if (Array.isArray(data.year_range)) {
@@ -4187,21 +4187,21 @@ exports.createProductSingleByDealer = async (req, res) => {
     }
     let modelArray = [];
 
-if (data.model) {
-  if (Array.isArray(data.model)) {
-    modelArray = data.model; // Already array
-  } else {
-    modelArray = [data.model]; // Convert single to array
-  }
-}
+    if (data.model) {
+      if (Array.isArray(data.model)) {
+        modelArray = data.model; // Already array
+      } else {
+        modelArray = [data.model]; // Convert single to array
+      }
+    }
 
-// Validate all model IDs
-for (const modelId of modelArray) {
-  const modelDoc = await Model.findById(modelId);
-  if (!modelDoc) {
-    return sendError(res, `Invalid model ID: ${modelId}`, 400);
-  }
-}
+    // Validate all model IDs
+    for (const modelId of modelArray) {
+      const modelDoc = await Model.findById(modelId);
+      if (!modelDoc) {
+        return sendError(res, `Invalid model ID: ${modelId}`, 400);
+      }
+    }
 
     // Remove SKU from request data if provided (since we're generating it automatically)
     const { sku_code, ...productDataWithoutSku } = data;
@@ -4211,12 +4211,12 @@ for (const modelId of modelArray) {
       sku_code: generatedSku,
       year_range: yearRangeArray,
       variant: variantArray,
-        model: modelArray, 
+      model: modelArray,
       search_tags: searchTagsArray,
       available_dealers: [
         {
-          dealers_Ref: new mongoose.Types.ObjectId( req.body.addedByDealerId),
-          quantity_per_dealer: req.body.quantity_per_dealer || 0  ,
+          dealers_Ref: new mongoose.Types.ObjectId(req.body.addedByDealerId),
+          quantity_per_dealer: req.body.quantity_per_dealer || 0,
           inStock: req.body.quantity_per_dealer > 0 ? true : false,
           // dealer_margin:  0,
           // dealer_priority_override: 0,
@@ -4647,15 +4647,15 @@ exports.bulkUploadProductsByDealer = async (req, res) => {
       ),
     ];
     const uniqModels = [
-  ...new Set(
-    rows.flatMap(r =>
-      String(r.model || "")
-        .split(",")
-        // .map(m => normalizeName(m))
-        .filter(Boolean)
-    )
-  ),
-];
+      ...new Set(
+        rows.flatMap(r =>
+          String(r.model || "")
+            .split(",")
+            // .map(m => normalizeName(m))
+            .filter(Boolean)
+        )
+      ),
+    ];
 
     const uniqVariants = [
       ...new Set(
@@ -4784,28 +4784,28 @@ exports.bulkUploadProductsByDealer = async (req, res) => {
 
       /* 6.3¾  Model & Variant mapping  */
       // Models — supports multiple models
-let modelIds = [];
+      let modelIds = [];
 
-if (row.model) {
-  const modelNames = String(row.model)
-    .split(",")
-    .map(m => normalizeName(m))
-    .filter(Boolean);
+      if (row.model) {
+        const modelNames = String(row.model)
+          .split(",")
+          .map(m => normalizeName(m))
+          .filter(Boolean);
 
-  modelIds = modelNames
-    .map(name => modelMap.get(name))
-    .filter(Boolean);
+        modelIds = modelNames
+          .map(name => modelMap.get(name))
+          .filter(Boolean);
 
-  if (!modelIds.length) {
-    errors.push({
-      row: i + 2,
-      error: `Unknown model(s): «${row.model}»`,
-      rowData: row,
-    });
-    failed++;
-    continue;
-  }
-}
+        if (!modelIds.length) {
+          errors.push({
+            row: i + 2,
+            error: `Unknown model(s): «${row.model}»`,
+            rowData: row,
+          });
+          failed++;
+          continue;
+        }
+      }
 
 
       const variantIds = (row.variant || "")
@@ -4825,7 +4825,7 @@ if (row.model) {
         ? row.variants.split(",").map((v) => ({ name: safeTrim(v) }))
         : [];
 
-        /* 6.6 Year Range Mapping */
+      /* 6.6 Year Range Mapping */
       let yearIds = [];
       if (row.year_range) {
         const years = String(row.year_range)
@@ -4838,17 +4838,17 @@ if (row.model) {
           .filter(Boolean);   // remove invalid ones
       }
 
-          //build search tags array
-    let searchTags = [];
-    if (row.search_tags) {
-      const tags = String(row.search_tags)
-        .split(",")
-        .map((t) => normalizeName(t))
-        .filter(Boolean);
+      //build search tags array
+      let searchTags = [];
+      if (row.search_tags) {
+        const tags = String(row.search_tags)
+          .split(",")
+          .map((t) => normalizeName(t))
+          .filter(Boolean);
 
-      searchTags = tags
-        
-    }
+        searchTags = tags
+
+      }
 
 
       /* 6.5  Build doc */
@@ -4863,9 +4863,9 @@ if (row.model) {
         product_type: row.product_type,
         variant: variantIds,
         created_by: userId,
-         model: modelIds,
-         year_range: yearIds,
-        search_tags: searchTags,  
+        model: modelIds,
+        year_range: yearIds,
+        search_tags: searchTags,
         qc_status: "Pending",
         live_status: "Rejected",
         addedByDealer: true,
@@ -5599,7 +5599,7 @@ exports.getProductStats = async (req, res) => {
  */
 exports.getPendingProducts = async (req, res) => {
   try {
-    const { page = 1, limit = 10, created_by_role, status ,startDate,endDate} = req.query;
+    const { page = 1, limit = 10, created_by_role, status, startDate, endDate } = req.query;
     const pageNumber = parseInt(page);
     const limitNumber = parseInt(limit);
     const skip = (pageNumber - 1) * limitNumber;
@@ -5610,7 +5610,7 @@ exports.getPendingProducts = async (req, res) => {
     //     { Qc_status: status }
     //   ]
     // };
-    
+
 
     const filter = {};
     if (status) {
@@ -5620,13 +5620,13 @@ exports.getPendingProducts = async (req, res) => {
     if (created_by_role) {
       filter.created_by_role = created_by_role;
     }
-    if(startDate || endDate){
+    if (startDate || endDate) {
       filter.created_at = {};
-      if(startDate){
-        filter.created_at.$gte = new Date(startDate).setHours(0,0,0,0)  ;
+      if (startDate) {
+        filter.created_at.$gte = new Date(startDate).setHours(0, 0, 0, 0);
       }
-      if(endDate){
-        filter.created_at.$lte = new Date(endDate).setHours(23,59,59,999);
+      if (endDate) {
+        filter.created_at.$lte = new Date(endDate).setHours(23, 59, 59, 999);
       }
     }
 
@@ -7793,16 +7793,16 @@ exports.getProductsByFiltersForExport = async (req, res) => {
       filter.is_universal = is_universal === "true";
     if (is_consumable !== undefined)
       filter.is_consumable = is_consumable === "true";
-    if(startDate || endDate) {
+    if (startDate || endDate) {
       filter.created_at = {};
-      
-      if(startDate) {
-        filter.created_at.$gte = new Date(startDate).setHours(0,0,0,0);
+
+      if (startDate) {
+        filter.created_at.$gte = new Date(startDate).setHours(0, 0, 0, 0);
       }
-      if(endDate) {
-        filter.created_at.$lte = new Date(endDate).setHours(23,59,59,999);
+      if (endDate) {
+        filter.created_at.$lte = new Date(endDate).setHours(23, 59, 59, 999);
       }
-      
+
     }
 
     logger.debug(`🔎 Product filter → ${JSON.stringify(filter)}`);
@@ -7859,26 +7859,72 @@ exports.getProductsByFiltersForExport = async (req, res) => {
 exports.getProductStatsByDealerId = async (req, res) => {
   try {
     const { dealerId } = req.params;
-    const totalProducts=await Product.find({addedByDealerId:dealerId}).countDocuments();
-    const totaApprovedProducts=await Product.find({addedByDealerId:dealerId,Qc_status:"Approved"}).countDocuments();
-    const totalPendingProducts=await Product.find({addedByDealerId:dealerId,Qc_status:"Pending"}).countDocuments();
-    const totalRejectedProducts=await Product.find({addedByDealerId:dealerId,Qc_status:"Rejected"}).countDocuments();
-    return sendSuccess(res, {totalProducts,totaApprovedProducts,totalPendingProducts,totalRejectedProducts}, "Product stats fetched successfully");
+
+    if (!dealerId) {
+      return sendError(res, "DealerId is required", 400);
+    }
+
+    const [
+      totalCreatedProducts,
+      totalActiveProducts,
+      totalApprovedProducts,
+      totalPendingProducts,
+      totalRejectedProducts,
+    ] = await Promise.all([
+
+      Product.countDocuments({ addedByDealerId: dealerId }),
+
+
+      Product.countDocuments({
+        "available_dealers.dealers_Ref": dealerId,
+      }),
+
+
+      Product.countDocuments({
+        "available_dealers.dealers_Ref": dealerId,
+        Qc_status: "Approved",
+      }),
+
+
+      Product.countDocuments({
+        "available_dealers.dealers_Ref": dealerId,
+        Qc_status: "Pending",
+      }),
+
+
+      Product.countDocuments({
+        "available_dealers.dealers_Ref": dealerId,
+        Qc_status: "Rejected",
+      }),
+    ]);
+
+    return sendSuccess(
+      res,
+      {
+        totalCreatedProducts,
+        totalActiveProducts,
+        totalApprovedProducts,
+        totalPendingProducts,
+        totalRejectedProducts,
+      },
+      "Product stats fetched successfully"
+    );
   } catch (error) {
-    console.log(error);
+    console.error("getProductStatsByDealerId error:", error);
     return sendError(res, "Failed to fetch product stats", 500);
   }
-}
+};
 
-exports.removeDealerFromProductBybrandId=async (req,res)=>{
-  try{
-    const { dealerId,brandIds}=req.body;
-    const result=await Product.updateMany({brand:{$in:brandIds}},{$pull:{available_dealers:{dealers_Ref:dealerId}}});
-    return sendSuccess(res,result,"Dealer removed from products successfully");
 
-  }catch(error){
-    console.log("error",error);
-    return sendError(res,"Failed to remove dealer from product",500);
+exports.removeDealerFromProductBybrandId = async (req, res) => {
+  try {
+    const { dealerId, brandIds } = req.body;
+    const result = await Product.updateMany({ brand: { $in: brandIds } }, { $pull: { available_dealers: { dealers_Ref: dealerId } } });
+    return sendSuccess(res, result, "Dealer removed from products successfully");
+
+  } catch (error) {
+    console.log("error", error);
+    return sendError(res, "Failed to remove dealer from product", 500);
   }
 }
 
@@ -7891,7 +7937,7 @@ exports.getDealerProductStockStats = async (req, res) => {
       return sendError(res, "DealerId is required", 400);
     }
 
-    // Fetch only approved products where dealer exists
+    // Only approved products mapped to this dealer
     const products = await Product.find({
       Qc_status: "Approved",
       "available_dealers.dealers_Ref": dealerId,
@@ -7901,18 +7947,22 @@ exports.getDealerProductStockStats = async (req, res) => {
     let inStockCount = 0;
     let outOfStockCount = 0;
 
+
     for (const product of products) {
       const dealerEntry = product.available_dealers.find(
-        (d) => d.dealers_Ref === dealerId
+        (d) => d.dealers_Ref == dealerId
       );
-      if(product.out_of_stock){
+
+      // Safety check (should not happen because of query)
+      if (!dealerEntry) continue;
+
+      totalProducts++;
+
+      if (product.out_of_stock) {
         outOfStockCount++;
         continue;
       }
 
-      if (!dealerEntry) continue;
-
-      totalProducts++;
 
       if (dealerEntry.inStock === true) {
         inStockCount++;
@@ -7936,3 +7986,4 @@ exports.getDealerProductStockStats = async (req, res) => {
     return sendError(res, "Failed to fetch dealer product stock statistics");
   }
 };
+
