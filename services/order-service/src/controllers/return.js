@@ -121,23 +121,23 @@ exports.createReturnRequest = async (req, res) => {
     order.markModified("skus");
     await order.save();
     // Send notification to customer
-    await createUnicastOrMulticastNotificationUtilityFunction(
-      [customerId],
-      ["INAPP", "PUSH"],
-      "Return Request Created",
-      `Your return request for ${sku} has been ${eligibilityResult.isEligible ? "validated" : "submitted for review"
-      }`,
-      "",
-      "",
-      "Return",
-      { returnId: returnRequest._id },
-      req.headers.authorization
-    );
+    // await createUnicastOrMulticastNotificationUtilityFunction(
+    //   [customerId],
+    //   ["INAPP", "PUSH"],
+    //   "Return Request Created",
+    //   `Your return request for ${sku} has been ${eligibilityResult.isEligible ? "validated" : "submitted for review"
+    //   }`,
+    //   "",
+    //   "",
+    //   "Return",
+    //   { returnId: returnRequest._id },
+    //   req.headers.authorization
+    // );
 
-    // If eligible, automatically schedule pickup
-    if (eligibilityResult.isEligible) {
-      await schedulePickup(returnRequest._id, req.headers.authorization);
-    }
+    // // If eligible, automatically schedule pickup
+    // if (eligibilityResult.isEligible) {
+    //   await schedulePickup(returnRequest._id, req.headers.authorization);
+    // }
 
     return sendSuccess(
       res,
@@ -145,6 +145,7 @@ exports.createReturnRequest = async (req, res) => {
       "Return request created successfully"
     );
   } catch (error) {
+    console.log("Error:", error);
     logger.error("Create return request error:", error);
     return sendError(res, "Failed to create return request");
   }
