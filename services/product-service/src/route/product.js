@@ -454,5 +454,6 @@ router.get("/get/product/for-export", productController.getProductsByFiltersForE
 
 router.get("/get/product/stats/by-dealer/:dealerId", productController.getProductStatsByDealerId);
 router.put("/remove/delar/bybrandIds", productController.removeDealerFromProductBybrandId);
+router.get("/dealer/:dealerId/product-stock-stats", productController.getDealerProductStockStats);
 
 module.exports = router;
