@@ -7909,6 +7909,7 @@ exports.getProductStatsByDealerId = async (req, res) => {
       },
       "Product stats fetched successfully"
     );
+    
   } catch (error) {
     console.error("getProductStatsByDealerId error:", error);
     return sendError(res, "Failed to fetch product stats", 500);
