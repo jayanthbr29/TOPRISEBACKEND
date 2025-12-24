@@ -433,7 +433,7 @@ router.get(
   authorizeRoles("Super-admin", "Inventory-Admin", "Inventory-Staff"),
   productController.getAvailableDealers
 );
-
+  
 // ==================== INTELLIGENT SEARCH ROUTE ====================
 
 router.get(
