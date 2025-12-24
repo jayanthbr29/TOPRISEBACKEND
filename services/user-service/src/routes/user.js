@@ -1233,4 +1233,9 @@ router.post(
   userController.removeSlaFromDealers
 );
 
+router.get(
+  "/get/fulfillment/staff/byDealer/:dealerId",
+  userController.getEmployeesForAssignment
+)
+
 module.exports = router;

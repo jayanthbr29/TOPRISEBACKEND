@@ -5163,3 +5163,36 @@ exports.removeSlaFromDealers = async (req, res) => {
     sendError(res, err);
   }
 };
+
+exports.getEmployeesForAssignment = async (req, res) => {
+  try {
+    const { dealerId } = req.params;
+    const dealers = await Dealer.findById(dealerId);
+    if (!dealers) {
+      return sendError(res, "Dealer not found", 404);
+    }
+
+    const employees = await Employee.find({ role: "Fulfillment-Staff", });
+    if (!employees || employees.length === 0) {
+      return sendError(res, "No employees found", 404);
+    }
+
+    const availableEmployees = employees.filter(
+      (emp) => !emp.assigned_dealers.includes(dealers._id)
+    );
+    const availableEmployeesWithNoDealer = employees.filter(
+      (emp) => emp.assigned_dealers.length === 0
+    )
+    const assignedEmployees = employees.filter(
+      (emp) => emp.assigned_dealers.includes(dealers._id)
+    );
+
+    logger.info(
+      `Fetched ${availableEmployees.length} employees for assignment`
+    );
+    sendSuccess(res, { availableEmployees,availableEmployeesWithNoDealer, assignedEmployees }, "Employees fetched successfully");
+  } catch (err) {
+    logger.error(`Get employees for assignment error: ${err.message}`);
+    sendError(res, err);
+  }
+};
