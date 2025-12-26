@@ -268,20 +268,25 @@ exports.verifyPayment = async (req, res) => {
     const totalOrderAmount = Number((req.body.payload.payment.entity.amount / 100)) || 0;
 
     console.log("🧾 Generating invoice for order:", invoiceNumber, customerDetails, items, shippingCharges, totalOrderAmount);
-    const invoiceResult = await generatePdfAndUploadInvoice(
-      customerDetails,
-      newOrder.orderId,
-      formatDate(newOrder.orderDate),
-      "Delhi", // Place of supply
-      customerDetails.address, // Place of delivery
-      items,
-      shippingCharges,
-      totalOrderAmount,
-      invoiceNumber
-    );
+    let invoiceResult;
+    try {
+      invoiceResult = await generatePdfAndUploadInvoice(
+        customerDetails,
+        newOrder.orderId,
+        formatDate(newOrder.orderDate),
+        "Delhi", // Place of supply
+        customerDetails.address, // Place of delivery
+        items,
+        shippingCharges,
+        totalOrderAmount,
+        invoiceNumber
+      );
+    } catch (error) {
+      console.error("Error generating invoice:", error);
+    }
 
     newOrder.invoiceNumber = invoiceNumber;
-    newOrder.invoiceUrl = invoiceResult.Location;
+    newOrder.invoiceUrl = invoiceResult?.Location || null;
     await newOrder.save();
     // console.log("newOrder", newOrder);
     payment.order_id = newOrder._id; // link payment to order

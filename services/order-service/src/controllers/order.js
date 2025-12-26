@@ -461,20 +461,25 @@ exports.createOrder = async (req, res) => {
     const totalOrderAmount = Number(req.body.order_Amount) || 0;
 
     console.log("🧾 Generating invoice for order:", invoiceNumber, customerDetails, items, shippingCharges, totalOrderAmount);
-    const invoiceResult = await generatePdfAndUploadInvoice(
-      customerDetails,
-      newOrder.orderId,
-      formatDate(newOrder.orderDate),
-      "Delhi", // Place of supply
-      customerDetails.address, // Place of delivery
-      items,
-      shippingCharges,
-      totalOrderAmount,
-      invoiceNumber
-    );
+    let invoiceResult;
+    try {
+      invoiceResult = await generatePdfAndUploadInvoice(
+        customerDetails,
+        newOrder.orderId,
+        formatDate(newOrder.orderDate),
+        "Delhi", // Place of supply
+        customerDetails.address, // Place of delivery
+        items,
+        shippingCharges,
+        totalOrderAmount,
+        invoiceNumber
+      );
+    } catch (error) {
+      console.error("Error generating invoice:", error);
+    }
 
     newOrder.invoiceNumber = invoiceNumber;
-    newOrder.invoiceUrl = invoiceResult.Location;
+    newOrder.invoiceUrl = invoiceResult?.Location || null;
     const savedOrder = await newOrder.save();
     const payment = new Payment({
       order_id: savedOrder._id,
@@ -7982,7 +7987,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
           }) ||
           "Delivery Address";
         const customerGeo = await geocodeAddress(order.customerDetails?.pincode,);
- const picklist = await PickList.findById(picklistId);
+        const picklist = await PickList.findById(picklistId);
         const skuList = picklist.skuList.map(item => item.sku);
         const pickupPoint = {
           address: dealerAddressString,
@@ -8002,7 +8007,7 @@ exports.markDealerPackedAndUpdateOrderStatusBySKUOne = async (req, res) => {
           client_order_id: sku ? `ORDS,${order.orderId},${sku}` : `ORDM,${order.orderId},${skuList.join(",")}`,
 
         };
-       
+
 
         const dropPoint = {
           address: customerAddressString,
